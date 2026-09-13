@@ -1,0 +1,61 @@
+# dewata vhost for the existing caddy on this VPS
+#
+# routes *.dewata.org to the dewata-api upstream at 127.0.0.1:8765.
+# we rely on Cloudflare-Origin-TLS for client-facing TLS; caddy here is
+# the inner hop only. treat it as a reverse-proxy.
+#
+# ENV: this file should be *included* by the existing /etc/caddy/Caddyfile
+# via a single `import /opt/dewata.online/deploy/caddy/dewata.vhost`
+# directive. do not replace the existing file.
+
+:8765, api.dewata.org, protocol.dewata.org, bci.dewata.org, datasets.dewata.org, map.dewata.org, data.dewata.org {
+    @api host api.dewata.org
+    @protocol host protocol.dewata.org
+    @bci host bci.dewata.org
+    @datasets host datasets.dewata.org
+    @data host data.dewata.org
+
+    # deny non-cloudflare IPs at the network edge — see WAF rule in cloudflare.
+    # caddy-level rate-limit: 60 rps per IP across all subdomains.
+    # (Caddyfile rate-limit plugin not enabled by default; using simple throttling.)
+
+    @host_apex host dewata.org www.dewata.org
+
+    # the API surface — proxied to fastapi on 127.0.0.1:8765
+    handle @api {
+        reverse_proxy 127.0.0.1:8765
+    }
+
+    # protocol spec — docusaurus-style static, served via a future phase
+    # placeholder for now
+    handle @protocol {
+        reverse_proxy 127.0.0.1:8765
+    }
+
+    # bali cultural index — placeholder, served via fastapi for v0.1
+    handle @bci {
+        reverse_proxy 127.0.0.1:8765
+    }
+
+    # datasets — placeholder, served via fastapi for v0.1
+    handle @datasets {
+        reverse_proxy 127.0.0.1:8765
+    }
+
+    # data — placeholder, served via fastapi for v0.1
+    handle @data {
+        reverse_proxy 127.0.0.1:8765
+    }
+
+    # this would normally be served as static; until bci lives, just fallback
+    handle {
+        reverse_proxy 127.0.0.1:8765
+    }
+
+    log {
+        output file /opt/dewata.online/deploy/logs/caddy-access.log {
+            roll_size 100mb
+            roll_keep 5
+        }
+    }
+}

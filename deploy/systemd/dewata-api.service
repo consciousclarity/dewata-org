@@ -1,0 +1,33 @@
+[Unit]
+Description=dewata spatial protocol api (fastapi/uvicorn)
+Documentation=https://github.com/consciousclarity/dewata-org/blob/main/phase-1/docs/runbook/RULESET_VERSIONING.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/dewata.online
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=/root/.env.dewata.online
+ExecStartPre=/bin/bash -c "test -f /root/.env.dewata.online || (echo 'dewata api: env file missing'; exit 1)"
+ExecStart=/opt/dewata.online/.venv/bin/uvicorn api.main:app \
+    --host 127.0.0.1 \
+    --port 8765 \
+    --workers 1 \
+    --log-level info \
+    --no-access-log
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillMode=mixed
+
+# hardening: bind localhost only — public exposure must go through caddy/cloudflare
+# sandbox is conservative; phase 1 doesn't need wider perms
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/opt/dewata.online/deploy/logs
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
