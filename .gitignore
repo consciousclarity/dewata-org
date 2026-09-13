@@ -8,8 +8,8 @@ __pycache__/
 *.egg-info/
 
 # generated — do NOT commit
-conformance/*.json
-conformance/*.jsonl
+**/conformance/*.json
+**/conformance/*.jsonl
 src/dewatacalendar/_version.py
 
 # secrets — keep out of repo
