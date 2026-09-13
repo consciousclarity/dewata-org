@@ -1,0 +1,35 @@
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# generated — do NOT commit
+conformance/*.json
+conformance/*.jsonl
+src/dewatacalendar/_version.py
+
+# secrets — keep out of repo
+.env*
+*.env
+rootpass*
+*.pg.password
+!/.env.*.template
+!/deploy/dns/.env.dewata.online.template
+
+# logs
+*.log
+logs/
+
+# editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# build
+build/
+dist/

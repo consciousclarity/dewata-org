@@ -1,0 +1,22 @@
+# banjar registry: gianyar (pilot)
+
+this file seeds the canonical subdomains for the gianyar kabupaten pilot.
+slug scheme (option B): `bjr-<kab3>-<NNNN>.gianyar.dewata.org`.
+
+source priority:
+1. pemda gianyar published data (dapodik, monografi kecamatan)
+2. openstreetmap `place=neighbourhood`
+3. wikidata Q-records with `P31=Q5782677` (banjar)
+4. operator phone confirmation (post-v1)
+
+columns are tab-separated. required: `id`, `name_iast`, `lat`, `lon`.
+optional: `name_balinese`, `name_id`, `alias`, `parent_desa`, `parent_pura`, `postcodes`.
+
+this is a placeholder seed. real seed happens after we coordinate with pemda; do **not** treat rows here as authoritative until they reach verification_state >= `desk_only`.
+
+id	alias	name_iast	name_id	parent_desa	lat	lon	postcodes
+bjr-gny-0001	banjar-ubud-tengah	Banjar Tengah	Banjar Tengah	dsa-gny-0001	-8.5069	115.2625	80571
+bjr-gny-0002	banjar-ubud-kaja	Banjar Ubud Kaja	Banjar Kaja	dsa-gny-0001	-8.5054	115.2648	80571
+bjr-gny-0003		banjar-tinumbuhannya	Tinumbuhannya	dsa-gny-0001	-8.5082	115.2608	80571
+bjr-gny-0004		banjar-tegal-lantang	Tegal Lantang	dsa-gny-0002	-8.5192	115.2724	80571
+bjr-gny-0005		banjar-kutuh	Kutuh Kaja	dsa-gny-0002	-8.5198	115.2731	80571

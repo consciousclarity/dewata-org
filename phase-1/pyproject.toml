@@ -1,0 +1,36 @@
+[project]
+name = "dewata-calendar-engine"
+version = "0.1.0"
+description = "Balinese calendrical engine: Pawukon + Saka + Wewaran + Rahinan. Ruleset v0.1."
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    {name = "dewata.org", email = "hi@dewata.org"},
+]
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "python-dateutil>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.28",
+]
+
+[project.scripts]
+dewatacalendar = "dewatacalendar.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dewatacalendar"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

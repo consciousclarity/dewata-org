@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+"""
+dewata-dns: idempotent DNS provisioning for dewata.org via cloudflare.
+
+Canonical pattern (option B, see ../Naming Policy.md):
+  <TYPE>-<KAB3>-<NNNN>.<KAB>.dewata.org          A <hostinger-ip>
+  <name-slug>.<kab>.dewata.org                   CNAME <canonical>
+
+Usage:
+  dewata-dns upsert-canonical <type> <kab> <NNNN> <ip>
+  dewata-dns upsert-alias     <name-slug> <kab> <canonical>
+  dewata-dns sync-registry   <tsv>
+  dewata-dns list
+  dewata-dns diff            (cloudflare vs registry drift)
+  dewata-dns verify          (sanity-check ns delegation + apex)
+
+Reads CLOUDFLARE_API_TOKEN and CLOUDFLARE_ZONE_ID from /root/.env.dewata.online.
+"""
+
+import argparse
+import csv
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+from urllib.parse import urlencode
+
+import urllib.request
+import urllib.error
+
+
+ENV_FILE = Path("/root/.env.dewata.online")
+API_BASE = "https://api.cloudflare.com/client/v4"
+
+# slug rule: TYPE(3char)-KAB(3char)-NNNN.dotted-host
+TYPE_RE = re.compile(r"^(bjr|pra|dsa|kec|evt|opd|pol|gvt|hub|vnd)\b")
+SLUG_RE = re.compile(r"^[a-z]{3}-[a-z]{3}-[a-z0-9]{4}$")
+
+
+# -------------------- env loader --------------------
+
+def load_env(path: Path = ENV_FILE) -> dict[str, str]:
+    env: dict[str, str] = {}
+    if not path.exists():
+        sys.exit(f"missing env file: {path}")
+    for raw in path.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        env[k.strip()] = v.strip().strip('"').strip("'")
+    return env
+
+
+# -------------------- http --------------------
+
+def cf_call(token: str, method: str, path: str, body: dict | None = None) -> dict:
+    url = f"{API_BASE}{path}"
+    payload = None if body is None else json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(url, data=payload, method=method)
+    req.add_header("Authorization", f"Bearer {token}")
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        sys.exit(f"cloudflare http error {e.code}: {e.read().decode('utf-8', 'replace')}")
+
+
+def list_dns(token: str, zone_id: str) -> list[dict]:
+    out: list[dict] = []
+    page = 1
+    while True:
+        r = cf_call(token, "GET", f"/zones/{zone_id}/dns_records?per_page=100&page={page}")
+        out.extend(r.get("result", []))
+        total = r.get("result_info", {}).get("total_pages", 1)
+        if page >= total:
+            break
+        page += 1
+    return out
+
+
+def upsert_a(token: str, zone_id: str, name: str, ip: str, proxied: bool = False) -> dict:
+    for rec in list_dns(token, zone_id):
+        if rec["type"] == "A" and rec["name"] == name:
+            if rec["content"] == ip and bool(rec.get("proxied", False)) == proxied:
+                return {"op": "noop", "id": rec["id"]}
+            r = cf_call(token, "PUT", f"/zones/{zone_id}/dns_records/{rec['id']}",
+                        {"type": "A", "name": name, "content": ip, "proxied": proxied, "ttl": 1})
+            return {"op": "updated", "id": r["result"]["id"]}
+    r = cf_call(token, "POST", f"/zones/{zone_id}/dns_records",
+                {"type": "A", "name": name, "content": ip, "proxied": proxied, "ttl": 1})
+    return {"op": "created", "id": r["result"]["id"]}
+
+
+def upsert_cname(token: str, zone_id: str, name: str, target: str, proxied: bool = False) -> dict:
+    for rec in list_dns(token, zone_id):
+        if rec["type"] == "CNAME" and rec["name"] == name:
+            if rec["content"] == target:
+                return {"op": "noop", "id": rec["id"]}
+            r = cf_call(token, "PUT", f"/zones/{zone_id}/dns_records/{rec['id']}",
+                        {"type": "CNAME", "name": name, "content": target, "proxied": proxied, "ttl": 1})
+            return {"op": "updated", "id": r["result"]["id"]}
+    r = cf_call(token, "POST", f"/zones/{zone_id}/dns_records",
+                {"type": "CNAME", "name": name, "content": target, "proxied": proxied, "ttl": 1})
+    return {"op": "created", "id": r["result"]["id"]}
+
+
+# -------------------- slug validation --------------------
+
+KAB_NAMES = [
+    "gianyar", "badung", "denpasar", "tabanan", "bangli",
+    "klungkung", "karangasem", "buleleng", "jembrana",
+]
+
+
+def canonical_name(type_: str, kab: str, n: int) -> str:
+    if type_ not in {"bjr", "pra", "dsa", "kec", "evt", "opd", "pol", "gvt", "hub", "vnd"}:
+        sys.exit(f"unknown type: {type_}")
+    if kab not in KAB_NAMES:
+        sys.exit(f"unknown kab: {kab}")
+    if not (0 <= n <= 9999):
+        sys.exit(f"NNNN out of range: {n}")
+    return f"{type_}-{kab[:3]}-{n:04d}.{kab}.dewata.org"
+
+
+# -------------------- commands --------------------
+
+def cmd_upsert_canonical(args, env):
+    token = env["CLOUDFLARE_API_TOKEN"]
+    zone = env["CLOUDFLARE_ZONE_ID"]
+    name = canonical_name(args.type, args.kab, args.n)
+    r = upsert_a(token, zone, name, args.ip, proxied=args.proxied)
+    print(f"{r['op']}: A {name} → {args.ip}")
+
+
+def cmd_upsert_alias(args, env):
+    token = env["CLOUDFLARE_API_TOKEN"]
+    zone = env["CLOUDFLARE_ZONE_ID"]
+    target = canonical_name(args.canonical_type, args.canonical_kab, args.canonical_n)
+    alias = f"{args.name_slug}.{args.kab}.dewata.org"
+    if not re.match(r"^[a-z0-9-]{1,63}$", args.name_slug):
+        sys.exit("alias slug must be a-z, 0-9, hyphen (length 1-63)")
+    r = upsert_cname(token, zone, alias, target, proxied=False)
+    print(f"{r['op']}: CNAME {alias} → {target}")
+
+
+def cmd_sync_registry(args, env):
+    token = env["CLOUDFLARE_API_TOKEN"]
+    zone = env["CLOUDFLARE_ZONE_ID"]
+    ip = env.get("HOSTINGER_IP") or args.ip
+    if not ip:
+        sys.exit("set HOSTINGER_IP in env or pass --ip")
+    with open(args.tsv) as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        rows = list(reader)
+    if not rows:
+        sys.exit(f"empty tsv: {args.tsv}")
+    rows.sort(key=lambda r: r["id"])
+    for r in rows:
+        type_, kab, n = parse_slug(r["id"])
+        name = canonical_name(type_, kab, n)
+        result = upsert_a(token, zone, name, ip, proxied=False)
+        alias = r.get("alias")
+        if alias and re.match(r"^[a-z0-9-]{1,63}$", alias):
+            upsert_cname(token, zone, f"{alias}.{kab}.dewata.org", name)
+        print(f"  {result['op']:8s} A {name}  (alias={alias or '—'})")
+
+
+def parse_slug(slug: str) -> tuple[str, str, int]:
+    m = re.match(r"^([a-z]{3})-([a-z]{3})-([0-9]{4})$", slug)
+    if not m:
+        sys.exit(f"bad slug: {slug}")
+    t, k, n = m.groups()
+    return t, k, int(n)
+
+
+def cmd_list(args, env):
+    token = env["CLOUDFLARE_API_TOKEN"]
+    zone = env["CLOUDFLARE_ZONE_ID"]
+    recs = list_dns(token, zone)
+    recs.sort(key=lambda r: (r["name"], r["type"]))
+    for r in recs:
+        proxy = "P" if r.get("proxied") else "."
+        print(f"  [{proxy}] {r['type']:6s} {r['name']:50s} → {r['content']}")
+
+
+def cmd_diff(args, env):
+    token = env["CLOUDFLARE_API_TOKEN"]
+    zone = env["CLOUDFLARE_ZONE_ID"]
+    cf = {(r["name"], r["type"]): r["content"] for r in list_dns(token, zone)}
+    if not args.tsv:
+        sys.exit("pass --tsv <registry.tsv>")
+    with open(args.tsv) as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        rows = list(reader)
+    drift = 0
+    for r in rows:
+        type_, kab, n = parse_slug(r["id"])
+        name = canonical_name(type_, kab, n)
+        if (name, "A") not in cf:
+            print(f"  MISSING: A {name}")
+            drift += 1
+    print(f"drift: {drift} missing record(s)")
+
+
+def cmd_verify(args, env):
+    print("apex A record dig:")
+    subprocess.run(["dig", "+short", "dewata.org", "A"], check=False)
+    print("\nNS delegation dig:")
+    subprocess.run(["dig", "+short", "dewata.org", "NS"], check=False)
+
+
+# -------------------- main --------------------
+
+def main() -> int:
+    p = argparse.ArgumentParser(prog="dewata-dns")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("upsert-canonical", help="provision canonical A record")
+    s.add_argument("type"); s.add_argument("kab"); s.add_argument("n", type=int)
+    s.add_argument("ip"); s.add_argument("--proxied", action="store_true")
+    s.set_defaults(func=cmd_upsert_canonical)
+
+    s = sub.add_parser("upsert-alias", help="add a CNAME alias to a canonical record")
+    s.add_argument("name_slug"); s.add_argument("kab")
+    s.add_argument("canonical_type"); s.add_argument("canonical_kab"); s.add_argument("canonical_n", type=int)
+    s.set_defaults(func=cmd_upsert_alias)
+
+    s = sub.add_parser("sync-registry", help="bulk provision from TSV")
+    s.add_argument("tsv"); s.add_argument("--ip", help="override HOSTINGER_IP")
+    s.set_defaults(func=cmd_sync_registry)
+
+    s = sub.add_parser("list"); s.set_defaults(func=cmd_list)
+    s = sub.add_parser("diff")
+    s.add_argument("--tsv", required=True)
+    s.set_defaults(func=cmd_diff)
+    s = sub.add_parser("verify"); s.set_defaults(func=cmd_verify)
+
+    args = p.parse_args()
+    env = load_env()
+    args.func(args, env)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

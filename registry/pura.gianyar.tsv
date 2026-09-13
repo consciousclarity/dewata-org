@@ -1,0 +1,10 @@
+# pura registry: gianyar (skeleton)
+
+slug scheme: `pra-<kab3>-<NNNN>.gianyar.dewata.org`.
+
+this registry is **secondary** to banjar registry: each pura record references its parent banjar + its parent pura cluster (where applicable).
+
+id	alias	name_iast	name_id	parent_desa	parent_pura_class	lat	lon	postcodes
+pra-gny-0001	pura-saraswati	Pura Saraswati	Pura Saraswati	dsa-gny-0001	kahyangan-tiga	-8.5069	115.2625	80571
+pra-gny-0002	pura-tirta-empul	Pura Tirta Empul	Pura Tirta Empul	dsa-gny-0002	kahyangan-tiga	-8.4158	115.3148	80552
+pra-gny-0003	pura-gunung-lewi	Pura Gunung Kawi	gunung kawi	dsa-gny-0001	kahyangan-tiga	-8.4189	115.3125	80552

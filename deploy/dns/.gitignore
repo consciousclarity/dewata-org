@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.env.dewata.online
+.venv/
+*.tsv.lock
