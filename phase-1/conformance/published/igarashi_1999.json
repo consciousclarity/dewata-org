@@ -1,0 +1,12 @@
+[
+  {
+    "gregorian": "2024-09-07",
+    "pawukon_position": 73,
+    "pawukon_wuku_idx": 11,
+    "saka_year": 1946,
+    "sasih_idx": 9,
+    "source": "Igarashi 1999, Balinese Calendar Chronology, table 2.3",
+    "page": 23,
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3"
+  }
+]

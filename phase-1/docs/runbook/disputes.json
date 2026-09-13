@@ -1,0 +1,32 @@
+[
+  {
+    "date": "1981-08-23",
+    "source": "Cunningham 1994, Balinese Calendar: a Pre-Dating Guide, p. 47",
+    "page": 47,
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3",
+    "classification": "epoch_offset",
+    "resolution": "pending",
+    "notes": "pawukon matches publication; saka year is offset by source-specific epoch arithmetic. verify saka-year formula against the source's stated convention before bumping ruleset.",
+    "recorded_at": "2026-09-13T15:07:36.710843Z"
+  },
+  {
+    "date": "1979-03-29",
+    "source": "Cunningham 1994, appendix C, 1979 conversion table",
+    "page": 89,
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3",
+    "classification": "rule_drift",
+    "resolution": "pending",
+    "notes": "pawukon position disagrees with publication; engine ruleset may differ from source. human review of cycle anchor and ruleset id needed.",
+    "recorded_at": "2026-09-13T15:07:36.710860Z"
+  },
+  {
+    "date": "2024-09-07",
+    "source": "Igarashi 1999, Balinese Calendar Chronology, table 2.3",
+    "page": 23,
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3",
+    "classification": "rule_drift",
+    "resolution": "pending",
+    "notes": "pawukon position disagrees with publication; engine ruleset may differ from source. human review of cycle anchor and ruleset id needed.",
+    "recorded_at": "2026-09-13T15:07:36.710866Z"
+  }
+]

@@ -74,6 +74,19 @@ def cmd_test(args: argparse.Namespace) -> int:
             for f in fails[:5]:
                 print(f"  [{topic}] {f}")
         return 1
+
+    # cross-validation against published sources
+    print("\n--- cross-validation against published sources ---")
+    try:
+        from .cross_validation import cross_validate_all, format_outcome
+        results = cross_validate_all()
+        for r in results:
+            print(f"  {r.date}  [{r.status:8s}]  {r.source[:60]}")
+        n_match = sum(1 for r in results if r.status == "match")
+        n_disputed = sum(1 for r in results if r.status == "disputed")
+        print(f"  -- {n_match} match, {n_disputed} disputed (recorded in docs/runbook/disputes.json) --")
+    except Exception as e:
+        print(f"  cross-validation skipped: {e}")
     return 0
 
 

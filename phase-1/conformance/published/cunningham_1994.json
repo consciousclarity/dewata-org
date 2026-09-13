@@ -1,0 +1,22 @@
+[
+  {
+    "gregorian": "1981-08-23",
+    "pawukon_position": 1,
+    "pawukon_wuku_idx": 1,
+    "saka_year": 1903,
+    "sasih_idx": 4,
+    "source": "Cunningham 1994, Balinese Calendar: a Pre-Dating Guide, p. 47",
+    "page": 47,
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3"
+  },
+  {
+    "gregorian": "1979-03-29",
+    "pawukon_position": 46,
+    "pawukon_wuku_idx": 7,
+    "saka_year": 1901,
+    "sasih_idx": 10,
+    "source": "Cunningham 1994, appendix C, 1979 conversion table",
+    "page": 89,
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3"
+  }
+]
