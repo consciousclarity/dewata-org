@@ -233,6 +233,53 @@ def test_dispute_record_serialises():
     assert "epoch_offset" in text
 
 
+# ───── dispute registry invariants ──────────────────────────────
+
+
+def test_disputes_registry_exists():
+    """the disputes registry is on disk after `dewatacalendar disputes --refresh`."""
+    from dewatacalendar.disputes import refresh_disputes
+    disputes = refresh_disputes()
+    assert isinstance(disputes, list)
+    assert all("date" in d and "source" in d and "classification" in d for d in disputes)
+
+
+def test_dispute_maturity_stages():
+    """maturity: 0-29 fresh, 30-89 matured, 90+ expired."""
+    from dewatacalendar.disputes import maturity_status
+    # 5 days ago
+    five_ago = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=5)).isoformat().replace("+00:00", "Z")
+    assert maturity_status(five_ago) == "fresh"
+    # 60 days ago
+    sixty_ago = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=60)).isoformat().replace("+00:00", "Z")
+    assert maturity_status(sixty_ago) == "matured"
+    # 100 days ago
+    hundred_ago = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=100)).isoformat().replace("+00:00", "Z")
+    assert maturity_status(hundred_ago) == "expired"
+    # malformed input is treated as fresh (we don't penalise typos in date)
+    assert maturity_status("garbage") == "fresh"
+
+
+def test_dispute_report_contains_indonesian_sections():
+    """the disputes report uses indonesian-language section labels."""
+    from dewatacalendar.disputes import load_disputes, report
+    disputes = load_disputes()
+    text = report(disputes)
+    assert "dispute" in text.lower()
+    assert "klasifikasi" in text  # indonesian for 'classification'
+    assert "umur" in text  # indonesian for 'age'
+
+
+def test_dispute_recordable_classifications():
+    """dispute classifications are bounded — no leaked free-text."""
+    from dewatacalendar.disputes import load_disputes
+    allowed = {"epoch_offset", "rule_drift", "calendar_variant", "transcription"}
+    for d in load_disputes():
+        assert d.get("classification") in allowed, (
+            f"unexpected classification: {d.get('classification')!r}"
+        )
+
+
 # ───── engine-level invariants ───────────────────────────────────
 
 

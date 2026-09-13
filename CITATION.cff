@@ -1,0 +1,64 @@
+cff-version: 1.2.0
+message: >-
+  If you use dewata.org in academic work, please cite it using the metadata
+  below. customary protocols and ceremony classifications are NOT public
+  themselves; this citation covers the calendar engine and DSP v0.1 spec only.
+title: "dewata.org — civic infrastructure for Bali's customary ceremony"
+abstract: >-
+  a deterministic Python engine for Balinese calendrical conversion (Pawukon + Saka + Wewaran + Rahinan),
+  with a conformance corpus of 75,000+ vectors and reference DSP v0.1 endpoints.
+  designed for adat-first cultural record-keeping, not tourism navigation.
+authors:
+  - family-names: "de la Rua"
+    given-names: "Alejandro"
+    email: "warden@usahabali.online"
+    affiliation: "dewata.org"
+type: software
+keywords:
+  - balinese
+  - pawukon
+  - saka
+  - wewaran
+  - customary
+  - banjar
+  - cerimonia
+  - cultural-sovereignty
+license: MIT
+version: 0.1.0
+date-released: 2026-09-13
+repository-code: "https://github.com/consciousclarity/dewata-org"
+url: "https://dewata.org"
+references:
+  - type: article
+    title: "Calendrical Calculations — Balinese Pawukon (chapter 11)"
+    authors:
+      - family-names: "Dershowitz"
+        given-names: "Nachum"
+      - family-names: "Reingold"
+        given-names: "Edward"
+    year: 2008
+    publisher: "Cambridge University Press"
+  - type: book
+    title: "Balinese Calendar: a Pre-Dating Guide"
+    authors:
+      - family-names: "Cunningham"
+        given-names: "A. M."
+    year: 1994
+  - type: book
+    title: "Balinese Calendar Chronology and the Lunisolar Adjustment"
+    authors:
+      - family-names: "Igarashi"
+        given-names: "Tetsuo"
+    year: 1999
+preferred-citation:
+  type: software
+  title: "dewata.org"
+  authors:
+    - family-names: "de la Rua"
+      given-names: "Alejandro"
+  year: 2026
+  url: "https://dewata.org"
+  version: "0.1.0"
+notes:
+  - "this citation applies to the **technical** engagement only (calendar engine, DSP). customary ceremonies and family records are private by default."
+  - "for first-party customary citation, contact a bendesa adat of the relevant banjar."

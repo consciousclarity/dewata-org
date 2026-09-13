@@ -118,8 +118,21 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("ruleset", help="print active ruleset")
     s.set_defaults(func=cmd_ruleset)
 
+    s = sub.add_parser("disputes", help="refresh + report disputed cross-validation cases")
+    s.add_argument("--refresh", action="store_true", help="rerun cross-validation and update disputes.json")
+    s.add_argument("--report", action="store_true", help="print the report")
+    s.set_defaults(func=cmd_disputes)
+
     args = p.parse_args(argv)
     return args.func(args)
+
+
+def cmd_disputes(args: argparse.Namespace) -> int:
+    from .disputes import load_disputes, refresh_disputes, report
+    if args.refresh or not load_disputes():
+        refresh_disputes()
+    print(report())
+    return 0
 
 
 if __name__ == "__main__":

@@ -1,59 +1,33 @@
 # dewata-org
 
-civic infrastructure for bali: a balinese temporal-spatial protocol.
+> ⚠ **primary documentation has moved**: the canonical entry point for
+> this project is now language-split.
+>
+> - **Bahasa Bali** (primary): `README_BAL.md`
+> - **Bahasa Indonesia** (primary): `README_ID.md`
+> - **English** (academic-only): `README_EN.md`
+>
+> the file you're reading is now a routing shim.
 
-see `ARCHITECTURE.md` for the full engineering plan and
-`Projects/Dewata.org/phase1.engine_release_0.1.md` (obsidian) for the
-shipped Phase 1 status.
+---
 
-## phase status
+## routes
 
-- **phase 0** — DNS / hostinger / database provisioned (in progress, see TODO)
-- **phase 1** — calendar engine v0.1 ✓ shipped
-- **phase 2-9** — see ARCHITECTURE.md
+- **first time reading?**
+  start with the language you read fluently. **Balinese first if
+  available**, then Indonesian, then English.
+- **want to use the engine?**
+  see `phase-1/README.md` (engineering entry point).
+- **want to understand the protocol?**
+  see `ARCHITECTURE.md` (full engineering plan, in english).
+- **want to file a calendar dispute?**
+  see `docs/runbook/RULESET_VERSIONING.md` (ruleset versioning runbook)
+  and `docs/runbook/SIGNOFF.md` (customary sign-off template).
+- **want to onboard a banjar or pura?**
+  see `CONTRIBUTING.md` (English) or `CONTRIBUTING_ID.md` (Indonesian).
 
-## quick start
+---
 
-```bash
-# install
-pip install -e phase-1/
+## licence & citation
 
-# date lookup
-python -m dewatacalendar date 1981-08-23
-
-# calendar ruleset
-python -m dewatacalendar ruleset
-
-# conformance vectors (generate first via tests/gen_corpus.py if missing)
-python -m dewatacalendar test
-```
-
-## end-to-end check
-
-```bash
-./scripts/verify.sh
-```
-
-## structure
-
-```
-ARCHITECTURE.md         canonical engineering plan
-phase-1/
-  src/dewatacalendar/    pure python, deterministic calendar engine
-  src/api/               fastapi app (DSP calendar endpoints)
-  tests/                 conformance corpus + pytest
-  conformance/           75k generated vectors (gitignored, regenerated)
-deploy/
-  dns/                   dewata-dns cli, idempotent
-registry/
-  banjar/                <id>.<kab>.dewata.org registry TSVs
-```
-
-## citation
-
-work in progress — see `Projects/Dewata.org/phase1.engine_release_0.1.md`
-for what's currently testable.
-
-## license
-
-MIT.
+MIT, with a cultural-sovereignty clause. see `LICENSE` and `CITATION.cff`.
