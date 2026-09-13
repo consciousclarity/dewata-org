@@ -25,6 +25,8 @@
   and `docs/runbook/SIGNOFF.md` (customary sign-off template).
 - **want to onboard a banjar or pura?**
   see `CONTRIBUTING.md` (English) or `CONTRIBUTING_ID.md` (Indonesian).
+- **want to deploy the api on this VPS?**
+  see `deploy/runbook/DEPLOY.md` and run `./deploy/bin/dewata-deploy.sh apply`.
 
 ---
 
