@@ -1,0 +1,26 @@
+[Unit]
+Description=dewata private caddy on :8443 (isolated from host caddy)
+Documentation=https://github.com/consciousclarity/dewata-org/blob/main/deploy/runbook/DEPLOY.md
+After=network-online.target dewata-api.service
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=root
+WorkingDirectory=/opt/dewata.online/deploy/caddy
+ExecStartPre=/usr/bin/caddy validate --config /opt/dewata.online/deploy/caddy/Caddyfile.dewata
+ExecStart=/usr/bin/caddy run --config /opt/dewata.online/deploy/caddy/Caddyfile.dewata --adapter '' --watch=false
+ExecReload=/usr/bin/caddy reload --config /opt/dewata.online/deploy/caddy/Caddyfile.dewata --adapter ''
+TimeoutStopSec=20
+KillMode=mixed
+Restart=on-failure
+RestartSec=5
+
+# log dir is writable
+ReadWritePaths=/opt/dewata.online/deploy/logs /opt/dewata.online/deploy/caddy/pki
+
+# inherit systemd's environment; caddy reads Caddyfile from path argument
+Environment="HOME=/root"
+
+[Install]
+WantedBy=multi-user.target
