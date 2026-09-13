@@ -29,11 +29,12 @@ ensure_venv() {
         echo "[deploy] creating venv"
         python3 -m venv "$PROJECT/.venv"
         "$PROJECT/.venv/bin/pip" install -q --upgrade pip
-        "$PROJECT/.venv/bin/pip" install -q -e "$PROJECT/phase-1"
+        # install package + dev extras (pytest, pytest-asyncio, httpx)
+        "$PROJECT/.venv/bin/pip" install -q -e "$PROJECT/phase-1[dev]"
     else
         echo "[deploy] venv present"
         # idempotent upgrade of the package
-        "$PROJECT/.venv/bin/pip" install -q -e "$PROJECT/phase-1" 2>/dev/null || true
+        "$PROJECT/.venv/bin/pip" install -q -e "$PROJECT/phase-1[dev]" 2>/dev/null || true
     fi
 }
 
