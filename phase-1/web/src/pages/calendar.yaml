@@ -1,11 +1,23 @@
 slug: calendar
 title_key: calendar.title
-label: provisional
+label: under-development
+under_development: true
+under_development_note: |
+  The Balinese calendar view on this page is a stub.  It is not a working
+  calendar and never claims a date-of-record.  The working calendar is
+  served by the API at  api.dewata.org/dsp/v0.1/calendar/date/{YYYY-MM-DD}
+  and rendered by the underlying engine.
+cultural_review_pending: true
+cultural_review_note: |
+  All Balinese / Indonesian / English translations on this page are
+  draft strings.  They are presented so the technical layout can be
+  reviewed, but they await customary review before any publication.
+  The bci scaffold is a placeholder while we wait for customary review.
 computed:
-  - "today: 2026-09-14"
-  - "ruleset version: pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0"
+  - "engine: dewata spatial protocol (DSP) v0.1"
+  - "ruleset: pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0"
+  - "calendar api: api.dewata.org/dsp/v0.1/calendar/date/{YYYY-MM-DD}"
+  - "live date computed on demand at the api endpoint above"
 registered: []
-predicted:
-  - "next piodalan: 2026-10-15"
-  - "next melasti: 2026-03-08"
+predicted: []
 verified: []

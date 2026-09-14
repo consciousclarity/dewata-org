@@ -33,3 +33,8 @@ logs/
 # build
 build/
 dist/
+# ephemeral caddy preview storage
+.caddy_apex_8444/
+.caddy_apex_8445/
+# disposable testing dirs
+deploy/disposable-test/

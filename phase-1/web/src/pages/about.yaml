@@ -1,10 +1,18 @@
 slug: about
 title_key: about.title
 label: provisional
+cultural_review_pending: true
+cultural_review_note: |
+  Content language is Basa Bali as primary (per the brief), with Bahasa
+  Indonesia as the secondary accessible form.  All glossary entries are
+  draft strings awaiting customary review.  No real banjar, pura, or
+  ceremonial record is presented here.
 computed:
-  - "engine version: v0.1.0"
-  - "schema version: 0001"
+  - "engine version: dewata spatial protocol v0.1"
+  - "calendar ruleset: pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0"
+  - "schema version: 0001 (provisional)"
 registered:
-  - "actor: dewata-admin"
-predicted: []
+  - "system actor only: dewata-admin (placeholder)"
+predicted:
+  - "next customary sign-off: pending review"
 verified: []

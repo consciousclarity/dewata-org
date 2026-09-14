@@ -1,0 +1,45 @@
+# dev-only Caddyfile for the dewata.org apex preview
+#
+# this caddy serves /opt/dw-phase2/phase-1/web/dist on :8444
+# with a Host: dewata.org vhost.  it sits OUTSIDE the production
+# 8443 private caddy and is *only* loaded when explicitly launched.
+#
+# it is NOT auto-started.  manually launch with:
+#   /opt/dw-phase2/.venv/bin/python -c "..."  (use caddy binary)
+#
+# to test:
+#   curl -i --max-time 5 -H "Host: dewata.org" http://127.0.0.1:8444/
+#
+# production rollout (NOT applied here):
+#   - the cloudflared tunnel would be configured with
+#       Hostname:  dewata.org
+#       Service:   http://localhost:8765  (or :8443 via the existing caddy)
+#   - apex deployment does NOT touch any existing production caddy,
+#     service, or DNS record on this vps.
+
+{
+    email alex_aguilar@gmx.ch
+    admin off
+}
+
+:8444 {
+    log {
+        output file /opt/dw-phase2/deploy/logs/caddy-apex-dev.log {
+            roll_size 50mb
+            roll_keep 3
+        }
+    }
+
+    @apex host dewata.org
+
+    handle @apex {
+        root * /opt/dw-phase2/phase-1/web/dist
+        encode gzip zstd
+        file_server
+    }
+
+    # any other host on :8444 returns 404 — we are apex-only here
+    handle {
+        respond "dev apex caddy (placeholder); use Host: dewata.org\n" 404
+    }
+}

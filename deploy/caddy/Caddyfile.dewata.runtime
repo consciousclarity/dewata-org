@@ -1,0 +1,60 @@
+# private Caddy configuration for dewata.org
+#
+# distinct from the host's /etc/caddy/Caddyfile. runs on ports 8080 (HTTP)
+# and 8443 (HTTPS) so it doesn't conflict with the host caddy on 80/443.
+#
+# cloudflare proxy terminates TLS for *.dewata.org; this caddy accepts
+# those proxied connections on 8443. cloudflare's TCP tunnel also
+# expects the origin's h2c / h2 support — caddy does this by default.
+
+{
+    email alex_aguilar@gmx.ch
+    admin off
+}
+
+:8443 {
+    # cloudflare has already terminated TLS at its edge and forwards via
+    # HTTP/2 to this origin over its private backbone. we accept
+    # plaintext on :8443 and proxy to dewata-api on :8765.
+    log {
+        output file /opt/dewata.online/deploy/logs/caddy-private.log {
+            roll_size 50mb
+            roll_keep 3
+        }
+    }
+
+    # === api.dewata.org ===
+    @api host api.dewata.org
+    handle @api {
+        reverse_proxy 127.0.0.1:8765
+    }
+
+    # === bci.dewata.org (cultural index, post-phase-3) ===
+    @bci host bci.dewata.org
+    handle @bci {
+        # placeholder until phase 3 lands
+        respond "BCI not yet shipped (v0.1.0 stays API-only)\n" 503
+    }
+
+    # === protocol.dewata.org (DSP spec site) ===
+    @protocol host protocol.dewata.org
+    handle @protocol {
+        respond "DSP protocol site not yet shipped (v0.1.0)\n" 503
+    }
+
+    # === datasets.dewata.org (signed snapshots) ===
+    @datasets host datasets.dewata.org
+    handle @datasets {
+        respond "Snapshot publication not yet shipped (v0.1.0)\n" 503
+    }
+
+    # === catch-all: anything else on *.dewata.org returns 503 with note ===
+    handle {
+        respond "Dewata.org subdomain not yet shipped (v0.1.0 — only api.dwata.org is live)\n" 503
+    }
+}
+
+# No :8080 block — we don't want a plain-text origin. cloudflare's "Full
+# (strict)" TLS mode requires TLS at the origin. if you ever need to
+# debug with a plain curl, log into the VPS and curl 127.0.0.1:8765
+# directly to bypass caddy.

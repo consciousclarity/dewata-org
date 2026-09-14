@@ -1,11 +1,21 @@
 slug: index
 title_key: home.title
 label: provisional
+cultural_review_pending: true
+cultural_review_note: |
+  The Balinese, Indonesian, and English translations on this site are
+  draft strings.  They are presented so the technical layout can be
+  reviewed, but they await customary review before any publication.
+  The bci is a placeholder while we wait for customary review.
 computed:
-  - "engine:protocol DspId=dsp/v0.1/calendar"
-  - "ruleset: pawukon-v0.4.1+saka-bali-v0.2.3"
+  - "engine: dewata spatial protocol (DSP) v0.1"
+  - "ruleset: pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0"
+  - "calendar api: api.dewata.org/dsp/v0.1/calendar/date/{YYYY-MM-DD}"
+  - "no real cultural records ingested"
+  - "no banjar or pura onboarded"
+  - "no customary sign-off recorded"
 registered:
-  - "actor: dewata-admin"
+  - "system actor only: dewata-admin (placeholder)"
 predicted:
-  - "next piodalan: 2026-10-15"
+  - "next customary sign-off: pending review"
 verified: []

@@ -1,9 +1,18 @@
 slug: transparency
 title_key: transparency.title
 label: provisional
+cultural_review_pending: true
+cultural_review_note: |
+  Cultural decisions visible to clients in v0.1 are provisional.  No
+  customary authority has signed off any content.  See the SIGNOFF.md
+  and DISPUTE_REVIEW_PROTOCOL.md files in the runbook for the
+  ratify-and-collect flow.
 computed:
-  - "sha256 of snapshot: 0x…"
+  - "engine version: dewata spatial protocol v0.1"
+  - "open issues: 0 ceremonial records, 0 banjar onboarded"
+  - "snapshot signing: not yet implemented (see ADR-0002)"
 registered:
-  - "actor: dewata-admin"
-predicted: []
+  - "system actor only: dewata-admin (placeholder)"
+predicted:
+  - "next customary sign-off: pending review"
 verified: []
