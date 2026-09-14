@@ -1,0 +1,10 @@
+slug: about
+title_key: about.title
+label: provisional
+computed:
+  - "engine version: v0.1.0"
+  - "schema version: 0001"
+registered:
+  - "actor: dewata-admin"
+predicted: []
+verified: []

@@ -1,0 +1,11 @@
+slug: calendar
+title_key: calendar.title
+label: provisional
+computed:
+  - "today: 2026-09-14"
+  - "ruleset version: pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0"
+registered: []
+predicted:
+  - "next piodalan: 2026-10-15"
+  - "next melasti: 2026-03-08"
+verified: []

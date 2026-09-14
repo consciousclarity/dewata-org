@@ -1,0 +1,15 @@
+{
+  "site.brand": "dewata.org",
+  "home.title": "Beranda",
+  "calendar.title": "Kalender Bali",
+  "calendar.intro": "Tanggal-tanggal penting untuk masyarakat Bali. Rentang Pawukon dan Saka. Dihasilkan oleh mesin kalender, menunggu verifikasi adat.",
+  "transparency.title": "Transparansi",
+  "protocol.title": "Protokol",
+  "banjar.title": "Daftar Banjar",
+  "pura.title": "Daftar Pura",
+  "about.title": "Tentang",
+  "provenance.computed": "dihasilkan oleh mesin",
+  "provenance.registered": "dicatat oleh operator",
+  "provenance.predicted": "diprediksi",
+  "provenance.verified": "diverifikasi"
+}

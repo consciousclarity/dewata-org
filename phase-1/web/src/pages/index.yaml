@@ -1,0 +1,11 @@
+slug: index
+title_key: home.title
+label: provisional
+computed:
+  - "engine:protocol DspId=dsp/v0.1/calendar"
+  - "ruleset: pawukon-v0.4.1+saka-bali-v0.2.3"
+registered:
+  - "actor: dewata-admin"
+predicted:
+  - "next piodalan: 2026-10-15"
+verified: []

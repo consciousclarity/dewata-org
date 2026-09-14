@@ -1,0 +1,80 @@
+/* dewata.org -- bci scaffolding (provisional) */
+
+:root {
+  --fg: #1b1a17;
+  --muted: #5d574a;
+  --bg: #fbf8f1;
+  --rule: #d6cfc2;
+  --accent: #8a3324;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+.header {
+  padding: 1.6rem 2rem;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.brand { font-weight: 700; color: var(--accent); text-decoration: none; }
+.brand a { color: inherit; text-decoration: none; }
+.i18n a {
+  margin-right: 0.7rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.i18n a[aria-current="true"] { color: var(--accent); font-weight: 600; }
+
+.main {
+  max-width: 740px;
+  margin: 2rem auto 4rem;
+  padding: 0 1.4rem;
+}
+.title {
+  font-size: 2rem;
+  margin: 0 0 1.4rem;
+  color: var(--accent);
+}
+
+.provenance-banner {
+  background: #f0e9d9;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+}
+.provenance-banner ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+}
+
+section { margin: 1.6rem 0; }
+h2 {
+  font-size: 1.15rem;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.3rem;
+  color: var(--muted);
+}
+ul { padding-left: 1.4rem; }
+li { margin: 0.3rem 0; }
+
+.footer {
+  border-top: 1px solid var(--rule);
+  padding: 1.6rem 2rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.footer a { color: var(--accent); text-decoration: none; }
+.footer p { margin: 0.3rem 0; }

@@ -1,0 +1,9 @@
+slug: transparency
+title_key: transparency.title
+label: provisional
+computed:
+  - "sha256 of snapshot: 0x…"
+registered:
+  - "actor: dewata-admin"
+predicted: []
+verified: []
