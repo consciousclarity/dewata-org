@@ -15,6 +15,12 @@
 # the patch below is accepted and applied.
 
 {
+    # cloudflare terminates TLS at its edge; this Caddy accepts
+    # plaintext on :8443 over cloudflared's private backbone.  We
+    # explicitly disable auto-HTTPS so caddy does not try to acquire
+    # certificates or bind :80/:443 on this host (the host Caddy on
+    # :80/:443 is a different process owned by the OS package).
+    auto_https off
     email alex_aguilar@gmx.ch
     admin off
 }

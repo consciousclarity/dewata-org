@@ -35,7 +35,15 @@ fi
 # --------------------------------------------------------------------
 # path config -- production by default; override via env to test.
 # --------------------------------------------------------------------
-PROD=${DEWATA_PROD_CADDY:-/opt/dewata.online/deploy/caddy/Caddyfile.dewata}
+# Mandatory: the rollback target path must be supplied via env.
+# No mutable default: refuse to run if unset.
+if [[ -z "${DEWATA_PROD_CADDY:-}" ]]; then
+    echo "FATAL: DEWATA_PROD_CADDY is unset or empty." >&2
+    echo "  supply the production Caddyfile path, e.g.:" >&2
+    echo "    DEWATA_PROD_CADDY=/opt/dewata.online/deploy/caddy/Caddyfile.dewata" >&2
+    exit 2
+fi
+PROD=$DEWATA_PROD_CADDY
 SERVICE=${DEWATA_CADDY_SERVICE:-dewata-caddy}
 LISTENER_PORT=${DEWATA_LISTENER_PORT:-8443}
 RELEASE_DST=${DEWATA_RELEASE_DST:-/opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1}

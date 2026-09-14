@@ -15,9 +15,21 @@
 #   DEWATA_CADDY_SERVICE      -> service name (default: dewata-caddy)
 #   DEWATA_LISTENER_PORT      -> listener port (default: 8443)
 #   DEWATA_TEST_MODE=1        -> skip real systemctl; lifecycle drives it
-#   DEWATA_RELEASE_MANIFEST   -> path to a real manifest file (recommended)
-#   DEWATA_PROD_BASELINE_SHA  -> known sha256 of production Caddyfile.dewata
-#                                before this install (drift check)
+#   DEWATA_REVIEWED_MANIFEST  -> REQUIRED: path to the reviewed manifest file.
+#                                Format: <sha256> <relpath>, one per line.
+#                                Must be generated from a reviewed artifact,
+#                                NEVER auto-derived from the live worktree.
+#                                No default; install refuses with rc=2 if unset.
+#   DEWATA_PROD_BASELINE_SHA  -> REQUIRED: sha256 of production Caddyfile.dewata
+#                                right now.  Captured before the install runs.
+#                                The install refuses with rc=3 if the live file
+#                                does not match (drift guard).  No default; the
+#                                install refuses with rc=2 if unset.
+#   DEWATA_PROD_WWW           -> REQUIRED: production www root (no default;
+#                                refuses with rc=2 if unset).  Used to compute
+#                                the default release destination.
+#   DEWATA_RELEASE_DST        -> REQUIRED: release destination (no default;
+#                                refuses with rc=2 if unset).
 #
 # This script refuses to run unless explicitly approved-by-config invariants:
 #   - the candidate Caddyfile matches the sha256 recorded in the reviewed
@@ -47,16 +59,66 @@ set -euo pipefail
 # --------------------------------------------------------------------
 # path config
 # --------------------------------------------------------------------
-PROD=${DEWATA_PROD_CADDY:-/opt/dewata.online/deploy/caddy/Caddyfile.dewata}
-PROD_WWW=${DEWATA_PROD_WWW:-/opt/dewata.online/deploy/www}
+# Mandatory required env vars.  We refuse to run with mutable
+# defaults that would silently write to production paths.  Every
+# path must be supplied explicitly so the operator (and the
+# lifecycle test) cannot accidentally clobber production.
+if [[ -z "${DEWATA_PROD_CADDY:-}" ]]; then
+    echo "FATAL: DEWATA_PROD_CADDY is unset or empty." >&2
+    echo "  supply the production Caddyfile path, e.g.:" >&2
+    echo "    DEWATA_PROD_CADDY=/opt/dewata.online/deploy/caddy/Caddyfile.dewata" >&2
+    exit 2
+fi
+if [[ -z "${DEWATA_PROD_WWW:-}" ]]; then
+    echo "FATAL: DEWATA_PROD_WWW is unset or empty." >&2
+    echo "  supply the production www root, e.g.:" >&2
+    echo "    DEWATA_PROD_WWW=/opt/dewata.online/deploy/www" >&2
+    exit 2
+fi
+if [[ -z "${DEWATA_RELEASE_DST:-}" ]]; then
+    echo "FATAL: DEWATA_RELEASE_DST is unset or empty." >&2
+    echo "  supply the release destination, e.g.:" >&2
+    echo "    DEWATA_RELEASE_DST=/opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1" >&2
+    exit 2
+fi
+if [[ -z "${DEWATA_RELEASE_SRC:-}" ]]; then
+    echo "FATAL: DEWATA_RELEASE_SRC is unset or empty." >&2
+    echo "  supply the release source, e.g.:" >&2
+    echo "    DEWATA_RELEASE_SRC=/opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1" >&2
+    exit 2
+fi
+if [[ -z "${DEWATA_CANDIDATE:-}" ]]; then
+    echo "FATAL: DEWATA_CANDIDATE is unset or empty." >&2
+    echo "  supply the candidate Caddyfile path, e.g.:" >&2
+    echo "    DEWATA_CANDIDATE=/opt/dewata.online/deploy/caddy/Caddyfile.dewata.proposed" >&2
+    exit 2
+fi
+PROD=$DEWATA_PROD_CADDY
+PROD_WWW=$DEWATA_PROD_WWW
+RELEASE_DST=$DEWATA_RELEASE_DST
+RELEASE_SRC=$DEWATA_RELEASE_SRC
+CANDIDATE=$DEWATA_CANDIDATE
 WORKTREE=${DEWATA_WORKTREE:-/opt/dw-phase2}
-CANDIDATE=${DEWATA_CANDIDATE:-$WORKTREE/deploy/caddy/Caddyfile.dewata.proposed}
-RELEASE_SRC=${DEWATA_RELEASE_SRC:-$WORKTREE/deploy/www/dewata-org/v0.1.0-pre1}
-RELEASE_DST=${DEWATA_RELEASE_DST:-$PROD_WWW/dewata-org/v0.1.0-pre1}
 SERVICE=${DEWATA_CADDY_SERVICE:-dewata-caddy}
 LISTENER_PORT=${DEWATA_LISTENER_PORT:-8443}
-RELEASE_MANIFEST=${DEWATA_RELEASE_MANIFEST:-$WORKTREE/deploy/atomic/RELEASES/v0.1.0-pre1.MANIFEST.txt}
-PROD_BASELINE_SHA=${DEWATA_PROD_BASELINE_SHA:-}
+# Mandatory required env vars: DEWATA_REVIEWED_MANIFEST and
+# DEWATA_PROD_BASELINE_SHA.  No mutable defaults; the install refuses
+# with rc=2 if either is empty.  This pins the deploy to a reviewed
+# artifact and prevents drift.
+if [[ -z "${DEWATA_REVIEWED_MANIFEST:-}" ]]; then
+    echo "FATAL: DEWATA_REVIEWED_MANIFEST is unset or empty." >&2
+    echo "  supply the path to a reviewed manifest, e.g.:" >&2
+    echo "    DEWATA_REVIEWED_MANIFEST=/opt/dewata.online/deploy/atomic/RELEASES/v0.1.0-pre1.MANIFEST.txt" >&2
+    exit 2
+fi
+if [[ -z "${DEWATA_PROD_BASELINE_SHA:-}" ]]; then
+    echo "FATAL: DEWATA_PROD_BASELINE_SHA is unset or empty." >&2
+    echo "  compute it from production right now, e.g.:" >&2
+    echo "    sha256sum /opt/dewata.online/deploy/caddy/Caddyfile.dewata" >&2
+    exit 2
+fi
+REVIEWED_MANIFEST=$DEWATA_REVIEWED_MANIFEST
+PROD_BASELINE_SHA=$DEWATA_PROD_BASELINE_SHA
 
 # --------------------------------------------------------------------
 # helpers
@@ -71,24 +133,78 @@ sha256_of_dir_recursive() {
     done ) | sha256sum | awk '{print $1}'
 }
 
-# Auto-restore on failure: rolls back to the captured snapshot Caddyfile
-# (taken at G2) and restarts the service.
-RESTORE_NEEDED=0
+# Auto-restore on failure.  This function is the last line of defense:
+# if any gate fails after we have begun mutating production, this
+# restores both the prior Caddyfile AND (if G3 has already published
+# the new release tree) the prior release tree.  It validates the
+# restored Caddyfile before declaring success, and refuses to declare
+# success if the validation fails.  Never silently swallows errors.
+
+# Track which steps have been performed so the restore can undo them
+# in reverse order.
+SNAPSHOT_CAPTURED=0      # G2: snapshot exists at $SNAPSHOT_DIR
+RELEASE_BACKED_UP=""     # G3: backup path of the old release tree (if any)
+PROD_WRITTEN=0           # G4: $PROD has the new candidate (not yet validated)
+
 do_restore() {
-    echo "FATAL: install failed at: $1"
-    if [[ "$RESTORE_NEEDED" -eq 0 ]]; then
+    local reason="$1"
+    echo "FATAL: install failed at: $reason"
+    if [[ "$SNAPSHOT_CAPTURED" -ne 1 ]]; then
         echo "  (no snapshot captured; nothing to roll back.  inspect manually.)"
-        return 1
+        exit 1
     fi
-    echo "  auto-restore: re-installing snapshotted runtime"
-    install -m 0644 "$SNAPSHOT_DIR/Caddyfile.dewata.runtime" "$PROD.new"
-    sync
-    mv -f "$PROD.new" "$PROD"
-    /usr/bin/caddy validate --config "$PROD" --adapter caddyfile || true
+    local restore_failed=0
+
+    # 1. restore the production Caddyfile from the snapshot.
+    if [[ ! -f "$SNAPSHOT_DIR/Caddyfile.dewata.runtime" ]]; then
+        echo "  restore ABORTED: snapshot runtime file missing at $SNAPSHOT_DIR/Caddyfile.dewata.runtime" >&2
+        restore_failed=1
+    else
+        echo "  auto-restore: re-installing snapshotted runtime to $PROD"
+        install -m 0644 "$SNAPSHOT_DIR/Caddyfile.dewata.runtime" "$PROD.new"
+        sync
+        mv -f "$PROD.new" "$PROD"
+    fi
+
+    # 2. validate the restored Caddyfile.  This is the gate that must
+    #    succeed before we declare "auto-restore complete".
+    if /usr/bin/caddy validate --config "$PROD" --adapter caddyfile; then
+        echo "  restored Caddyfile validates"
+    else
+        echo "  RESTORE FAILED: restored Caddyfile does not validate" >&2
+        restore_failed=1
+    fi
+
+    # 3. restart the service in production mode.
     if [[ "${DEWATA_TEST_MODE:-0}" != "1" ]]; then
-        systemctl restart "$SERVICE" || true
+        if systemctl restart "$SERVICE"; then
+            echo "  service restarted: $SERVICE"
+        else
+            echo "  RESTORE FAILED: systemctl restart $SERVICE returned non-zero" >&2
+            restore_failed=1
+        fi
     fi
-    echo "  auto-restore complete.  production caddyfile restored to snapshot."
+
+    # 4. restore the prior release tree (only if G3 had published a
+    #    new tree and saved the old one aside).
+    if [[ -n "$RELEASE_BACKED_UP" && -d "$RELEASE_BACKED_UP" ]]; then
+        echo "  auto-restore: swapping published tree back to prior release"
+        if [[ -d "$RELEASE_DST" ]]; then
+            mv "$RELEASE_DST" "${RELEASE_DST}.postrestore.$(date -u +%Y%m%dT%H%M%SZ)"
+        fi
+        if mv "$RELEASE_BACKED_UP" "$RELEASE_DST"; then
+            echo "  prior release restored from $RELEASE_BACKED_UP"
+        else
+            echo "  RESTORE FAILED: could not move $RELEASE_BACKED_UP back to $RELEASE_DST" >&2
+            restore_failed=1
+        fi
+    fi
+
+    if (( restore_failed )); then
+        echo "  AUTO-RESTORE INCOMPLETE: inspect $PROD and $RELEASE_DST manually." >&2
+        exit 2
+    fi
+    echo "  AUTO-RESTORE COMPLETE: $PROD and $RELEASE_DST restored to prior state."
     exit 1
 }
 trap 'do_restore "install failure"' ERR
@@ -106,29 +222,30 @@ echo "================================================================"
 # sha256 of the production caddyfile BEFORE the install (captured in
 # the runbook), compare the live Caddyfile's hash to that baseline.
 # if they disagree, fail with a clear message and refuse to overwrite.
-if [[ -n "$PROD_BASELINE_SHA" ]]; then
-    live_sha=$(sha256_of_file "$PROD")
-    if [[ "$live_sha" != "$PROD_BASELINE_SHA" ]]; then
-        echo "ERROR: production caddyfile drifted from baseline."
-        echo "  baseline sha256: $PROD_BASELINE_SHA"
-        echo "  live     sha256: $live_sha"
-        echo "Refusing to install.  Investigate the drift first."
-        exit 1
-    fi
-else
-    echo "G0: no DEWATA_PROD_BASELINE_SHA supplied, drift-check skipped"
+# Mandatory drift check.  The install refuses to proceed if the live
+# production Caddyfile's sha256 does not match the supplied baseline.
+# The baseline is captured right before this install runs; if anything
+# has changed the file since, the operator must re-evaluate.
+live_sha=$(sha256_of_file "$PROD")
+if [[ "$live_sha" != "$PROD_BASELINE_SHA" ]]; then
+    echo "FATAL: production caddyfile drifted from baseline."
+    echo "  baseline sha256: $PROD_BASELINE_SHA"
+    echo "  live     sha256: $live_sha ($PROD)"
+    echo "Refusing to install.  Investigate the drift first."
+    exit 3
 fi
+echo "G0: production Caddyfile matches baseline ($live_sha)"
 
 # P2/3: candidate Caddyfile must match the reviewed manifest's entry
 # for that file.  If the manifest is missing the install refuses (we
 # pin to the reviewed artifact, not the mutable worktree).
-if [[ ! -f "$RELEASE_MANIFEST" ]]; then
+if [[ ! -f "$REVIEWED_MANIFEST" ]]; then
     echo "ERROR: reviewed release manifest not found at $RELEASE_MANIFEST"
     echo "Refusing to install.  Generate the manifest from the reviewed"
     echo "release directory (deploy/atomic/build-review-manifest.sh)"
     exit 1
 fi
-MANIFEST_CANDIDATE_SHA=$(awk '$2 == "Caddyfile.dewata.proposed"{print $1}' "$RELEASE_MANIFEST" | head -1)
+MANIFEST_CANDIDATE_SHA=$(awk '$2 == "Caddyfile.dewata.proposed"{print $1}' "$REVIEWED_MANIFEST" | head -1)
 if [[ -z "$MANIFEST_CANDIDATE_SHA" ]]; then
     echo "ERROR: $RELEASE_MANIFEST does not list Caddyfile.dewata.proposed"
     exit 1
@@ -151,37 +268,73 @@ while IFS= read -r line; do
         Caddyfile.dewata.proposed|\*);;
         *) continue ;;
     esac
-done < "$RELEASE_MANIFEST"
+done < "$REVIEWED_MANIFEST"
 
-# Also check that $RELEASE_SRC only contains files in the manifest
-# and that every manifest entry exists.
+# Bidirectional cross-check: every manifest entry must be an existing
+# regular file in $RELEASE_SRC; every regular file in $RELEASE_SRC must
+# be listed in the manifest.  Symlinks are rejected outright.  This
+# runs BEFORE snapshot so the install cannot proceed against a
+# mismatched source.
+
+# Collect the set of files we will cross-check: skip the manifest
+# header, the Caddyfile.dewata.proposed line, and any other comment
+# lines that start with "#".  The "##" prefix in the awk skip pattern
+# matches those comment lines.
+# Build the set of manifest entries that must exist in $RELEASE_SRC.
+# We deliberately exclude the candidate Caddyfile (Caddyfile.dewata.proposed)
+# because it is installed separately in G4 from its own path, not from
+# the release tree.
+manifest_entries=$(awk '/^[a-f0-9]/{print $2}' "$REVIEWED_MANIFEST" \
+    | grep -v "^Caddyfile.dewata.proposed$" | sort -u)
+if [[ -z "$manifest_entries" ]]; then
+    echo "FATAL: manifest $REVIEWED_MANIFEST contains no <sha> <relpath> entries." >&2
+    exit 6
+fi
+
+# 1. every manifest entry must be an existing regular file in $RELEASE_SRC.
+#    This is finding #1: the previous check only warned for "files in
+#    source not in manifest" and silently created the staging dir even
+#    when manifest entries were missing.  Now each missing manifest
+#    entry fails the install.
 missing_in_src=0
-missing_in_manifest=0
-extra_in_src=0
-symlink_count=0
-
-# 1. build the manifest's file list (skip the Caddyfile.dewata.proposed line)
-manifest_files=$(awk 'NF>=2{print $2}' "$RELEASE_MANIFEST" | sort)
-
-# 2. walk $RELEASE_SRC, ignoring symlinks; reject any extras
-(cd "$RELEASE_SRC" && find . -type l 2>/dev/null) | while read -r l; do
-    echo "ERROR: release source contains a symlink: $l"
-    echo "  symlinks are rejected by this script (review-only files)"
-    exit 5
-done
-(cd "$RELEASE_SRC" && find . \( -type f -o -type d \) | sort) | while read -r rel; do
-    # strip the leading "./" that find prints; the manifest uses rel paths.
-    rel=${rel#./}
-    # skip the manifest header itself and root
-    case "$rel" in
-        ""|MANIFEST*) continue ;;
-    esac
-    if ! grep -q -F "$rel" "$RELEASE_MANIFEST"; then
-        echo "WARN: release source has path not in manifest: $rel"
+while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    if [[ ! -f "$RELEASE_SRC/$rel" ]]; then
+        echo "FATAL: manifest entry missing in RELEASE_SRC: $rel" >&2
+        echo "  expected: $RELEASE_SRC/$rel" >&2
+        missing_in_src=$((missing_in_src+1))
     fi
-done
+done <<< "$manifest_entries"
+if (( missing_in_src > 0 )); then
+    echo "FATAL: $missing_in_src manifest entries are missing in RELEASE_SRC. refusing to install." >&2
+    exit 6
+fi
 
-echo "G0: release manifest cross-check passed"
+# 2. no symlinks in $RELEASE_SRC.
+if (cd "$RELEASE_SRC" && find . -type l 2>/dev/null) | grep -q .; then
+    echo "FATAL: release source contains symlinks.  symlinks are rejected by this script." >&2
+    (cd "$RELEASE_SRC" && find . -type l) | sed "s|^|  |" >&2
+    exit 5
+fi
+
+# 3. every regular file in $RELEASE_SRC must be listed in the manifest.
+#    Walk with `find -type f` so directories do not need to be in the
+#    manifest themselves.
+src_files=$( (cd "$RELEASE_SRC" && find . -type f) | sed 's|^\./||' | sort -u )
+extra_in_src=0
+while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    if ! grep -qxF "$rel" <<< "$manifest_entries"; then
+        echo "FATAL: file in RELEASE_SRC but not in manifest: $rel" >&2
+        extra_in_src=$((extra_in_src+1))
+    fi
+done <<< "$src_files"
+if (( extra_in_src > 0 )); then
+    echo "FATAL: $extra_in_src files in RELEASE_SRC are not listed in the manifest. refusing to install." >&2
+    exit 6
+fi
+
+echo "G0: release manifest cross-check passed ($(echo "$manifest_entries" | wc -l) entries, all present in RELEASE_SRC)"
 
 # --------------------------------------------------------------------
 # G1: validate the candidate
@@ -199,7 +352,10 @@ echo
 echo "================================================================"
 echo "G2: snapshot"
 echo "================================================================"
-SNAPSHOT_DIR="$WORKTREE/deploy/atomic/$(date -u +%Y%m%dT%H%M%SZ)-pre-apex"
+# SNAPSHOT_DIR: where the install script saves its pre-apex snapshot.
+# Default is the worktree; tests can override with DEWATA_SNAPSHOT_PARENT.
+SNAPSHOT_PARENT="${DEWATA_SNAPSHOT_PARENT:-$WORKTREE/deploy/atomic}"
+SNAPSHOT_DIR="$SNAPSHOT_PARENT/$(date -u +%Y%m%dT%H%M%SZ)-pre-apex"
 mkdir -p "$SNAPSHOT_DIR"
 install -m 0644 "$PROD" "$SNAPSHOT_DIR/Caddyfile.dewata.runtime"
 install -m 0644 "$CANDIDATE" "$SNAPSHOT_DIR/Caddyfile.dewata.candidate"
@@ -207,7 +363,7 @@ diff -u "$SNAPSHOT_DIR/Caddyfile.dewata.runtime" \
         "$SNAPSHOT_DIR/Caddyfile.dewata.candidate" \
         > "$SNAPSHOT_DIR/Caddyfile.dewata.diff" || true
 echo "G2: snapshot saved to $SNAPSHOT_DIR"
-RESTORE_NEEDED=1
+SNAPSHOT_CAPTURED=1
 
 # --------------------------------------------------------------------
 # G3: stage release files WITH FULL BIDIRECTIONAL MANIFEST VERIFY
@@ -230,7 +386,7 @@ mkdir -p "$STAGING_DIR"
         echo "ERROR: source file missing: $rel"; exit 1
     fi
     sum=$(sha256_of_file "$src")
-    exp=$(awk -v r="$rel" '$2 == r {print $1}' "$RELEASE_MANIFEST" | head -1)
+    exp=$(awk -v r="$rel" '$2 == r {print $1}' "$REVIEWED_MANIFEST" | head -1)
     if [[ -z "$exp" ]]; then
         echo "ERROR: file not in manifest: $rel"
         exit 1
@@ -244,64 +400,137 @@ mkdir -p "$STAGING_DIR"
 done
 
 # Stage: copy each manifest-listed regular file into the staging dir.
-awk '/^[a-f0-9]/{print}' "$RELEASE_MANIFEST" | while read -r sum rel rest; do
-    if [[ "$rel" == *MANIFEST* || "$rel" == Caddyfile.dewata.proposed || "$rel" == "." || -z "$rel" ]]; then
+# Reject the staging outright if any manifest-listed file is missing
+# or fails sha256 verification.  Do NOT silently create empty
+# directories to mask a missing entry — that is exactly the bug the
+# previous installer had.
+# Counters go in temp files because the staging loop runs in a
+# subshell (pipeline); plain bash vars would be lost on exit.
+STAGE_COUNTERS="$STAGING_DIR/.counters"
+: > "$STAGE_COUNTERS"
+awk '/^[a-f0-9]/{print}' "$REVIEWED_MANIFEST" | while read -r sum rel rest; do
+    # skip the caddyfile entry (handled in G4) and any header/comment
+    if [[ -z "$rel" || "$rel" == "Caddyfile.dewata.proposed" ]]; then
         continue
     fi
     src="$RELEASE_SRC/$rel"
     dst="$STAGING_DIR/$rel"
     if [[ ! -f "$src" ]]; then
-        # manifest entries that are directories (only one — the root)
-        # are handled by mkdir below
-        mkdir -p "$dst"
+        echo "FATAL: manifest entry missing in RELEASE_SRC: $rel" >&2
+        echo "  expected: $src" >&2
+        echo MISSING >> "$STAGE_COUNTERS"
+        continue
+    fi
+    actual=$(sha256_of_file "$src")
+    if [[ "$actual" != "$sum" ]]; then
+        echo "FATAL: sha256 mismatch for $rel" >&2
+        echo "  manifest: $sum" >&2
+        echo "  source  : $actual" >&2
+        echo SHA_MISMATCH >> "$STAGE_COUNTERS"
         continue
     fi
     mkdir -p "$(dirname "$dst")"
     cp -p "$src" "$dst"
+    echo STAGED >> "$STAGE_COUNTERS"
 done
+n_staged=$(grep -c ^STAGED$ "$STAGE_COUNTERS" || true)
+n_missing_in_src=$(grep -c ^MISSING$ "$STAGE_COUNTERS" || true)
+n_sha_mismatch=$(grep -c ^SHA_MISMATCH$ "$STAGE_COUNTERS" || true)
+if (( n_missing_in_src > 0 || n_sha_mismatch > 0 )); then
+    echo "FATAL: staging failed: $n_missing_in_src missing, $n_sha_mismatch sha-mismatched. refusing to publish." >&2
+    do_restore "staging failed: missing/mismatched manifest entries"
+fi
+echo "G3: staged $n_staged files; no missing entries, no sha mismatches"
 
-# Re-verify the staged copy
-(cd "$STAGING_DIR" && find . -type f) | while read -r rel; do
-    rel=${rel#./}
-    sum=$(sha256_of_file "$STAGING_DIR/$rel")
-    exp=$(awk -v r="$rel" '$2 == r {print $1}' "$RELEASE_MANIFEST" | head -1)
-    if [[ "$sum" != "$exp" ]]; then
-        echo "ERROR: staged sha mismatch for $rel"
-        exit 1
-    fi
-done
-echo "G3: $RELEASE_SRC verified to manifest; staged at $STAGING_DIR"
+# Exact-set comparison: every file in the staged tree must be a
+# manifest entry (excluding the caddyfile which is not staged here),
+# and every manifest entry (excluding the caddyfile) must be present
+# in the staged tree.
+# The staging directory contains the .counters sentinel file used to
+# tally staging results; exclude it from the exact-set comparison.
+staged_files=$( (cd "$STAGING_DIR" && find . -type f -not -name '.counters') | sed "s|^\./||" | sort -u )
+manifest_files_to_stage=$(awk '/^[a-f0-9]/{print $2}' "$REVIEWED_MANIFEST" \
+    | grep -v "^Caddyfile.dewata.proposed$" | sort -u)
+
+# staged files must be a subset of manifest files (no extras in stage)
+extras_in_stage=$(comm -23 <(printf "%s\n" "$staged_files") <(printf "%s\n" "$manifest_files_to_stage"))
+if [[ -n "$extras_in_stage" ]]; then
+    echo "FATAL: staged tree has files not in manifest:" >&2
+    printf "  %s\n" $extras_in_stage >&2
+    do_restore "staged tree has files not in manifest"
+fi
+# manifest files must be a subset of staged files (no missing in stage)
+missing_in_stage=$(comm -13 <(printf "%s\n" "$staged_files") <(printf "%s\n" "$manifest_files_to_stage"))
+if [[ -n "$missing_in_stage" ]]; then
+    echo "FATAL: manifest entries not in staged tree:" >&2
+    printf "  %s\n" $missing_in_stage >&2
+    do_restore "manifest entries missing from staged tree"
+fi
+
+echo "G3: staged tree exactly matches manifest (excluding Caddyfile.dewata.proposed)"
 
 # Atomic publish: rename staging -> release.
+#   1. Move the OLD release to a sibling backup (without deleting it)
+#      so we can recover if anything goes wrong later.
+#   2. Move the staging directory to the release target atomically
+#      (single rename, same filesystem).
+#   3. After publish, run the same exact-set comparison on the
+#      published tree to confirm the swap was complete.
 if [[ -d "$RELEASE_DST" ]]; then
-    # Preserve any pre-existing release files that are already on disk
-    # and not part of the new release.
-    echo "G3: pre-existing $RELEASE_DST found; backing it up"
-    mkdir -p "$RELEASE_DST.bak.$(date -u +%Y%m%dT%H%M%SZ)"
-    rsync -a --delete "$RELEASE_DST/" "$RELEASE_DST.bak.$(date -u +%Y%m%dT%H%M%SZ)/" || true
+    BACKUP_PATH="$RELEASE_DST.bak.$(date -u +%Y%m%dT%H%M%SZ)"
+    echo "G3: pre-existing $RELEASE_DST found; preserving as $BACKUP_PATH"
+    if ! mv "$RELEASE_DST" "$BACKUP_PATH"; then
+        echo "FATAL: could not move $RELEASE_DST aside before publish" >&2
+        do_restore "backup move failed"
+    fi
+    echo "G3: backup secured at $BACKUP_PATH"
+    # Track the backup so do_restore can put it back if anything fails.
+    RELEASE_BACKED_UP="$BACKUP_PATH"
 fi
-rm -rf "$RELEASE_DST"
-mv "$STAGING_DIR" "$RELEASE_DST"
+if ! mv "$STAGING_DIR" "$RELEASE_DST"; then
+    echo "FATAL: atomic publish failed (mv $STAGING_DIR -> $RELEASE_DST)" >&2
+    do_restore "atomic publish failed"
+fi
 echo "G3: release published at $RELEASE_DST"
 
-# Verify the published tree
+# Post-publish exact-set comparison: the published tree must match the
+# manifest exactly.
+published_files=$( (cd "$RELEASE_DST" && find . -type f -not -name '.counters') | sed "s|^\./||" | sort -u )
+
+# 1. published tree must not have any extras
+extras_in_published=$(comm -23 <(printf "%s\n" "$published_files") <(printf "%s\n" "$manifest_files_to_stage"))
+if [[ -n "$extras_in_published" ]]; then
+    echo "FATAL: published tree has files not in manifest:" >&2
+    printf "  %s\n" $extras_in_published >&2
+    do_restore "published tree has files not in manifest"
+fi
+# 2. published tree must have every manifest entry
+missing_in_published=$(comm -13 <(printf "%s\n" "$published_files") <(printf "%s\n" "$manifest_files_to_stage"))
+if [[ -n "$missing_in_published" ]]; then
+    echo "FATAL: manifest entries not in published tree:" >&2
+    printf "  %s\n" $missing_in_published >&2
+    do_restore "manifest entries missing from published tree"
+fi
+# 3. every published file's sha256 must match the manifest
 fail=0
-(cd "$RELEASE_DST" && find . -type f) | while read -r rel; do
-    rel=${rel#./}
+while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
     sum=$(sha256_of_file "$RELEASE_DST/$rel")
-    exp=$(awk -v r="$rel" '$2 == r {print $1}' "$RELEASE_MANIFEST" | head -1)
+    exp=$(awk -v r="$rel" '$2 == r {print $1}' "$REVIEWED_MANIFEST" | head -1)
     if [[ "$sum" != "$exp" ]]; then
-        echo "  MISMATCH after publish: $rel ($sum vs $exp)"
-        exit 1
+        echo "FATAL: sha256 mismatch after publish for $rel" >&2
+        echo "  published: $sum" >&2
+        echo "  manifest : $exp" >&2
+        fail=1
     fi
-done || fail=1
+done <<< "$published_files"
 if (( fail )); then
-    echo "ERROR: published release does not match manifest"
-    do_restore "post-publish manifest mismatch"
+    echo "FATAL: published release does not match manifest" >&2
+    do_restore "post-publish sha mismatch"
 fi
 
-n_files=$(cd "$RELEASE_DST" && find . -type f | wc -l)
-echo "G3: $n_files files at $RELEASE_DST (manifest-verified)"
+n_files=$(printf "%s\n" "$published_files" | grep -c . || true)
+echo "G3: $n_files files at $RELEASE_DST (exact-set match against manifest)"
 
 # --------------------------------------------------------------------
 # G4: atomic install of the candidate caddyfile (path-config aware)
@@ -314,6 +543,7 @@ install -m 0644 "$CANDIDATE" "$PROD.new"
 sync
 mv -f "$PROD.new" "$PROD"
 echo "G4: candidate installed at $PROD"
+PROD_WRITTEN=1
 
 # --------------------------------------------------------------------
 # G5: re-validate the installed file
@@ -369,7 +599,7 @@ if [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
     echo "G7: HTTP probes (DEWATA_TEST_MODE=1 -> skipped; lifecycle driver handles)"
     echo "================================================================"
     trap - ERR
-    RESTORE_NEEDED=0
+    SNAPSHOT_CAPTURED=0
     echo "$OLD_PID -> $NEW_PID at $(date -u +%Y%m%dT%H%M%SZ)" >> "$SNAPSHOT_DIR/installed.txt"
     echo
     echo "================================================================"
@@ -436,7 +666,7 @@ fi
 # Done.  Disable auto-restore on success.
 # --------------------------------------------------------------------
 trap - ERR
-RESTORE_NEEDED=0
+SNAPSHOT_CAPTURED=0
 
 echo "$OLD_PID -> $NEW_PID at $(date -u +%Y%m%dT%H%M%SZ)" >> "$SNAPSHOT_DIR/restart.log"
 echo "$(date -u +%Y%m%dT%H%M%SZ)" >> "$SNAPSHOT_DIR/installed.txt"
