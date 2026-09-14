@@ -66,12 +66,19 @@ shopt -u inherit_errexit 2>/dev/null || true
 
 # --------------------------------------------------------------------
 # Required authorization flag (mutually exclusive with DEWATA_DISPOSABLE_MODE).
+#
+# In production mode: DEWATA_APPLY_PRODUCTION=1 must be set explicitly.
+# In disposable/test mode (DEWATA_DEPLOYER_TEST_MODE=1): production
+# authorization is skipped (the installer runs in DISPOSABLE_MODE and
+# cannot touch /opt/dewata.online).
 # --------------------------------------------------------------------
-if [[ "${DEWATA_APPLY_PRODUCTION:-0}" != "1" ]]; then
-    echo "FATAL: DEWATA_APPLY_PRODUCTION=1 must be set to authorize a production install." >&2
-    echo "  this script is the only authorized entry point for /opt/dewata.online writes." >&2
-    echo "  set DEWATA_APPLY_PRODUCTION=1 explicitly.  there is no default." >&2
-    exit 2
+if [[ "${DEWATA_DEPLOYER_TEST_MODE:-0}" != "1" ]]; then
+    if [[ "${DEWATA_APPLY_PRODUCTION:-0}" != "1" ]]; then
+        echo "FATAL: DEWATA_APPLY_PRODUCTION=1 must be set to authorize a production install." >&2
+        echo "  this script is the only authorized entry point for /opt/dewata.online writes." >&2
+        echo "  set DEWATA_APPLY_PRODUCTION=1 explicitly.  there is no default." >&2
+        exit 2
+    fi
 fi
 
 # --------------------------------------------------------------------
@@ -212,12 +219,15 @@ echo "        DEWATA_CADDY_SERVICE=$SERVICE"
 # want to capture and surface the full output).
 # --------------------------------------------------------------------
 unset POSIXLY_CORRECT
-# Build the env -i block.  If DEWATA_DEPLOYER_TEST_MODE=1 is set,
-# pass it through so the installer's production-path guard is bypassed.
+# Build the env -i block.  If DEWATA_DEPLOYER_TEST_MODE=1 is set, run in
+# DISPOSABLE mode (not production).  The installer requires that
+# DEWATA_APPLY_PRODUCTION and DEWATA_DISPOSABLE_MODE be mutually
+# exclusive, so we set DEWATA_DISPOSABLE_MODE=1 and leave
+# DEWATA_APPLY_PRODUCTION unset.
 TEST_MODE_FLAG=""
 SHIM_FLAG=""
 if [[ "${DEWATA_DEPLOYER_TEST_MODE:-0}" == "1" ]]; then
-    TEST_MODE_FLAG="DEWATA_DEPLOYER_TEST_MODE=1"
+    TEST_MODE_FLAG="DEWATA_DISPOSABLE_MODE=1"
     # In test mode, redirect every systemctl call to the disposable shim
     # under tests/ so the install cannot accidentally restart the real
     # production service.
@@ -233,10 +243,21 @@ if [[ "${DEWATA_DEPLOYER_TEST_MODE:-0}" == "1" ]]; then
               DEWATA_PROBE_LISTENER=0"
 fi
 set +e
+# Pass-through of test-mode env vars: the wrapper normally strips the
+# env (env -i) to give the installer a clean, predictable environment.
+# But for wrapper self-tests that inject failures (Scenario B in
+# tests/test-wrapper-e2e.sh), the caller may want DEWATA_FAKE_* vars to
+# reach the installer.  We pass through a small allowlist explicitly.
+DEWATA_TEST_VARS_FLAG=""
+for v in DEWATA_FAKE_FAIL_AT_GATE DEWATA_FAKE_RESTART_FAILURE DEWATA_FAKE_VALIDATE_FAILURE DEWATA_FAKE_VALIDATE_FAILURE_GATES DEWATA_USE_DISPOSABLE_VALIDATE DEWATA_VALIDATE_CMD DEWATA_VALIDATE_LOG; do
+    if [[ -n "${!v:-}" ]]; then
+        DEWATA_TEST_VARS_FLAG+="$v=${!v} "
+    fi
+done
 output=$(
     env -i \
         PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-        DEWATA_APPLY_PRODUCTION=1 \
+        $(if [[ "${DEWATA_DEPLOYER_TEST_MODE:-0}" != "1" ]]; then echo "DEWATA_APPLY_PRODUCTION=1"; fi) \
         DEWATA_PROD_CADDY="$PROD_CADDY" \
         DEWATA_PROD_WWW="$(dirname "$PROD_RELEASE_DST")" \
         DEWATA_RELEASE_SRC="$REVIEWED_RELEASE_SRC" \
@@ -250,6 +271,7 @@ output=$(
         DEWATA_CADDY_SERVICE="$SERVICE" \
         $TEST_MODE_FLAG \
         $SHIM_FLAG \
+        $DEWATA_TEST_VARS_FLAG \
         bash "$INSTALLER" 2>&1
 )
 installer_rc=$?

@@ -75,20 +75,6 @@ shopt -s inherit_errexit 2>/dev/null || true
 # In the lifecycle test, the runner overrides this with the disposable
 # shim path so the install's `systemctl restart` calls do NOT reach
 # the real production service.
-SYSTEMCTL_CMD="${DEWATA_SYSTEMCTL_CMD:-systemctl}"
-
-# Disposable service-control mode.  When DEWATA_DISPOSABLE_MODE=1 is
-# active, this controls whether the install ACTUALLY invokes
-# ${SYSTEMCTL_CMD:-systemctl} restart (and the listener check that follows),
-# or whether it skips both (the legacy "disposable only-no-restart" mode).
-# Values:
-#   no-restart  -- skip systemctl restart AND the post-restart listener
-#                   check (legacy behavior; only valid for tests that
-#                   explicitly want to bypass restart).
-#   restart     -- INVOKE the restart through the configured shim.  This is
-#                   the new default for the lifecycle tests so NEGATIVE-9
-#                   actually exercises a real post-restart failure path.
-DEWATA_DISPOSABLE_SERVICE_MODE="${DEWATA_DISPOSABLE_SERVICE_MODE:-restart}"
 DISPOSABLE=${DEWATA_DISPOSABLE_MODE:-}
 APPLY_PROD=${DEWATA_APPLY_PRODUCTION:-}
 
@@ -189,9 +175,183 @@ if [[ "$IS_PROD_PATH" -eq 0 && "$APPLY_PROD" == "1" ]]; then
 fi
 
 # --------------------------------------------------------------------
+# Disposable-systemctl adapter validation (correction 1 from 7th-bundle review).
+#
+# When DEWATA_DISPOSABLE_MODE=1 is set, the installer is operating
+# against a disposable test tree (e.g. /tmp/...), NOT real
+# /opt/dewata.online.  In that mode every systemctl call must be
+# redirected to a disposable adapter (a shim script that records
+# calls instead of touching real systemd).  Falling back to the real
+# systemctl would call `systemctl restart dewata-caddy` against the
+# production service.
+#
+# The operator MUST pass DEWATA_SYSTEMCTL_CMD=<path-to-shim-script>
+# and the shim path MUST satisfy every condition below:
+#   1. is set and non-empty
+#   2. is NOT the literal string "systemctl" or anything that
+#      resolves under PATH to /bin/systemctl etc.
+#   3. is a regular file (not a symlink to systemctl)
+#   4. is executable
+#   5. is a shell script (first line is a shebang)
+#
+# If any condition fails AND DEWATA_DISPOSABLE_MODE=1 is set, the
+# installer REFUSES to run (rc=8) BEFORE any write.  This prevents
+# recurrence of the disposal-mode-falls-back-to-real-systemctl bug
+# that restarted production earlier.
+# --------------------------------------------------------------------
+SYSTEMCTL_CMD=""
+if [[ "$DISPOSABLE" == "1" ]]; then
+    shim_path="${DEWATA_SYSTEMCTL_CMD:-}"
+    if [[ -z "$shim_path" ]]; then
+        echo "FATAL: DEWATA_DISPOSABLE_MODE=1 requires DEWATA_SYSTEMCTL_CMD" >&2
+        echo "  pointing at a disposable-shim script (not real systemctl)." >&2
+        echo "  example: DEWATA_SYSTEMCTL_CMD=/opt/dw-phase2/tests/disposable-systemctl.sh" >&2
+        exit 8
+    fi
+    if [[ "$shim_path" == "systemctl" ]] \
+        || [[ "$shim_path" == "/bin/systemctl" ]] \
+        || [[ "$shim_path" == "/usr/bin/systemctl" ]]; then
+        echo "FATAL: DEWATA_SYSTEMCTL_CMD=$shim_path IS the real systemctl; refusing." >&2
+        echo "  in DISPOSABLE mode the install must use a shim that records calls." >&2
+        echo "  pass DEWATA_SYSTEMCTL_CMD=/opt/dw-phase2/tests/disposable-systemctl.sh instead." >&2
+        exit 8
+    fi
+    # Resolve via PATH so e.g. /usr/local/bin/systemctl is also caught.
+    resolved=$(command -v "$shim_path" 2>/dev/null || echo "<not-in-path>")
+    case "$resolved" in
+        */systemctl|/bin/systemctl|/usr/bin/systemctl)
+            echo "FATAL: DEWATA_SYSTEMCTL_CMD=$shim_path resolves via PATH to $resolved," >&2
+            echo "  which is the real systemctl.  refusing in DISPOSABLE mode." >&2
+            exit 8 ;;
+    esac
+    if [[ ! -e "$shim_path" ]]; then
+        echo "FATAL: DEWATA_SYSTEMCTL_CMD=$shim_path does not exist." >&2
+        exit 8
+    fi
+    if [[ -L "$shim_path" ]]; then
+        target=$(readlink -f "$shim_path" 2>/dev/null || echo "<unresolved>")
+        case "$target" in
+            */systemctl)
+                echo "FATAL: DEWATA_SYSTEMCTL_CMD=$shim_path is a symlink to $target (real systemctl)." >&2
+                exit 8 ;;
+        esac
+    fi
+    if [[ ! -x "$shim_path" ]]; then
+        echo "FATAL: DEWATA_SYSTEMCTL_CMD=$shim_path is not executable." >&2
+        exit 8
+    fi
+    head_line=$(head -n 1 "$shim_path" 2>/dev/null || echo "")
+    case "$head_line" in
+        "#!"*) ;;
+        *)
+            echo "FATAL: DEWATA_SYSTEMCTL_CMD=$shim_path first line is not a shebang (got: ${head_line:0:60})." >&2
+            echo "  refusing to call it without confirmation." >&2
+            exit 8 ;;
+    esac
+    SYSTEMCTL_CMD="$shim_path"
+    echo "[install] DISPOSABLE_MODE: validated disposable adapter at $SYSTEMCTL_CMD"
+else
+    # Production mode: SYSTEMCTL_CMD defaults to the system systemctl.
+    SYSTEMCTL_CMD="${DEWATA_SYSTEMCTL_CMD:-systemctl}"
+fi
+
+# Disposable-validation adapter (correction from 8th-bundle review).
+#
+# When DEWATA_USE_DISPOSABLE_VALIDATE=1, validation of the installed /
+# restored Caddyfile goes through DEWATA_VALIDATE_CMD (a disposable shim
+# that returns 0 / non-zero instead of invoking real caddy).  NEGATIVE-10
+# uses this to exercise the recovery-validation failure path WITHOUT
+# touching the snapshot file -- only the on-disk Caddyfile.  The shim
+# must be a real shell script (not a symlink or a non-shell binary),
+# and cannot be a caddy binary.
+# --------------------------------------------------------------------
+VALIDATE_CMD="${DEWATA_VALIDATE_CMD:-}"
+if [[ "${DEWATA_USE_DISPOSABLE_VALIDATE:-0}" == "1" ]]; then
+    if [[ -z "$VALIDATE_CMD" ]]; then
+        echo "FATAL: DEWATA_USE_DISPOSABLE_VALIDATE=1 requires DEWATA_VALIDATE_CMD" >&2
+        echo "  pointing at a disposable validation adapter." >&2
+        echo "  example: DEWATA_VALIDATE_CMD=/opt/dw-phase2/tests/disposable-validate.sh" >&2
+        exit 8
+    fi
+    if [[ ! -x "$VALIDATE_CMD" ]]; then
+        echo "FATAL: DEWATA_VALIDATE_CMD=$VALIDATE_CMD is not executable." >&2
+        exit 8
+    fi
+    head_line=$(head -n 1 "$VALIDATE_CMD" 2>/dev/null || echo "")
+    case "$head_line" in
+        "#!"*) ;;
+        *)
+            echo "FATAL: DEWATA_VALIDATE_CMD=$VALIDATE_CMD first line is not a shebang (got: ${head_line:0:60})." >&2
+            echo "  refusing to call it." >&2
+            exit 8 ;;
+    esac
+    echo "[install] DISPOSABLE_VALIDATE: validated disposable validation adapter at $VALIDATE_CMD"
+fi
+
+
+   # Disposable service-control mode. When DEWATA_DISPOSABLE_MODE=1 is
+# active, this controls whether the install ACTUALLY invokes
+# ${SYSTEMCTL_CMD} restart (and the listener check that follows),
+# or whether it skips both (the legacy "disposable only-no-restart" mode).
+# Values:
+#   no-restart  -- skip systemctl restart AND the post-restart listener
+#                   check (legacy behavior; only valid for tests that
+#                   explicitly want to bypass restart).
+#   restart     -- INVOKE the restart through the validated adapter.
+#                   Default for lifecycle tests so NEGATIVE-9
+#                   actually exercises a real post-restart failure.
+DEWATA_DISPOSABLE_SERVICE_MODE="${DEWATA_DISPOSABLE_SERVICE_MODE:-restart}"
+
+# --------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------
 sha256_of_file() { sha256sum "$1" | cut -d' ' -f1; }
+
+# do_validate: validate a Caddyfile.
+#   In production:  invokes /usr/bin/caddy validate --config ...
+#   In tests:       invokes $DEWATA_VALIDATE_CMD <file>  (the disposable
+#                   validation adapter).  The validation adapter is
+#                   required to fail closed: if the file path is missing,
+#                   the adapter exits non-zero.
+#
+#   The DEWATA_FAKE_VALIDATE_FAILURE=1 hook makes the disposable adapter
+#   return non-zero.  To restrict the failure to specific call sites, use
+#   DEWATA_FAKE_VALIDATE_FAILURE_GATES (space-separated list of gate names
+#   that may fail; e.g. "g5" or "g5 g6" or "all").  If the env var is
+#   unset, all gates may fail.
+# Returns the exit code of the validation.  Sets ?=0 on success.
+do_validate() {
+    local file="$1"
+    local gate="${2:-all}"
+    # If the operator is running a fake-failure injection, restrict
+    # which gates may fire it.  A gate NOT in the allowlist runs the
+    # adapter normally (and does not propagate the FAKE failure).
+    # GATES can be space- or comma-separated (e.g. "g5 restore" or
+    # "g5,restore").  The default is "all" which matches any gate.
+    if [[ -n "${DEWATA_VALIDATE_CMD:-}" ]]; then
+        local fake="${DEWATA_FAKE_VALIDATE_FAILURE:-0}"
+        local gates_raw="${DEWATA_FAKE_VALIDATE_FAILURE_GATES:-all}"
+        local gates=" $(echo "$gates_raw" | tr ', ' '  ') "
+        local may_fake=0
+        case "$gates" in
+            *" $gate "*|*" all "*) may_fake=1 ;;
+        esac
+        if [[ "$fake" == "1" && "$may_fake" == "1" ]]; then
+            "${DEWATA_VALIDATE_CMD}" "$file"
+            return $?
+        fi
+        # Either no fake-failure, or this gate is not allowed to fire
+        # the fake.  Run the disposable adapter with the hook disabled
+        # by overriding DEWATA_FAKE_VALIDATE_FAILURE for this subshell.
+        (
+            unset DEWATA_FAKE_VALIDATE_FAILURE
+            "${DEWATA_VALIDATE_CMD}" "$file"
+        )
+        return $?
+    fi
+    /usr/bin/caddy validate --config "$file" --adapter caddyfile
+    return $?
+}
 
 # --------------------------------------------------------------------
 # State tracking for do_restore
@@ -214,6 +374,22 @@ RESTART_INVOKED=0        # G6: ${SYSTEMCTL_CMD:-systemctl} restart was actually 
 # Each step sets restore_failed=1 on failure.  Only "AUTO-RESTORE COMPLETE"
 # is printed when every step succeeded.
 do_restore() {
+    # Re-entrancy guard: if do_restore is invoked from the ERR trap,
+    # any failure inside do_restore (e.g. a missing $RELEASE_PRIOR_BACKUP
+    # on a second invocation) must NOT re-trigger this same trap and
+    # recursively invoke do_restore again.  Without this guard the
+    # installer's do_restore can move the same release multiple times,
+    # ending with the release tree empty (each invocation mv's
+    # $RELEASE_DST aside, then mv's $RELEASE_PRIOR_BACKUP back; on the
+    # second invocation the backup is gone, so the mv silently leaves
+    # $RELEASE_DST absent).
+    if [[ "${IN_DO_RESTORE:-0}" == "1" ]]; then
+        echo "  (do_restore already running; ignoring re-entry)" >&2
+        return 0
+    fi
+    IN_DO_RESTORE=1
+    # Ensure the flag is cleared on any exit path from do_restore.
+    trap 'IN_DO_RESTORE=0' RETURN
     local reason="$1"
     echo "FATAL: install failed at: $reason"
     if [[ "$SNAPSHOT_CAPTURED" -ne 1 ]]; then
@@ -287,7 +463,7 @@ do_restore() {
     fi
 
     # Step 3: validate the restored Caddyfile.
-    if /usr/bin/caddy validate --config "$PROD" --adapter caddyfile; then
+    if do_validate "$PROD" restore; then
         echo "  auto-restore step 3/5: restored Caddyfile validates"
     else
         echo "  RESTORE FAILED: restored Caddyfile does not validate" >&2
@@ -344,8 +520,16 @@ do_restore() {
         fi
     fi
 
-    # Step 5: restart in production mode.
-    if [[ "$APPLY_PROD" == "1" && "$IS_PROD_PATH" -eq 1 ]]; then
+    # Step 5: restart in production mode.  CRITICAL: only restart if
+    # every prior step succeeded.  If restore_failed=1 (caddyfile restore
+    # failed, validation failed, or sha verify failed), DO NOT restart
+    # the service -- the operator must first restore the Caddyfile
+    # manually before a restart is safe (the running caddy is still
+    # serving the pre-failure Caddyfile from disk; restarting now would
+    # pick up whatever happens to be on disk, which is unknown).
+    if (( restore_failed )); then
+        echo "  auto-restore step 5/5: skipped (RESTORE FAILED earlier -- restart deferred until operator intervention)"
+    elif [[ "$APPLY_PROD" == "1" && "$IS_PROD_PATH" -eq 1 ]]; then
         if ${SYSTEMCTL_CMD:-systemctl} restart "$DEWATA_CADDY_SERVICE"; then
             echo "  auto-restore step 5/5: service restarted: $DEWATA_CADDY_SERVICE"
             RESTART_INVOKED=1
@@ -488,7 +672,15 @@ echo
 echo "================================================================"
 echo "G1: validate candidate"
 echo "================================================================"
-/usr/bin/caddy validate --config "$CANDIDATE" --adapter caddyfile
+# Guard set -e: a fail-return from candidate-validation must NOT
+# trigger the surrounding ERR trap.
+if do_validate "$CANDIDATE" g1; then
+    echo "G1: candidate validated"
+else
+    echo "FATAL: candidate Caddyfile does not validate" >&2
+    echo "FATAL: install aborted before any state changes." >&2
+    exit 6
+fi
 
 # ====================================================================
 # G2: snapshot the current production Caddyfile
@@ -590,50 +782,125 @@ if [[ -n "$missing_in_stage" ]]; then
 fi
 echo "G3: staged tree exactly matches manifest (excluding Caddyfile.dewata.proposed)"
 
-# Atomic publish:
-#   REPLACEMENT (RELEASE_PRIOR_EXISTED=1):
-#     1a. Move the OLD release to a SIBLING backup (without deleting it) so
-#         we can recover if anything goes wrong later.
-#     2a. Move staging into RELEASE_DST atomically.
-#     3a. The $BACKUP_PATH is preserved for do_restore (replacement case).
-#   FIRST-INSTALL (RELEASE_PRIOR_EXISTED=0):
-#     1b. NO prior release to back up.
-#     2b. Move staging into RELEASE_DST atomically.
-#     3b. do_restore will DELETE the freshly-published release on failure.
+# Atomic publish -- the CRITICAL property: the prior release is captured
+# into the SNAPSHOT (state: PRIOR_SNAPSHOTTED=1) BEFORE the live
+# $RELEASE_DST is renamed aside.  Two redundant copies exist between the
+# rename and the publish:
+#
+#   PRIOR_SNAPSHOTTED=1       -- snapshot's RELEASE_TREE_BACKUP/ holds a
+#                                captured copy of the prior release.
+#   PRIOR_BACKED_UP=1         -- $RELEASE_DST has been renamed to
+#                                $RELEASE_DST.bak.<ts> (a SIBLING).
+#
+# do_restore restores from the SNAPSHOT ONLY (it copies out of
+# $SNAPSHOT_DIR/RELEASE_TREE_BACKUP/, never moves the only copy out
+# of $RELEASE_DST.bak.<ts>).
+#
+# State transitions:
+#
+#   INITIAL                  -- $RELEASE_DST points to prior release (or
+#                                absent)
+#   PRIOR_SNAPSHOTTED=1      -- snapshot has captured the prior release
+#   PRIOR_SNAPSHOTTED=1 +
+#     NEW_STAGED=1          -- staging verified; $STAGING_DIR holds new
+#                                release (not yet $RELEASE_DST)
+#   PRIOR_SNAPSHOTTED=1 +
+#     NEW_STAGED=1 +
+#     PRIOR_BACKED_UP=1     -- $RELEASE_DST renamed to $RELEASE_DST.bak
+#   PRIOR_SNAPSHOTTED=1 +
+#     NEW_STAGED=1 +
+#     PRIOR_BACKED_UP=1 +
+#     NEW_PUBLISHED=1      -- staging renamed to $RELEASE_DST (success)
+#
+# A failure at any state aborts; do_restore returns to INITIAL using
+# the snapshot's PRIOR capture (it never moves the only copy).
 if (( RELEASE_PRIOR_EXISTED )); then
+    # Snapshot FIRST while $RELEASE_DST is still pointing at the prior
+    # release.  We verify the snapshot's file set + sha256 matches the
+    # live $RELEASE_DST before doing anything else.  (The Caddyfile
+    # lives at $RELEASE_DST/../Caddyfile.dewata -- sibling to the release
+    # tree -- and is checked separately by G0's drift guard.)
+    echo "G3: REPLACEMENT mode: capturing prior $RELEASE_DST into snapshot FIRST"
+    # Build the prior release manifest by walking $RELEASE_DST directly.
+    PRIOR_FILES=$( ( cd "$RELEASE_DST" && find . -type f ) | sed 's|^./||' | sort -u )
+    PRIOR_MANIFEST="$SNAPSHOT_DIR/PRIOR_RELEASE.MANIFEST.txt"
+    : > "$PRIOR_MANIFEST"
+    for rel in $PRIOR_FILES; do
+        sum=$(sha256sum "$RELEASE_DST/$rel" | cut -d' ' -f1)
+        printf "%s  %s\n" "$sum" "$rel" >> "$PRIOR_MANIFEST"
+    done
+    n_prior=$(grep -c . "$PRIOR_MANIFEST" || true)
+    echo "G3: PRIOR_SNAPSHOTTED=1 (n=$n_prior)"
+    # (No prior-manifest consistency check at this point -- the
+    # primary correctness guarantee is the per-file sha verification
+    # done below against the snapshot copy.)
+
+    # Now copy the prior release into the snapshot ATOMICALLY (the
+    # destination is a separate dir, so a snapshot failure here does
+    # NOT affect the live $RELEASE_DST -- the prior release is still
+    # intact).
+    PRIOR_BACKUP_DIR="$SNAPSHOT_DIR/RELEASE_TREE_BACKUP"
+    rm -rf "$PRIOR_BACKUP_DIR"  # nothing there yet; previous snapshot's
+                                # copy should already be gone (rollback
+                                # in the previous iteration cleared it
+                                # by moving it into $RELEASE_DST).
+    if ! cp -a "$RELEASE_DST" "$PRIOR_BACKUP_DIR"; then
+        echo "FATAL: could not copy prior release into snapshot at $PRIOR_BACKUP_DIR" >&2
+        echo "  the prior release is INTACT at $RELEASE_DST (no rename happened yet)" >&2
+        do_restore "prior release snapshot copy failed"
+    fi
+    # Validate the snapshot's file set + sha256 against the manifest
+    # we just wrote.
+    n_snapshot=$( ( find "$PRIOR_BACKUP_DIR" -type f 2>/dev/null | wc -l | tr -d ' ' ) || echo 0 )
+    n_manifest=$( ( grep -c . "$PRIOR_MANIFEST" 2>/dev/null | tr -d ' ' ) || echo 0 )
+    if [[ "$n_snapshot" != "$n_manifest" ]]; then
+        echo "FATAL: prior release snapshot copy has $n_snapshot files, manifest lists $n_manifest" >&2
+        do_restore "prior release snapshot file count mismatch"
+    fi
+    sha_mismatch=0
+    while IFS= read -r sum rel; do
+        [[ -z "$rel" ]] && continue
+        actual=$(sha256sum "$PRIOR_BACKUP_DIR/$rel" | cut -d' ' -f1)
+        if [[ "$actual" != "$sum" ]]; then
+            echo "FATAL: prior release snapshot sha mismatch for $rel" >&2
+            sha_mismatch=1
+            break
+        fi
+    done < "$PRIOR_MANIFEST"
+    if (( sha_mismatch )); then
+        do_restore "prior release snapshot sha mismatch"
+    fi
+    echo "G3: prior release snapshot verified ($n_manifest files, sha matches)"
+
+    # Snapshot succeeded; $RELEASE_DST is still pointing at the prior
+    # release.  NOW we can safely rename it aside.
     BACKUP_PATH="$RELEASE_DST.bak.$(date -u +%Y%m%dT%H%M%SZ)"
-    echo "G3: REPLACEMENT mode: renaming prior $RELEASE_DST aside to $BACKUP_PATH"
+    echo "G3: PRIOR_BACKED_UP=1 -- renaming $RELEASE_DST aside to $BACKUP_PATH"
     if ! mv "$RELEASE_DST" "$BACKUP_PATH"; then
         echo "FATAL: could not move $RELEASE_DST aside before publish" >&2
+        # Note: the snapshot at $SNAPSHOT_DIR/RELEASE_TREE_BACKUP/ is
+        # already complete; do_restore restores from there.
+        RELEASE_PRIOR_BACKUP=""
         do_restore "backup move failed"
     fi
-    echo "G3: REPLACEMENT mode: prior release secured at $BACKUP_PATH"
     RELEASE_PRIOR_BACKUP="$BACKUP_PATH"
-
-    # Also capture a manifest of the prior release's file set so rollback
-    # can verify exact-set equality when restoring on the rollback path.
-    ( cd "$BACKUP_PATH" && find . -type f | sed 's|^./||' | sort ) | while IFS= read -r rel; do
-        [[ -z "$rel" ]] && continue
-        sum=$(sha256sum "$BACKUP_PATH/$rel" | cut -d' ' -f1)
-        printf "%s  %s\n" "$sum" "$rel"
-    done > "$SNAPSHOT_DIR/RELEASE_TREE_BACKUP.MANIFEST.txt"
-
-    # Mirror the prior release's file set into the snapshot so the
-    # rollback can recreate it byte-for-byte even if $BACKUP_PATH
-    # were later moved or removed by an external process.
-    mkdir -p "$SNAPSHOT_DIR/RELEASE_TREE_BACKUP"
-    ( cd "$BACKUP_PATH" && find . -type f | sed 's|^./||' | tar -cf - -T - ) | ( cd "$SNAPSHOT_DIR/RELEASE_TREE_BACKUP" && tar -xf - )
-    echo "G3: REPLACEMENT mode: prior release mirrored into $SNAPSHOT_DIR/RELEASE_TREE_BACKUP/"
+    # Mirror the prior manifest (which was written from $RELEASE_DST before
+    # the move) into the canonical snapshot.  RELEASE_TREE_BACKUP.MANIFEST.txt
+    # is what the rollback script reads.
+    cp "$PRIOR_MANIFEST" "$SNAPSHOT_DIR/RELEASE_TREE_BACKUP.MANIFEST.txt"
+    echo "G3: prior release manifest mirrored to RELEASE_TREE_BACKUP.MANIFEST.txt"
+    echo "G3: PRIOR_SNAPSHOTTED=1 + PRIOR_BACKED_UP=1 (two redundant copies exist)"
 else
     echo "G3: FIRST-INSTALL mode: no prior release to back up; do_restore will delete on failure"
 fi
 
-# Move staging into the live location.
+# Move staging into the live location.  We've captured PRIOR (snapshot
+# copy + .bak sibling).  Now publish.
 if ! mv "$STAGING_DIR" "$RELEASE_DST"; then
     echo "FATAL: atomic publish failed (mv $STAGING_DIR -> $RELEASE_DST)" >&2
     do_restore "atomic publish failed"
 fi
-echo "G3: release published at $RELEASE_DST"
+echo "G3: NEW_PUBLISHED=1 -- release published at $RELEASE_DST"
 
 # Post-publish exact-set comparison.
 published_files=$( (cd "$RELEASE_DST" && find . -type f) | sed "s|^\\./||" | sort -u )
@@ -701,7 +968,17 @@ echo
 echo "================================================================"
 echo "G5: re-validate installed file"
 echo "================================================================"
-/usr/bin/caddy validate --config "$PROD" --adapter caddyfile
+# Use a guard so a fail-return from do_validate does NOT trip the
+# surrounding `set -e -o pipefail`.  The FAKE_VALIDATE_FAILURE path
+# wants to control how the failure is handled (we explicitly walk
+# it through do_restore), NOT let set -e propagate the rc.
+if do_validate "$PROD" g5; then
+    echo "G5: validated"
+else
+    g5_rc=$?
+    echo "G5: validate failed (rc=$g5_rc)"
+    do_restore "injected failure during G5 installed-file validation"
+fi
 
 if [[ "${DEWATA_FAKE_FAIL_AT_GATE:-}" == "g5" ]]; then
     echo "FATAL: DEWATA_FAKE_FAIL_AT_GATE=g5 -> simulating failure after G5 (pre-restart)" >&2

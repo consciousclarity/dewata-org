@@ -79,6 +79,13 @@ record_prod_state() {
 # --------------------------------------------------------------------
 SHIM_LOG_DIR="/tmp/dewata-lifecycle"
 DISP_SYSTEMCTL="$SHIM_DIR/disposable-systemctl.sh"
+DISP_VALIDATE="$SHIM_DIR/disposable-validate.sh"
+# DISP_SYSTEMCTL_PATH is the directory of the disposable shims (used
+# by NEG-10 to point DEWATA_VALIDATE_CMD at $DISP_SYSTEMCTL_PATH/disposable-validate.sh).
+DISP_SYSTEMCTL_PATH="$SHIM_DIR"
+# Look it up; the installer's adapter validation requires the file to
+# exist on disk.
+[[ -f "$DISP_VALIDATE" ]] || { echo "FATAL: $DISP_VALIDATE missing" >&2; exit 1; }
 mkdir -p "$SHIM_LOG_DIR"
 SHIM_LOG="/tmp/dewata-lifecycle-systemctl.log"
 mkdir -p "$SHIM_LOG_DIR/caddy"
@@ -165,7 +172,10 @@ run_install() {
             DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
             DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
             DEWATA_PROBE_LISTENER=0 \
-            DEWATA_PROD_CADDY="$DISP_PROD_CADDY" \
+            DEWATA_USE_DISPOSABLE_VALIDATE=1 \
+            DEWATA_VALIDATE_CMD=$DISP_SYSTEMCTL_PATH/disposable-validate.sh \
+            DEWATA_VALIDATE_LOG=$SHIM_LOG_DIR/validate.log \
+                        DEWATA_PROD_CADDY="$DISP_PROD_CADDY" \
             DEWATA_PROD_WWW="$SHIM_LOG_DIR/www" \
             DEWATA_RELEASE_SRC="$DISP_RELEASE_SRC" \
             DEWATA_RELEASE_DST="$DISP_RELEASE_DST" \
@@ -189,7 +199,10 @@ run_install() {
             DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
             DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
             DEWATA_PROBE_LISTENER=0 \
-            DEWATA_PROD_CADDY="$DISP_PROD_CADDY" \
+            DEWATA_USE_DISPOSABLE_VALIDATE=1 \
+            DEWATA_VALIDATE_CMD=$DISP_SYSTEMCTL_PATH/disposable-validate.sh \
+            DEWATA_VALIDATE_LOG=$SHIM_LOG_DIR/validate.log \
+                        DEWATA_PROD_CADDY="$DISP_PROD_CADDY" \
             DEWATA_PROD_WWW="$SHIM_LOG_DIR/www" \
             DEWATA_RELEASE_SRC="$DISP_RELEASE_SRC" \
             DEWATA_RELEASE_DST="$DISP_RELEASE_DST" \
@@ -235,7 +248,10 @@ run_rollback() {
         DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
         DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
         DEWATA_PROBE_LISTENER=0 \
-        DEWATA_CADDY_SERVICE=dewata-caddy \
+            DEWATA_USE_DISPOSABLE_VALIDATE=1 \
+            DEWATA_VALIDATE_CMD=$DISP_SYSTEMCTL_PATH/disposable-validate.sh \
+            DEWATA_VALIDATE_LOG=$SHIM_LOG_DIR/validate.log \
+                    DEWATA_CADDY_SERVICE=dewata-caddy \
         bash "$ROLLBACK" "$snap_dir" \
         > /tmp/dewata-lifecycle.rollback.out 2> /tmp/dewata-lifecycle.rollback.err
     return $?
@@ -603,7 +619,10 @@ run_install_with_overrides() {
         DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
         DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
         DEWATA_PROBE_LISTENER=0 \
-        $extra \
+            DEWATA_USE_DISPOSABLE_VALIDATE=1 \
+            DEWATA_VALIDATE_CMD=$DISP_SYSTEMCTL_PATH/disposable-validate.sh \
+            DEWATA_VALIDATE_LOG=$SHIM_LOG_DIR/validate.log \
+                    $extra \
         bash "$INSTALLER" \
         > "$LAST_INSTALL_OUT" 2> "$LAST_INSTALL_ERR")
     rc=$?
@@ -784,7 +803,10 @@ run_install_with_overrides() {
         DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
         DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
         DEWATA_PROBE_LISTENER=0 \
-        $extra \
+            DEWATA_USE_DISPOSABLE_VALIDATE=1 \
+            DEWATA_VALIDATE_CMD=$DISP_SYSTEMCTL_PATH/disposable-validate.sh \
+            DEWATA_VALIDATE_LOG=$SHIM_LOG_DIR/validate.log \
+                    $extra \
         bash "$INSTALLER" \
         > "$LAST_INSTALL_OUT" 2> "$LAST_INSTALL_ERR")
     rc=$?
@@ -812,22 +834,139 @@ fi
 rm -f "$DISP_RELEASE_DST/sentinel.html"
 
 # ====================================================================
-# NEGATIVE-10: failure during recovery
+# NEGATIVE-10: recovery-validation failure.
+#
+# We intentionally do NOT corrupt the snapshot file (which would
+# simulate a wrong-sha only after restore; the user explicitly
+# directed "Do not corrupt the recovery snapshot").  Instead we
+# inject the failure into the disposable validation adapter via
+# DEWATA_FAKE_VALIDATE_FAILURE=1.
+#
+# Assertions (per the reviewer's instruction that "any nonzero
+# exit is insufficient"):
+#   - installer exits rc=2 (AUTO-RESTORE INCOMPLETE)
+#   - installer output contains "AUTO-RESTORE INCOMPLETE"
+#   - installer output contains "RESTORE FAILED" on the validation step
+#   - **installer output does NOT contain "service restarted:"** because
+#     do_restore's step 5 (restart) is GATED on restore_failed=0.
+#   - **the snapshot file at $SNAPSHOT_DIR/Caddyfile.dewata.runtime is
+#     INTACT** (sha unchanged from before NEG-10 ran).
+#   - the Caddyfile on disk at $DISP_PROD_CADDY matches the baseline
+#     (do_restore's step 1 put it back).
+#   - the disposable validate adapter's log shows the FAKE_FAILURE line.
 # ====================================================================
 echo
 echo "================================================================"
-echo "[lifecycle] NEGATIVE-10: failure during recovery"
+echo "[lifecycle] NEGATIVE-10: failure during recovery (FAKE_VALIDATE)"
 echo "================================================================"
 reset_disposable_caddyfile
+
+# Find an existing snapshot dir to use as the "before NEG-10" reference.
+# (T2 has populated at least one snapshot.)
+DISP_SNAPSHOT_PARENT_PRE_NEG10_DIR=$(ls -td "$DISP_SNAPSHOT_PARENT"/*-pre-apex 2>/dev/null | head -1)
+if [[ -z "$DISP_SNAPSHOT_PARENT_PRE_NEG10_DIR" ]] || [[ ! -f "$DISP_SNAPSHOT_PARENT_PRE_NEG10_DIR/Caddyfile.dewata.runtime" ]]; then
+    echo "FATAL: NEG-10 cannot find a pre-existing snapshot to use as the intact-snapshot reference" >&2
+    exit 2
+fi
+PRE_NEG10_SNAPSHOT_SHA=$(sha256_of_file "$DISP_SNAPSHOT_PARENT_PRE_NEG10_DIR/Caddyfile.dewata.runtime")
+echo "[lifecycle] NEG10 PRE_SNAPSHOT_SHA=$PRE_NEG10_SNAPSHOT_SHA ($DISP_SNAPSHOT_PARENT_PRE_NEG10_DIR/Caddyfile.dewata.runtime)"
+
+# Seed REPLACEMENT mode: NEG-9b's setup left the release tree empty
+# after its rm cleanup.  Re-create the prior-release sentinel so the
+# install's G3 sees a non-empty prior and exercises the
+# REPLACEMENT-mode snapshot capture path.
+mkdir -p "$DISP_RELEASE_DST"
+printf "%s" "prior-release-10" > "$DISP_RELEASE_DST/sentinel.html"
+NEG10_SENTINEL_SHA=$(sha256_of_file "$DISP_RELEASE_DST/sentinel.html")
+echo "[lifecycle] NEG10 seeded prior-release sentinel sha=$NEG10_SENTINEL_SHA"
+
 rc=0
-run_install "DEWATA_FAKE_FAIL_AT_GATE=g4 DEWATA_FAKE_RECOVERY_VALIDATION_FAILURE=1" || rc=$?
-# do_restore returns rc=2 when restore_failed=1
+
+# Run install with: g5-failure (after snapshot + after candidate install
+# + after do_validate at G5).  We pass DEWATA_FAKE_FAIL_AT_GATE=g5 so
+# the install's do_restore is invoked from INSIDE G5, where the
+# snapshot exists.
+#
+# DEWATA_FAKE_VALIDATE_FAILURE_GATES=g5 -- restrict the FAKE validate
+# failure to ONLY the G5 call site (not G1).  G1 must succeed so
+# the snapshot is captured.
+#
+# NOTE: env -i inside run_install clears the env, so any hooks must
+# be passed via the extra_env arg so they reach the installer process.
+run_install "DEWATA_FAKE_FAIL_AT_GATE=g5 DEWATA_USE_DISPOSABLE_VALIDATE=1 DEWATA_FAKE_VALIDATE_FAILURE=1 DEWATA_FAKE_VALIDATE_FAILURE_GATES=g5,restore DEWATA_VALIDATE_CMD=$DISP_SYSTEMCTL_PATH/disposable-validate.sh DEWATA_VALIDATE_LOG=$SHIM_LOG_DIR/validate.log" || rc=$?
+
+# Assertion 1: rc=2 (not just "any nonzero") -- AUTO-RESTORE INCOMPLETE
 if [[ $rc -eq 2 ]]; then
-    record "NEG10.install-fail-rc2" PASS "rc=$rc (AUTO-RESTORE INCOMPLETE)"
-elif [[ $rc -ne 0 ]]; then
-    record "NEG10.install-rejected" PASS "rc=$rc"
+    record "NEG10.install-rc-is-2" PASS "rc=$rc exactly (AUTO-RESTORE INCOMPLETE)"
 else
-    record "NEG10.install-fail-rc2" FAIL "rc=0"
+    record "NEG10.install-rc-is-2" FAIL "got rc=$rc expected rc=2"
+fi
+
+# NEG-10 assertions inspect BOTH stdout and stderr (do_restore prints
+# INCOMPLETE / RESTORE FAILED to stderr; installer info to stdout).
+NEG10_COMBINED_LOG="$LAST_INSTALL_OUT"
+if [[ -s "$LAST_INSTALL_ERR" ]]; then
+    NEG10_COMBINED_LOG="/tmp/dewata-lifecycle.NEG10.combined"
+    cat "$LAST_INSTALL_OUT" "$LAST_INSTALL_ERR" > "$NEG10_COMBINED_LOG"
+fi
+
+# Assertion 2: AUTO-RESTORE INCOMPLETE printed (stderr, but check combined)
+if grep -q "AUTO-RESTORE INCOMPLETE" "$NEG10_COMBINED_LOG"; then
+    record "NEG10.AUTO-RESTORE-INCOMPLETE-printed" PASS
+else
+    record "NEG10.AUTO-RESTORE-INCOMPLETE-printed" FAIL "AUTO-RESTORE INCOMPLETE missing"
+fi
+
+# Assertion 3: RESTORE FAILED printed on the validate step
+if grep -qE "RESTORE FAILED.*does not validate|FAKE_VALIDATE_FAILURE|validation failed|validate failed|Invalid Caddyfile" "$NEG10_COMBINED_LOG"; then
+    record "NEG10.VALIDATE-FAILED-printed" PASS
+else
+    record "NEG10.VALIDATE-FAILED-printed" FAIL "no validation-failure log line"
+fi
+
+# Assertion 4: NO "service restarted:" line in the post-restore output
+# (this proves do_restore did NOT call systemctl restart since
+# restore_failed=1)
+if ! grep -q "service restarted:" "$NEG10_COMBINED_LOG"; then
+    record "NEG10.no-post-restore-restart" PASS "no 'service restarted:' in installer output"
+else
+    record "NEG10.no-post-restore-restart" FAIL "step 5 ran despite restore_failed=1"
+fi
+
+# Assertion 5: the snapshot file is INTACT (proves we did not corrupt it)
+if [[ -n "$DISP_SNAPSHOT_PARENT_PRE_NEG10_DIR" ]] && [[ -f "$DISP_SNAPSHOT_PARENT_PRE_NEG10_DIR/Caddyfile.dewata.runtime" ]]; then
+    POST_NEG10_SNAPSHOT_SHA=$(sha256_of_file "$DISP_SNAPSHOT_PARENT_PRE_NEG10_DIR/Caddyfile.dewata.runtime")
+    if [[ "$POST_NEG10_SNAPSHOT_SHA" == "$PRE_NEG10_SNAPSHOT_SHA" ]]; then
+        record "NEG10.snapshot-file-intact" PASS "snapshot sha unchanged: $POST_NEG10_SNAPSHOT_SHA"
+    else
+        record "NEG10.snapshot-file-intact" FAIL "sha changed: $PRE_NEG10_SNAPSHOT_SHA -> $POST_NEG10_SNAPSHOT_SHA"
+    fi
+else
+    record "NEG10.snapshot-file-intact" FAIL "could not locate snapshot before/after"
+fi
+
+# Assertion 6: the FAKE_VALIDATE_FAILURE was logged by the disposable adapter
+if grep -q "FAKE_VALIDATE_FAILURE" "$SHIM_LOG_DIR/validate.log" 2>/dev/null; then
+    record "NEG10.disposable-adapter-failure-fired" PASS "adapter logged FAKE_VALIDATE_FAILURE"
+else
+    record "NEG10.disposable-adapter-failure-fired" FAIL "adapter did not log FAKE_VALIDATE_FAILURE"
+fi
+
+# Assertion 7: the Caddyfile on disk is back to baseline (do_restore step 1 ran)
+post_run_sha=$(sha256_of_file "$DISP_PROD_CADDY")
+if [[ "$post_run_sha" == "$DISP_BASELINE_SHA" ]]; then
+    record "NEG10.caddyfile-restored-to-baseline" PASS "$post_run_sha"
+else
+    record "NEG10.caddyfile-restored-to-baseline" FAIL "got $post_run_sha want $DISP_BASELINE_SHA"
+fi
+
+# Assertion 8: the prior-release sentinel survives do_restore (REPLACEMENT
+# mode restoration correctly moved the .bak back into $DISP_RELEASE_DST).
+post_restore_sentinel=$(sha256_of_file "$DISP_RELEASE_DST/sentinel.html" 2>/dev/null || echo MISSING)
+if [[ "$post_restore_sentinel" == "$NEG10_SENTINEL_SHA" ]]; then
+    record "NEG10.prior-release-sentinel-restored" PASS "sha=$post_restore_sentinel"
+else
+    record "NEG10.prior-release-sentinel-restored" FAIL "got $post_restore_sentinel want $NEG10_SENTINEL_SHA"
 fi
 
 # ====================================================================
