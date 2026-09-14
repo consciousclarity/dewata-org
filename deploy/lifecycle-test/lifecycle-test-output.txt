@@ -1,0 +1,93 @@
+==============================================================================
+LIFECYCLE TEST OUTPUT
+==============================================================================
+caddy binary:    /usr/bin/caddy
+caddy version:   v2.11.4 h1:XKxkMTgNSizEvKG6QHue6cAsFOteU2qA61w2tKkCWi0=
+execution time:  2026-09-14 08:46:44 UTC
+return code:     0
+==============================================================================
+
+================================================================
+T1: setup
+================================================================
+  production runtime: /opt/dewata.online/deploy/caddy/Caddyfile.dewata
+  prod :8443: live (good -- we don't touch)
+  disposable runtime: /opt/dw-phase2/deploy/lifecycle-test/runtime-fixture/Caddyfile.dewata.runtime
+  (clone of production)
+  release staged at: /tmp/lifecycle-test/release/v0.1.0-pre1/
+  release files: 38
+
+================================================================
+T2: install-apex procedure on the disposable
+================================================================
+T2.G1: validate candidate
+Valid configuration
+T2.G2: snapshot
+T2.G3: stage release with sha256 verification (no rsync --delete)
+  T2.G3: 76 files in /tmp/lifecycle-test/release (release already had matching content)
+T2.G4: atomic-install (candidate -> runtime-fixture)
+T2.G5: re-validate
+Valid configuration
+T2.G6: RESTART (kill old + start new) disposable caddy on :18443
+  cat: /tmp/lifecycle-test/caddy.pid: No such file or directory
+  T2.G6: launched disposable caddy pid 1612081
+T2.G7: probes
+  OK   dewata.org             /                              -> 200
+  OK   dewata.org             /index.html                    -> 200
+  OK   dewata.org             /calendar.html                 -> 200
+  OK   dewata.org             /about.html                    -> 200
+  OK   dewata.org             /transparency.html             -> 200
+  OK   dewata.org             /assets/style.css              -> 200
+  OK   api.dewata.org         /health                        -> 200
+  OK   api.dewata.org         /dsp/v0.1/calendar/ruleset     -> 200
+  OK   api.dewata.org         /brief                         -> 200
+  OK   bci.dewata.org         /                              -> 503
+  OK   protocol.dewata.org    /                              -> 503
+  OK   datasets.dewata.org    /                              -> 503
+  OK   localhost              /                              -> 503
+T2: PASS
+
+================================================================
+T3: rollback-apex procedure on the disposable
+================================================================
+T3.G1: validate saved runtime
+Valid configuration
+T3.G2: atomic-install saved runtime (with sed port rewrite)
+T3.G3: re-validate installed file
+Valid configuration
+T3.G4: RESTART disposable (kill old + start new; mirrors systemctl restart)
+  T3.G4: new pid=1612149
+T3.G5: probes (apex should be 503 again, api passthrough stays 200)
+  OK   dewata.org             /                              -> 503
+  OK   api.dewata.org         /health                        -> 200
+  OK   api.dewata.org         /dsp/v0.1/calendar/ruleset     -> 200
+  OK   bci.dewata.org         /                              -> 503
+  OK   protocol.dewata.org    /                              -> 503
+  OK   datasets.dewata.org    /                              -> 503
+  OK   localhost              /                              -> 503
+T3: PASS
+
+================================================================
+T4: cleanup + production-touched check
+================================================================
+  T4: production :8443 still listening (untouched)
+  T4: production Caddyfile.dewata UNCHANGED (worktree snapshot == live)
+  T4: production dewata-caddy MainPID=856223 (untouched)
+
+================================================================
+LIFECYCLE TEST: PASS
+  - install-apex procedure works end-to-end on a disposable
+  - rollback-apex procedure works end-to-end on a disposable
+  - production Caddyfile untouched
+  - production :8443 listener untouched
+  - production dewata-caddy.service MainPID unchanged
+  - browser rendering NOT verified (no real browser in this env)
+================================================================
+
+--- stderr (last 800 chars) ---
+ntime-fixture/Caddyfile.dewata.runtime"}
+{"level":"info","ts":1789375597.9790769,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"warn","ts":1789375597.9790967,"msg":"Caddyfile input is not formatted; run 'caddy fmt --overwrite' to fix inconsistencies","adapter":"caddyfile","file":"/opt/dw-phase2/deploy/lifecycle-test/runtime-fixture/Caddyfile.dewata.runtime","line":9}
+{"level":"info","ts":1789375597.9800572,"logger":"http","msg":"servers shutting down with eternal grace period"}
+{"level":"info","ts":1789375597.9801316,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0x3b1877efea80"}
+{"level":"info","ts":1789375597.9801936,"logger":"tls.cache.maintenance","msg":"stopped background certificate maintenance","cache":"0x3b1877efea80"}
