@@ -1,8 +1,9 @@
 # Production deployment manifest -- v0.1.0 pre1
 # This is the literal set of values the operator passes to the install script.
-# Generated: 2026-09-14 (sixth iteration).
+# Generated: 2026-09-14 (seventh iteration).
 # branch: warden/phase2-foundation-20260914
-# HEAD:    c04be701f4bc12cfd8cff3ac07055d59952a679f
+# HEAD:    064833a2886e54ff2e7808172ef4b87bab84fb50
+# commit subject: fix(apex): address 6th-bundle corrections (first-install recovery, real shim restart, wrapper end-to-end)
 
 # Authorization flag (must be set, exactly "1").
 # Production and disposable modes are mutually exclusive.
@@ -14,14 +15,18 @@ DEWATA_PROD_WWW=/opt/dewata.online/deploy/www
 DEWATA_RELEASE_DST=/opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1
 
 # Reviewed source paths (separate from production destinations).
-DEWATA_RELEASE_SRC=/opt/dewata.online/review/v0.1.0-pre1/www/dewata-org/v0.1.0-pre1
-DEWATA_CANDIDATE=/opt/dewata.online/review/v0.1.0-pre1/caddy/Caddyfile.dewata.proposed
+# These live in the worktree under /opt/dw-phase2/deploy/.  The operator
+# checks out the reviewed commit and runs the wrapper from there.
+DEWATA_RELEASE_SRC=/opt/dw-phase2/deploy/www/dewata-org/v0.1.0-pre1
+DEWATA_CANDIDATE=/opt/dw-phase2/deploy/caddy/Caddyfile.dewata.proposed
 
 # Reviewed manifest (the actual deployment manifest for this release).
-DEWATA_REVIEWED_MANIFEST=/opt/dewata.online/deploy/atomic/RELEASES/v0.1.0-pre1.MANIFEST.txt
+DEWATA_REVIEWED_MANIFEST=/opt/dw-phase2/deploy/atomic/RELEASES/v0.1.0-pre1.MANIFEST.txt
 
 # Mandatory drift-guard baseline -- capture this RIGHT NOW with:
 #   sha256sum /opt/dewata.online/deploy/caddy/Caddyfile.dewata
+# at the moment the operator runs the wrapper.  Plug the hash into
+# DEWATA_PROD_BASELINE_SHA above.
 DEWATA_PROD_BASELINE_SHA=adf3990ccd4efaab427f71167799c99a3ddebcfc23ed468f95925c4adf11016a
 
 # Mandatory listener and metadata.
@@ -40,19 +45,28 @@ candidate Caddyfile sha256 = 4f06ce6f964b309419aee6e258f86ed88522ea9bd0b597b28d8
 reviewed manifest sha256    = ba5a4903208bd9ba6add474cc4d088b76df0a720d4e19036a9e1091e9b356aa7
 production baseline sha256  = adf3990ccd4efaab427f71167799c99a3ddebcfc23ed468f95925c4adf11016a
 
-# One-shot install command (production).
-# Operator MUST run these two steps from /opt/dw-phase2/deploy:
-#   1. capture the production baseline (right before running the installer):
-#        sha256sum /opt/dewata.online/deploy/caddy/Caddyfile.dewata
-#      plug the resulting hash into DEWATA_PROD_BASELINE_SHA above.
-#   2. run the deploy wrapper:
-#        DEWATA_APPLY_PRODUCTION=1 bash /opt/dw-phase2/deploy/apex-deploy.sh
-#      The wrapper captures the installer's actual snapshot path from
-#      stdout and prints the rollback command referencing it.
+# Production state captured at the time of this manifest regeneration:
+#   systemctl show dewata-caddy -p MainPID = MainPID=2309214
 
-# Rollback (operator runs from /opt/dw-phase2/deploy):
+# One-shot install command (production).  Run from /opt/dw-phase2/deploy:
+#   DEWATA_APPLY_PRODUCTION=1 bash apex-deploy.sh
+#
+# The wrapper:
+#   - requires DEWATA_APPLY_PRODUCTION=1 (refuses otherwise, rc=2);
+#   - captures the production baseline sha256 RIGHT NOW and refuses
+#     a second install within 60 seconds (override with
+#     DEWATA_FORCE_REINSTALL=1);
+#   - prints pre-flight hashes for wrapper, installer, rollback script,
+#     candidate Caddyfile, reviewed manifest, and reviewed release tree;
+#   - exports every required DEWATA_* value via env -i to the installer;
+#   - captures the installer's full output (incl. actual_snapshot_path=)
+#     and the installer's exit code;
+#   - fails closed with the installer's exit code.
+
+# Rollback (operator runs after a failed install):
 #   DEWATA_APPLY_PRODUCTION=1 \
 #       DEWATA_PROD_CADDY=/opt/dewata.online/deploy/caddy/Caddyfile.dewata \
+#       DEWATA_RELEASE_DST=/opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1 \
 #       DEWATA_LISTENER_PORT=8443 \
 #       DEWATA_WORKTREE=/opt/dw-phase2 \
 #       DEWATA_CADDY_SERVICE=dewata-caddy \
@@ -60,12 +74,42 @@ production baseline sha256  = adf3990ccd4efaab427f71167799c99a3ddebcfc23ed468f95
 #       /opt/dewata.online/deploy/atomic/<actual_snapshot_path>
 
 # Dashboard cutover (operator manually -- the bundle does not touch Cloudflare):
-#   1. remove the two apex A records at the Cloudflare dashboard for
-#      dewata.org (54.149.79.189, 34.216.117.25).
+#   1. remove the two apex A records at the Cloudflare dashboard:
+#      - host @, value 54.149.79.189, type A, TTL auto, proxied (delete)
+#      - host @, value 34.216.117.25,  type A, TTL auto, proxied (delete)
 #   2. configure the existing dewata-vps cloudflared tunnel with an
-#      ingress rule: hostname = dewata.org, service = http://localhost:8443
-#      (or via published-application route: hostname = @,
-#      target = dewata-vps.cfargotunnel.com).
+#      ingress rule:
+#        hostname : dewata.org
+#        service : http://localhost:8443
 #   3. verify public:
-#        curl -4 -I https://dewata.org/              # expect 200
-#        curl -4 -I https://api.dewata.org/health    # expect 200
+#      - curl -4 -I https://dewata.org/             (expect 200)
+#      - curl -4 -I https://api.dewata.org/health   (expect 200)
+
+# Tested operator command end-to-end against a disposable mirror:
+#
+#   rm -rf /tmp/deploy-mirror
+#   mkdir -p /tmp/deploy-mirror/caddy /tmp/deploy-mirror/www
+#          /tmp/deploy-mirror/atomic
+#   cp /opt/dewata.online/deploy/caddy/Caddyfile.dewata \
+#          /tmp/deploy-mirror/caddy/Caddyfile.dewata
+#
+#   DEPLOY_INSTALLER=/opt/dw-phase2/deploy/atomic/install-apex-candidate.sh \
+#   DEPLOY_ROLLBACK=/opt/dw-phase2/deploy/atomic/rollback-apex.sh \
+#   DEPLOY_REVIEWED_MANIFEST=/opt/dw-phase2/deploy/atomic/RELEASES/v0.1.0-pre1.MANIFEST.txt \
+#   DEPLOY_REVIEWED_RELEASE_SRC=/opt/dw-phase2/deploy/www/dewata-org/v0.1.0-pre1 \
+#   DEPLOY_REVIEWED_CANDIDATE=/opt/dw-phase2/deploy/caddy/Caddyfile.dewata.proposed \
+#   DEPLOY_PROD_CADDY=/tmp/deploy-mirror/caddy/Caddyfile.dewata \
+#   DEPLOY_PROD_RELEASE_DST=/tmp/deploy-mirror/www/dewata-org/v0.1.0-pre1 \
+#   DEPLOY_SNAPSHOT_PARENT=/tmp/deploy-mirror/atomic \
+#   DEPLOY_LISTENER_PORT=18443 \
+#   DEPLOY_SERVICE=dewata-caddy-dummy \
+#   DEWATA_APPLY_PRODUCTION=1 \
+#   DEWATA_FORCE_REINSTALL=1 \
+#   DEWATA_DEPLOYER_TEST_MODE=1 \
+#   bash /opt/dw-phase2/deploy/apex-deploy.sh
+#
+# This test produces the same audit-trail evidence (preflight hashes,
+# install command echo, actual_snapshot_path capture, fail-closed
+# exit code) without touching /opt/dewata.online.  Capture the
+# output to verify the wrapper behaves correctly.  See
+# tests/test-wrapper-e2e.sh.
