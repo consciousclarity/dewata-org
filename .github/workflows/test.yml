@@ -1,0 +1,58 @@
+# dewata ci pipeline
+#
+# IMPORTANT: this workflow file is local-only at this stage.  we are
+# NOT pushing it to the github repo because the existing PAT (which
+# was leaked in chat history) does not have `workflow` scope.  to
+# push, regenerate the pat with workflow scope or use a deploy key.
+#
+# envs at runtime:
+#   DEWATA_TEST_DSN         — postgres+postgis test DSN (set by the
+#                              admin; do NOT bake into the workflow)
+#
+# what this pipeline runs:
+#   1. install python 3.11
+#   2. install pyproject deps
+#   3. run secret-scan
+#   4. run pytest -m 'not slow' (skips non-default tests)
+#
+# what it does NOT do:
+#   - push
+#   - deploy
+#   - touch production data
+#   - touch the dewata db on this vps
+
+name: dewata-ci
+
+on:
+  push:
+    branches: [main, warden/**]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e phase-1[dev]
+          pip install pyyaml
+      - name: secret-scan
+        run: python scripts/secret-scan.py .
+      - name: test (calendar + security + db)
+        env:
+          DEWATA_TEST_DSN: ${{ secrets.DEWATA_TEST_DSN }}
+        run: |
+          if [ -z "$DEWATA_TEST_DSN" ]; then
+            echo "DEWATA_TEST_DSN not set; skipping integration tests"
+            pytest phase-1/tests -q --ignore=phase-1/tests/db
+          else
+            pytest phase-1/ -q
+          fi
