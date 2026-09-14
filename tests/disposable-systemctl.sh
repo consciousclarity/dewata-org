@@ -3,40 +3,54 @@
 # disposable-systemctl.sh -- the systemctl shim used by the lifecycle test
 # =============================================================================
 #
-# Lifecycle test relies on this script (not the real systemctl) when
-# DEWATA_DISPOSABLE_MODE=1.  Test sets PATH to put this shim first.
+# Used by the lifecycle test (deploy/lifecycle-test/run-lifecycle-test.sh)
+# when DEWATA_DISPOSABLE_MODE=1 + DEWATA_DISPOSABLE_SERVICE_MODE=restart.
+# Production runs do NOT use this shim.
 #
-# What it does:
-#   show     MainPID:    reads /tmp/dewata-lifecycle-caddy.pid (writeable
-#                       by the test harness)
-#   is-active <unit>:    reads /tmp/dewata-lifecycle-caddy.active
-#                       (returns "active" if "1", "inactive" otherwise)
-#   restart <unit>:      writes "restart: $(date -u +%Y%m%dT%H%M%SZ) unit=<unit>"
-#                       to /tmp/dewata-lifecycle-systemctl.log
-#   start   <unit>:      same as restart
-#   stop    <unit>:      writes to log, sets active=0
-#   status  <unit>:      reads the log file
+# Configuration (env vars the test sets):
+#   DEWATA_DISPOSABLE_SYSTEMCTL_LOG     -- log file path (default
+#                                           /tmp/dewata-lifecycle-systemctl.log)
+#   DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE -- shim's PIDFILE
+#                                           (default /tmp/dewata-lifecycle-caddy.pid)
+#   DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE   -- shim's active state file
+#   DEWATA_FAKE_RESTART_FAILURE         -- if "1", the next "restart" call
+#                                           exits non-zero to simulate a
+#                                           failure (used in NEGATIVE-9)
 #
-# Anything else: log and pass through to the real systemctl.
-#
-# The lifecycle test launches caddy as a child process on a
-# disposable port (e.g. 18443) outside of any systemd involvement,
-# then asserts via this shim that the install/rollback script
-# invoked systemctl in the documented sequence.
+# What this shim does:
+#   1. It DOES NOT touch the real production systemctl.
+#   2. It records every accepted call to the log file (in call order).
+#   3. It supports the operations the install/rollback scripts call.
+#   4. It FAILS CLOSED on ANY unrecognized command -- never passthrough.
 # =============================================================================
 
-readonly REAL_SYSTEMCTL="$(command -v systemctl 2>/dev/null || echo "/bin/false")"
-readonly LOG="/tmp/dewata-lifecycle-systemctl.log"
-readonly PIDFILE="/tmp/dewata-lifecycle-caddy.pid"
-readonly ACTIVEFILE="/tmp/dewata-lifecycle-caddy.active"
+set -u
+
+# Default paths
+: "${DEWATA_DISPOSABLE_SYSTEMCTL_LOG:=/tmp/dewata-lifecycle-systemctl.log}"
+: "${DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE:=/tmp/dewata-lifecycle-caddy.pid}"
+: "${DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE:=/tmp/dewata-lifecycle-caddy.active}"
+
+LOG="$DEWATA_DISPOSABLE_SYSTEMCTL_LOG"
+PIDFILE="$DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE"
+ACTIVEFILE="$DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE"
 
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
 
-case "${1:-}" in
+cmd="${1:-}"
+shift || true
+
+log() {
+    printf "[shim] %s %s %s\\n" "$ts" "$cmd" "$*" >> "$LOG"
+}
+
+case "$cmd" in
+
+    # ----- show <unit> -p <prop> [--value] ... -----
     show)
-        unit="${2:-unknown}"
-        # collect -p KEY [--value] [--other...] argument tokens
-        shift 2
+        unit="${1:-unknown}"
+        shift || true
+        # parse -p KEY [--value] and ignore anything else
         prop=""
         value_mode=0
         while (( $# > 0 )); do
@@ -58,7 +72,7 @@ case "${1:-}" in
                 else
                     echo "MainPID=$val"
                 fi
-                echo "[shim] $ts show $unit -p $prop -> $val" >> "$LOG"
+                log "show $unit -p $prop -> $val"
                 ;;
             ActiveState)
                 if [[ -f "$ACTIVEFILE" ]]; then
@@ -71,67 +85,94 @@ case "${1:-}" in
                 else
                     echo "ActiveState=$val"
                 fi
-                echo "[shim] $ts show $unit -p $prop -> $val" >> "$LOG"
+                log "show $unit -p $prop -> $val"
                 ;;
             "")
-                echo "[shim] $ts show $unit (no-prop)" >> "$LOG"
-                # no -p flag; return a stub.
+                log "show $unit (no-prop)"
                 echo "Id=shim-stub"
                 ;;
             *)
-                echo "[shim] $ts show $unit -p $prop (unknown-prop)" >> "$LOG"
+                log "show $unit -p $prop (unknown-prop)"
                 echo "$prop="
                 ;;
         esac
         ;;
+
+    # ----- is-active <unit> -----
     is-active)
-        unit="${2:-unknown}"
+        unit="${1:-unknown}"
         state="inactive"
         if [[ -f "$ACTIVEFILE" && "$(cat "$ACTIVEFILE")" == "1" ]]; then
             state="active"
         fi
         echo "$state"
-        echo "[shim] $ts is-active $unit -> $state" >> "$LOG"
+        log "is-active $unit -> $state"
         ;;
-    restart|start)
-        unit="${2:-unknown}"
-        # bump PID so the install's no-op check sees MainPID changed
-        : > "$PIDFILE"
-        # new PID = current log-size mod max, so each restart bumps it
-        prior_pid=$(awk -F'=pid=' '/^restart/{count++}END{print count+1000}' "$LOG" 2>/dev/null || echo 1000)
-        printf "%s\\n" "$prior_pid" > "$PIDFILE"
+
+    # ----- restart <unit> -----
+    restart)
+        unit="${1:-unknown}"
+        log "restart $unit (entry)"
+        # If a fake-restart failure is requested, fail before doing the restart work
+        if [[ "${DEWATA_FAKE_RESTART_FAILURE:-0}" == "1" ]]; then
+            log "restart $unit -> FAKE_FAILURE (DEWATA_FAKE_RESTART_FAILURE=1)"
+            echo "[shim] FAKE restart failure on $unit" >&2
+            exit 1
+        fi
+        # Pre-restart activity: mark inactive briefly
+        printf "0\\n" > "$ACTIVEFILE"
+        # Issue a new PID and mark active
+        prior=$(cat "$PIDFILE" 2>/dev/null || echo 1000)
+        new_pid=$((prior + 1))
+        printf "%s\\n" "$new_pid" > "$PIDFILE"
         printf "1\\n" > "$ACTIVEFILE"
-        echo "[shim] $ts $1 $unit -> pid=$prior_pid active=1" >> "$LOG"
+        log "restart $unit -> pid=$new_pid active=1"
         ;;
+
+    # ----- start <unit> -----
+    start)
+        unit="${1:-unknown}"
+        log "start $unit"
+        printf "1\\n" > "$ACTIVEFILE"
+        if [[ ! -f "$PIDFILE" ]]; then
+            echo "1" > "$PIDFILE"
+        fi
+        ;;
+
+    # ----- stop <unit> -----
     stop)
-        unit="${2:-unknown}"
-        : > "$PIDFILE"
+        unit="${1:-unknown}"
+        log "stop $unit"
         printf "0\\n" > "$PIDFILE"
         printf "0\\n" > "$ACTIVEFILE"
-        echo "[shim] $ts stop $unit -> pid=0 active=0" >> "$LOG"
         ;;
+
+    # ----- status <unit> -----
     status)
-        unit="${2:-unknown}"
-        echo "[shim] $ts status $unit" >> "$LOG"
+        unit="${1:-unknown}"
+        log "status $unit"
         if [[ -f "$ACTIVEFILE" && "$(cat "$ACTIVEFILE")" == "1" ]]; then
             echo "active (shim)"
         else
             echo "inactive (shim)"
         fi
         ;;
+
+    # ----- is-enabled / enable / disable / mask / unmask / daemon-reload -----
     is-enabled|enable|disable|mask|unmask|daemon-reload)
-        unit="${2:-unknown}"
-        echo "[shim] $ts $1 $unit (no-op)" >> "$LOG"
+        unit="${1:-unknown}"
+        log "$cmd $unit (no-op)"
+        ;;
+
+    # ----- FAIL CLOSED on any unknown command.  Never passthrough. -----
+    "")
+        echo "FATAL: disposable-systemctl.sh invoked with no command" >&2
+        exit 7
         ;;
     *)
-        # anything else: pass-through to the real systemctl
-        # but only if the real one exists.
-        if [[ -f "$REAL_SYSTEMCTL" ]]; then
-            echo "[shim] $ts $* (passthrough)" >> "$LOG"
-            "$REAL_SYSTEMCTL" "$@"
-        else
-            echo "[shim] $ts $* (passthrough-failed-no-real-systemctl)" >> "$LOG"
-            exit 0
-        fi
+        echo "FATAL: disposable-systemctl.sh does not implement command '$cmd' (args: $*)" >&2
+        echo "       (no passthrough to real systemctl in the disposable test path)" >&2
+        log "$cmd (UNHANDLED-COMMAND; fail-closed)"
+        exit 7
         ;;
 esac

@@ -129,6 +129,13 @@ DISP_PROD_CADDY="$SHIM_LOG_DIR/caddy/Caddyfile.dewata"
 DISP_SNAPSHOT_PARENT="$SHIM_LOG_DIR/atomic"
 DISP_LISTENER_PORT="18443"
 
+# Shim's state files (so the installer's restart calls advance the shim's
+# fake PID across multiple NEGATIVE-9 / T2 runs).  The shim logs to
+# /tmp/dewata-lifecycle-systemctl.log explicitly.
+DISP_SYSTEMCTL_LOG="/tmp/dewata-lifecycle-systemctl.log"
+DISP_SYSTEMCTL_PIDFILE="$SHIM_LOG_DIR/caddy.pid"
+DISP_SYSTEMCTL_ACTIVE="$SHIM_LOG_DIR/caddy.active"
+
 run_install() {
     # $1 = optional extra env vars to set before invoking the installer
     # sets up:
@@ -137,7 +144,10 @@ run_install() {
     #   /tmp/dewata-lifecycle.install.out       <- symlink to latest
     local extra_env="${1:-}"
     local rc
-    rm -f "$SHIM_LOG"
+    # DO NOT wipe $SHIM_LOG: each install writes to it (the shim appends).
+    # The records of every install's shim calls must survive to the end
+    # of the suite so the assertion checks (T2.shim-log-non-empty,
+    # NEG9.shim-call-order-restart, etc.) can read the full timeline.
     # The installer returns non-zero on every negative scenario;
     # disable -e around the call so the caller can capture rc itself.
     set +e
@@ -150,6 +160,11 @@ run_install() {
         env -i \
             PATH="$SHIM_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
             DEWATA_DISPOSABLE_MODE=1 \
+            DEWATA_DISPOSABLE_SERVICE_MODE=restart \
+            DEWATA_DISPOSABLE_SYSTEMCTL_LOG="$DISP_SYSTEMCTL_LOG" \
+            DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
+            DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
+            DEWATA_PROBE_LISTENER=0 \
             DEWATA_PROD_CADDY="$DISP_PROD_CADDY" \
             DEWATA_PROD_WWW="$SHIM_LOG_DIR/www" \
             DEWATA_RELEASE_SRC="$DISP_RELEASE_SRC" \
@@ -169,6 +184,11 @@ run_install() {
         env -i \
             PATH="$SHIM_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
             DEWATA_DISPOSABLE_MODE=1 \
+            DEWATA_DISPOSABLE_SERVICE_MODE=restart \
+            DEWATA_DISPOSABLE_SYSTEMCTL_LOG="$DISP_SYSTEMCTL_LOG" \
+            DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
+            DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
+            DEWATA_PROBE_LISTENER=0 \
             DEWATA_PROD_CADDY="$DISP_PROD_CADDY" \
             DEWATA_PROD_WWW="$SHIM_LOG_DIR/www" \
             DEWATA_RELEASE_SRC="$DISP_RELEASE_SRC" \
@@ -204,10 +224,17 @@ run_rollback() {
     env -i \
         PATH="$SHIM_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
         DEWATA_DISPOSABLE_MODE=1 \
+        DEWATA_DISPOSABLE_SERVICE_MODE=restart \
         DEWATA_PROD_CADDY="$DISP_PROD_CADDY" \
+        DEWATA_RELEASE_DST="$DISP_RELEASE_DST" \
         DEWATA_LISTENER_PORT="$DISP_LISTENER_PORT" \
         DEWATA_WORKTREE="$WT" \
         DEWATA_SNAPSHOT_DIR="$snap_dir" \
+        DEWATA_SYSTEMCTL_CMD="$DISP_SYSTEMCTL" \
+        DEWATA_DISPOSABLE_SYSTEMCTL_LOG="$DISP_SYSTEMCTL_LOG" \
+        DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
+        DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
+        DEWATA_PROBE_LISTENER=0 \
         DEWATA_CADDY_SERVICE=dewata-caddy \
         bash "$ROLLBACK" "$snap_dir" \
         > /tmp/dewata-lifecycle.rollback.out 2> /tmp/dewata-lifecycle.rollback.err
@@ -491,9 +518,14 @@ fi
 # ====================================================================
 echo
 echo "================================================================"
-echo "[lifecycle] NEGATIVE-6: post-publish failure"
+echo "[lifecycle] NEGATIVE-6: post-publish failure (FIRST-INSTALL end-to-end)"
 echo "================================================================"
 reset_disposable_caddyfile
+# Ensure FIRST-INSTALL: release tree must NOT exist before this run.
+if [[ -d "$DISP_RELEASE_DST" ]]; then
+    rm -rf "$DISP_RELEASE_DST"
+fi
+first_install_pre_release_existed=0
 rc=0
 run_install "DEWATA_FAKE_FAIL_AT_GATE=g3-post-publish" || rc=$?
 if [[ $rc -ne 0 ]]; then
@@ -508,28 +540,105 @@ if [[ "$post_run_sha" == "$DISP_BASELINE_SHA" ]]; then
 else
     record "NEG6.caddyfile-restored" FAIL "got $post_run_sha want $DISP_BASELINE_SHA"
 fi
+# FIRST-INSTALL end-state check: $DISP_RELEASE_DST must NOT exist.
+if [[ ! -e "$DISP_RELEASE_DST" ]]; then
+    record "NEG6.release-tree-removed" PASS "first-install end state: $DISP_RELEASE_DST absent"
+else
+    record "NEG6.release-tree-removed" FAIL "first-install end state: $DISP_RELEASE_DST still exists"
+fi
+# Log must show "FIRST-INSTALL mode" as the path do_restore took
+if grep -q "FIRST-INSTALL mode" "$LAST_INSTALL_OUT"; then
+    record "NEG6.do-restore-took-FIRST-INSTALL-mode" PASS
+else
+    record "NEG6.do-restore-took-FIRST-INSTALL-mode" FAIL
+fi
 
 # ====================================================================
 # NEGATIVE-7: post-G4 failure (caddyfile installed but G5 not started)
 # ====================================================================
 echo
 echo "================================================================"
-echo "[lifecycle] NEGATIVE-7: post-G4 failure"
+echo "[lifecycle] NEGATIVE-7: post-G4 failure (REPLACEMENT end-to-end)"
 echo "================================================================"
 reset_disposable_caddyfile
-rc=0
-run_install "DEWATA_FAKE_FAIL_AT_GATE=g4" || rc=$?
+# Set up REPLACEMENT scenario: a prior release must exist at $DISP_RELEASE_DST.
+# We seed it with a sentinel file whose sha we know, then verify it survives
+# do_restore byte-for-byte.
+SENTINEL_REL="sentinel-prior-release.html"
+SENTINEL_CONTENT="<html><body>prior release sentinel</body></html>"
+SENTINEL_SHA=$(printf "%s" "$SENTINEL_CONTENT" | sha256sum | cut -d' ' -f1)
+mkdir -p "$DISP_RELEASE_DST"
+printf "%s" "$SENTINEL_CONTENT" > "$DISP_RELEASE_DST/$SENTINEL_REL"
+SENTINEL_BACKUP_SHA=$(sha256_of_file "$DISP_RELEASE_DST/$SENTINEL_REL")
+# Reset the disposable caddyfile so install picks up the (different) candidate.
+reset_disposable_caddyfile
+# Override production baseline to match the caddyfile as it is now.
+NEW_BASELINE=$(sha256_of_file "$DISP_PROD_CADDY")
+
+# Wrapper that lets us pass DEWATA_PROD_BASELINE_SHA without a run_install refactor.
+run_install_with_overrides() {
+    local extra="$1"
+    local rc
+    set +e
+    local idx=$((INSTALL_CALL_IDX++))
+    LAST_INSTALL_OUT="/tmp/dewata-lifecycle.install.out.$idx"
+    LAST_INSTALL_ERR="/tmp/dewata-lifecycle.install.err.$idx"
+    (env -i \
+        PATH="$SHIM_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+        DEWATA_DISPOSABLE_MODE=1 \
+        DEWATA_DISPOSABLE_SERVICE_MODE=restart \
+        DEWATA_PROD_CADDY="$DISP_PROD_CADDY" \
+        DEWATA_PROD_WWW="$SHIM_LOG_DIR/www" \
+        DEWATA_RELEASE_SRC="$DISP_RELEASE_SRC" \
+        DEWATA_RELEASE_DST="$DISP_RELEASE_DST" \
+        DEWATA_CANDIDATE="$DISP_CANDIDATE" \
+        DEWATA_REVIEWED_MANIFEST="$disp_manifest" \
+        DEWATA_PROD_BASELINE_SHA="$NEW_BASELINE" \
+        DEWATA_LISTENER_PORT="$DISP_LISTENER_PORT" \
+        DEWATA_WORKTREE="$WT" \
+        DEWATA_SNAPSHOT_PARENT="$DISP_SNAPSHOT_PARENT" \
+        DEWATA_CADDY_SERVICE=dewata-caddy \
+        DEWATA_SYSTEMCTL_CMD="$DISP_SYSTEMCTL" \
+        DEWATA_DISPOSABLE_SYSTEMCTL_LOG="$DISP_SYSTEMCTL_LOG" \
+        DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
+        DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
+        DEWATA_PROBE_LISTENER=0 \
+        $extra \
+        bash "$INSTALLER" \
+        > "$LAST_INSTALL_OUT" 2> "$LAST_INSTALL_ERR")
+    rc=$?
+    set -e
+    return "$rc"
+}
+
+run_install_with_overrides "DEWATA_FAKE_FAIL_AT_GATE=g4" || rc=$?
 if [[ $rc -ne 0 ]]; then
     record "NEG7.install-rejected" PASS "rc=$rc"
 else
     record "NEG7.install-rejected" FAIL "rc=0"
 fi
 post_run_sha=$(sha256_of_file "$DISP_PROD_CADDY")
-if [[ "$post_run_sha" == "$DISP_BASELINE_SHA" ]]; then
+if [[ "$post_run_sha" == "$NEW_BASELINE" ]]; then
     record "NEG7.caddyfile-restored" PASS "$post_run_sha"
 else
-    record "NEG7.caddyfile-restored" FAIL "got $post_run_sha want $DISP_BASELINE_SHA"
+    record "NEG7.caddyfile-restored" FAIL "got $post_run_sha want $NEW_BASELINE"
 fi
+# REPLACEMENT end-state: the prior release (the one with our sentinel) must
+# be restored byte-for-byte.
+SENTINEL_AFTER_SHA=$(sha256_of_file "$DISP_RELEASE_DST/$SENTINEL_REL" 2>/dev/null || echo MISSING)
+if [[ "$SENTINEL_AFTER_SHA" == "$SENTINEL_BACKUP_SHA" ]]; then
+    record "NEG7.prior-release-sentinel-restored-byte-for-byte" PASS "sentinel sha matches ($SENTINEL_SHA)"
+else
+    record "NEG7.prior-release-sentinel-restored-byte-for-byte" FAIL "got $SENTINEL_AFTER_SHA want $SENTINEL_BACKUP_SHA"
+fi
+# The installer log must show "REPLACEMENT mode" do_restore step 2
+if grep -q "REPLACEMENT mode: restoring prior release" "$LAST_INSTALL_OUT"; then
+    record "NEG7.do-restore-took-REPLACEMENT-mode" PASS
+else
+    record "NEG7.do-restore-took-REPLACEMENT-mode" FAIL
+fi
+# Cleanup sentinel from the restored release
+rm -f "$DISP_RELEASE_DST/$SENTINEL_REL"
 
 # ====================================================================
 # NEGATIVE-8: post-G5 failure (caddyfile installed and validated, G6 not started)
@@ -558,16 +667,149 @@ fi
 # ====================================================================
 echo
 echo "================================================================"
-echo "[lifecycle] NEGATIVE-9: post-G6 restart failure"
+echo "[lifecycle] NEGATIVE-9: post-G6 restart failure (real restart through shim)"
 echo "================================================================"
 reset_disposable_caddyfile
+# Ensure FIRST-INSTALL end-state so do_restore's FIRST-INSTALL branch runs.
+if [[ -d "$DISP_RELEASE_DST" ]]; then
+    rm -rf "$DISP_RELEASE_DST"
+fi
+PRE_SHIM_PID=$( (cat "$DISP_SYSTEMCTL_PIDFILE" 2>/dev/null || echo 0) )
+PRE_SHIM_ACTIVE=$( (cat "$DISP_SYSTEMCTL_ACTIVE" 2>/dev/null || echo 0) )
 rc=0
-run_install "DEWATA_FAKE_FAIL_AT_GATE=g6" || rc=$?
+run_install "DEWATA_FAKE_RESTART_FAILURE=1 DEWATA_FAKE_FAIL_AT_GATE=g6" || rc=$?
 if [[ $rc -ne 0 ]]; then
     record "NEG9.install-rejected" PASS "rc=$rc"
 else
     record "NEG9.install-rejected" FAIL "rc=0"
 fi
+# Verify the shim log shows the install ACTUALLY issued a restart before
+# the failure (NOT just a MainPID lookup).
+if grep -q "restart dewata-caddy" "$SHIM_LOG"; then
+    record "NEG9.shim-executed-restart" PASS "shim log shows 'restart dewata-caddy' line"
+else
+    record "NEG9.shim-executed-restart" FAIL "shim log lacks restart call"
+fi
+# Verify the shim log shows the FAKE_FAILURE is the result of the restart, NOT
+# the result of skipping the restart.
+if grep -q "FAKE_FAILURE" "$SHIM_LOG"; then
+    record "NEG9.shim-injected-restart-failure" PASS "shim log shows FAKE_FAILURE during restart"
+else
+    record "NEG9.shim-injected-restart-failure" FAIL "shim log lacks FAKE_FAILURE"
+fi
+# Verify the shim call ORDER (correction 3):
+#   For NEG-9 (post-restart-failure), the LAST 3 entries in the log
+#   corresponding to NEG-9's restart must show:
+#     1. show -p MainPID (pre-restart MainPID lookup)
+#     2. restart (the restart call, which logged FAKE_FAILURE)
+#     3. show -p MainPID (post-restart MainPID lookup)
+# Since NEG-9b may run after NEG-9, the last 3 FAKE_FAILURE restart
+# patterns may be from NEG-9 OR NEG-9b.  We isolate the LAST
+# FAKE_FAILURE line and the surrounding show patterns.
+FAKE_FAILURE_LINES=$(grep -nE "restart.*FAKE_FAILURE" "$SHIM_LOG" | tail -1 | cut -d: -f1)
+if [[ -z "$FAKE_FAILURE_LINES" ]]; then
+    record "NEG9.shim-call-order-restart" FAIL "no FAKE_FAILURE line in shim log"
+else
+    # Window: from 2 lines before FAKE_FAILURE to 2 lines after.
+    win_lo=$((FAKE_FAILURE_LINES - 2))
+    win_hi=$((FAKE_FAILURE_LINES + 2))
+    window=$(awk -v lo="$win_lo" -v hi="$win_hi" 'NR>=lo && NR<=hi' "$SHIM_LOG")
+    show_before=$(echo "$window" | head -3 | grep -c "show.*-p MainPID")
+    show_after=$(echo "$window" | tail -3 | grep -c "show.*-p MainPID")
+    if (( show_before >= 1 )) && (( show_after >= 1 )); then
+        record "NEG9.shim-call-order-restart" PASS "show appears before and after the FAKE_FAILURE restart"
+    else
+        record "NEG9.shim-call-order-restart" FAIL "show order off around FAKE_FAILURE (before=$show_before after=$show_after)"
+    fi
+fi
+# Verify the do_restore path also runs (real recovery after a real restart
+# failure).  In disposable+restart mode the FIRST-INSTALL end state after
+# do_restore is: $DISP_RELEASE_DST does NOT exist (do_restore removed the
+# freshly-published release).  The caddyfile IS restored to baseline.
+if [[ ! -e "$DISP_RELEASE_DST" ]]; then
+    record "NEG9.first-install-end-state" PASS "DISP_RELEASE_DST removed (FIRST-INSTALL end state)"
+else
+    record "NEG9.first-install-end-state" FAIL "DISP_RELEASE_DST still present; expected FIRST-INSTALL removal"
+fi
+# Verify caddyfile is restored to baseline
+post_run_sha=$(sha256_of_file "$DISP_PROD_CADDY")
+if [[ "$post_run_sha" == "$DISP_BASELINE_SHA" ]]; then
+    record "NEG9.caddyfile-restored-after-failed-restart" PASS "$post_run_sha"
+else
+    record "NEG9.caddyfile-restored-after-failed-restart" FAIL
+fi
+
+# ====================================================================
+# NEGATIVE-9b: post-G6 restart failure (REPLACEMENT mode end-to-end)
+#   Same restart-failure scenario as NEG-9, but seeded with a prior release
+#   so REPLACEMENT mode is exercised.
+# ====================================================================
+echo
+echo "================================================================"
+echo "[lifecycle] NEGATIVE-9b: post-G6 restart failure (REPLACEMENT mode)"
+echo "================================================================"
+reset_disposable_caddyfile
+mkdir -p "$DISP_RELEASE_DST"
+# Sentinel for the prior release
+printf "%s" "prior-release-9b" > "$DISP_RELEASE_DST/sentinel.html"
+SENTINEL_BACKUP_SHA=$(sha256_of_file "$DISP_RELEASE_DST/sentinel.html")
+reset_disposable_caddyfile
+
+NEW_BASELINE2=$(sha256_of_file "$DISP_PROD_CADDY")
+
+run_install_with_overrides() {
+    local extra="$1"
+    local rc
+    set +e
+    local idx=$((INSTALL_CALL_IDX++))
+    LAST_INSTALL_OUT="/tmp/dewata-lifecycle.install.out.$idx"
+    LAST_INSTALL_ERR="/tmp/dewata-lifecycle.install.err.$idx"
+    (env -i \
+        PATH="$SHIM_DIR:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+        DEWATA_DISPOSABLE_MODE=1 \
+        DEWATA_DISPOSABLE_SERVICE_MODE=restart \
+        DEWATA_PROD_CADDY="$DISP_PROD_CADDY" \
+        DEWATA_PROD_WWW="$SHIM_LOG_DIR/www" \
+        DEWATA_RELEASE_SRC="$DISP_RELEASE_SRC" \
+        DEWATA_RELEASE_DST="$DISP_RELEASE_DST" \
+        DEWATA_CANDIDATE="$DISP_CANDIDATE" \
+        DEWATA_REVIEWED_MANIFEST="$disp_manifest" \
+        DEWATA_PROD_BASELINE_SHA="$NEW_BASELINE2" \
+        DEWATA_LISTENER_PORT="$DISP_LISTENER_PORT" \
+        DEWATA_WORKTREE="$WT" \
+        DEWATA_SNAPSHOT_PARENT="$DISP_SNAPSHOT_PARENT" \
+        DEWATA_CADDY_SERVICE=dewata-caddy \
+        DEWATA_SYSTEMCTL_CMD="$DISP_SYSTEMCTL" \
+        DEWATA_DISPOSABLE_SYSTEMCTL_LOG="$DISP_SYSTEMCTL_LOG" \
+        DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
+        DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
+        DEWATA_PROBE_LISTENER=0 \
+        $extra \
+        bash "$INSTALLER" \
+        > "$LAST_INSTALL_OUT" 2> "$LAST_INSTALL_ERR")
+    rc=$?
+    set -e
+    return "$rc"
+}
+
+run_install_with_overrides "DEWATA_FAKE_RESTART_FAILURE=1 DEWATA_FAKE_FAIL_AT_GATE=g6" || rc=$?
+if [[ $rc -ne 0 ]]; then
+    record "NEG9b.install-rejected" PASS "rc=$rc"
+else
+    record "NEG9b.install-rejected" FAIL "rc=0"
+fi
+SENTINEL_AFTER=$(sha256_of_file "$DISP_RELEASE_DST/sentinel.html" 2>/dev/null || echo MISSING)
+if [[ "$SENTINEL_AFTER" == "$SENTINEL_BACKUP_SHA" ]]; then
+    record "NEG9b.prior-release-sentinel-restored" PASS
+else
+    record "NEG9b.prior-release-sentinel-restored" FAIL
+fi
+if grep -q "REPLACEMENT mode: restoring prior release" "$LAST_INSTALL_OUT"; then
+    record "NEG9b.do-restore-took-REPLACEMENT-mode" PASS
+else
+    record "NEG9b.do-restore-took-REPLACEMENT-mode" FAIL
+fi
+rm -f "$DISP_RELEASE_DST/sentinel.html"
 
 # ====================================================================
 # NEGATIVE-10: failure during recovery

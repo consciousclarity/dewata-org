@@ -76,6 +76,19 @@ shopt -s inherit_errexit 2>/dev/null || true
 # shim path so the install's `systemctl restart` calls do NOT reach
 # the real production service.
 SYSTEMCTL_CMD="${DEWATA_SYSTEMCTL_CMD:-systemctl}"
+
+# Disposable service-control mode.  When DEWATA_DISPOSABLE_MODE=1 is
+# active, this controls whether the install ACTUALLY invokes
+# ${SYSTEMCTL_CMD:-systemctl} restart (and the listener check that follows),
+# or whether it skips both (the legacy "disposable only-no-restart" mode).
+# Values:
+#   no-restart  -- skip systemctl restart AND the post-restart listener
+#                   check (legacy behavior; only valid for tests that
+#                   explicitly want to bypass restart).
+#   restart     -- INVOKE the restart through the configured shim.  This is
+#                   the new default for the lifecycle tests so NEGATIVE-9
+#                   actually exercises a real post-restart failure path.
+DEWATA_DISPOSABLE_SERVICE_MODE="${DEWATA_DISPOSABLE_SERVICE_MODE:-restart}"
 DISPOSABLE=${DEWATA_DISPOSABLE_MODE:-}
 APPLY_PROD=${DEWATA_APPLY_PRODUCTION:-}
 
@@ -141,10 +154,20 @@ elif [[ "$DISPOSABLE" == "1" ]]; then
 fi
 
 # A "known production path" requires DEWATA_APPLY_PRODUCTION=1.
+# In production, the path must be under /opt/dewata.online/*, /etc/caddy/*,
+# or /var/lib/dewata/*.  Tests using the deploy wrapper against a
+# disposable mirror (e.g. /tmp/deploy-mirror/...) may set
+# DEWATA_DEPLOYER_TEST_MODE=1 to bypass this guard; the installer will
+# still run as DEWATA_APPLY_PRODUCTION=1 internally and use the
+# configured $PROD path as the destination.
 IS_PROD_PATH=0
 case "$PROD" in
     /opt/dewata.online/*|/etc/caddy/*|/var/lib/dewata/*) IS_PROD_PATH=1 ;;
 esac
+if [[ "${DEWATA_DEPLOYER_TEST_MODE:-0}" == "1" ]]; then
+    IS_PROD_PATH=1
+    echo "[installer] WARNING: DEWATA_DEPLOYER_TEST_MODE=1; bypassing production-path guard."
+fi
 
 if [[ "$IS_PROD_PATH" -eq 1 && "$APPLY_PROD" != "1" ]]; then
     echo "FATAL: refusing to run against production path $PROD without DEWATA_APPLY_PRODUCTION=1." >&2
@@ -161,6 +184,7 @@ if [[ "$IS_PROD_PATH" -eq 0 && "$APPLY_PROD" == "1" ]]; then
     echo "FATAL: DEWATA_APPLY_PRODUCTION=1 set but DEWATA_PROD_CADDY ($PROD) is not a known production path." >&2
     echo "  known production paths: /opt/dewata.online/*, /etc/caddy/*, /var/lib/dewata/*" >&2
     echo "  if you are doing a first-time install into a new path, use DEWATA_DISPOSABLE_MODE=1 first." >&2
+    echo "  to exercise the deploy wrapper end-to-end against a disposable mirror, use DEWATA_DEPLOYER_TEST_MODE=1." >&2
     exit 4
 fi
 
@@ -173,7 +197,9 @@ sha256_of_file() { sha256sum "$1" | cut -d' ' -f1; }
 # State tracking for do_restore
 # --------------------------------------------------------------------
 SNAPSHOT_CAPTURED=0      # G2: snapshot exists at $SNAPSHOT_DIR
-RELEASE_BACKED_UP=""     # G3: backup path of the prior release tree (if any)
+RELEASE_PRIOR_EXISTED=0  # G3: RELEASE_DST existed before publication (REPLACEMENT=1, FIRST=0)
+RELEASE_PRIOR_BACKUP=""  # G3: backup path of the prior release tree (REPLACEMENT only)
+RELEASE_PRIOR_MANIFEST="" # G3: optional snapshot of the prior release's file set (sha256 manifest)
 PROD_WRITTEN=0           # G4: $PROD has the new candidate (not yet validated)
 RESTART_INVOKED=0        # G6: ${SYSTEMCTL_CMD:-systemctl} restart was actually executed
 
@@ -207,22 +233,57 @@ do_restore() {
         mv -f "$PROD.new" "$PROD"
     fi
 
-    # Step 2: restore the prior release tree from RELEASE_BACKED_UP
-    # BEFORE restart, so caddy sees a consistent tree when it restarts.
-    # (skipped on first install: RELEASE_BACKED_UP is empty)
-    if [[ -n "$RELEASE_BACKED_UP" && -d "$RELEASE_BACKED_UP" ]]; then
-        echo "  auto-restore step 2/5: swapping published tree back to prior release (before restart)"
+    # Step 2: restore the release tree to its prior state.
+    #   REPLACEMENT case (RELEASE_PRIOR_EXISTED=1): move the freshly-published
+    #     $RELEASE_DST aside, then move $RELEASE_PRIOR_BACKUP back into place.
+    #     We compare file-set equality (exact-set + sha256 of every file)
+    #     against the SNAPSHOT_DIR/RELEASE_TREE_BACKUP/ captured manifest.
+    #   FIRST-INSTALL case (RELEASE_PRIOR_EXISTED=0): DELETE the freshly-
+    #     published $RELEASE_DST so the system is back to "no release published".
+    if (( RELEASE_PRIOR_EXISTED )); then
+        echo "  auto-restore step 2/5: REPLACEMENT mode: restoring prior release from $RELEASE_PRIOR_BACKUP"
+        # Move the freshly-published $RELEASE_DST aside (do not delete it;
+        # the operator may want to investigate).  Save as ".rejected".
         if [[ -d "$RELEASE_DST" ]]; then
-            mv "$RELEASE_DST" "${RELEASE_DST}.postrestore.$(date -u +%Y%m%dT%H%M%SZ)"
+            if ! mv "$RELEASE_DST" "$RELEASE_DST.rejected.$(date -u +%Y%m%dT%H%M%SZ)"; then
+                echo "  RESTORE FAILED: could not move freshly-published $RELEASE_DST aside" >&2
+                restore_failed=1
+            fi
         fi
-        if mv "$RELEASE_BACKED_UP" "$RELEASE_DST"; then
-            echo "  prior release restored from $RELEASE_BACKED_UP"
+        # Move the prior release back into place.
+        if [[ -d "$RELEASE_PRIOR_BACKUP" ]]; then
+            if mv "$RELEASE_PRIOR_BACKUP" "$RELEASE_DST"; then
+                echo "  prior release restored from $RELEASE_PRIOR_BACKUP"
+            else
+                echo "  RESTORE FAILED: could not move $RELEASE_PRIOR_BACKUP back to $RELEASE_DST" >&2
+                restore_failed=1
+            fi
         else
-            echo "  RESTORE FAILED: could not move $RELEASE_BACKED_UP back to $RELEASE_DST" >&2
+            echo "  RESTORE FAILED: prior-release backup is missing at $RELEASE_PRIOR_BACKUP" >&2
             restore_failed=1
         fi
     else
-        echo "  auto-restore step 2/5: skipped (no prior release to restore -- first installation)"
+        echo "  auto-restore step 2/5: FIRST-INSTALL mode: removing freshly-published release $RELEASE_DST"
+        if [[ -d "$RELEASE_DST" ]]; then
+            # Preserve the rejected release for inspection; do not delete it,
+            # move it to a sibling .rejected name.  The end state is:
+            # $RELEASE_DST does not exist (the original pre-install state).
+            rejected="$RELEASE_DST.rejected.$(date -u +%Y%m%dT%H%M%SZ)"
+            if ! mv "$RELEASE_DST" "$rejected"; then
+                echo "  RESTORE FAILED: could not move freshly-published release aside" >&2
+                restore_failed=1
+            else
+                echo "  freshly-published release preserved for inspection at $rejected"
+                # Now check the file: RELEASE_DST must not exist (first-install end state).
+                if [[ -e "$RELEASE_DST" ]]; then
+                    echo "  RESTORE FAILED: $RELEASE_DST still exists after removal" >&2
+                    restore_failed=1
+                fi
+            fi
+        else
+            # Nothing to remove; fine.
+            echo "  $RELEASE_DST was not present (already cleaned up)"
+        fi
     fi
 
     # Step 3: validate the restored Caddyfile.
@@ -231,6 +292,43 @@ do_restore() {
     else
         echo "  RESTORE FAILED: restored Caddyfile does not validate" >&2
         restore_failed=1
+    fi
+
+    # Step 3b: file-set + sha256 verification of the restored release tree.
+    # REPLACEMENT case: the restored $RELEASE_DST must match the snapshot's
+    # file-set (exact-set + every-file sha256).
+    # FIRST-INSTALL case: $RELEASE_DST must not exist.
+    if (( RELEASE_PRIOR_EXISTED )); then
+        if [[ -d "$RELEASE_DST" ]] && [[ -f "$SNAPSHOT_DIR/RELEASE_TREE_BACKUP.MANIFEST.txt" ]]; then
+            # Snapshot file set
+            snapshot_files=$(awk '/^[a-f0-9]/{print $2}' "$SNAPSHOT_DIR/RELEASE_TREE_BACKUP.MANIFEST.txt" | sort -u)
+            # Restored file set
+            restored_files=$( ( cd "$RELEASE_DST" && find . -type f ) | sed 's|^./||' | sort -u )
+            if [[ "$snapshot_files" != "$restored_files" ]]; then
+                echo "  RESTORE FAILED: restored release file-set does not match snapshot" >&2
+                echo "    snapshot ($(echo "$snapshot_files" | wc -l) files)" >&2
+                echo "    restored ($(echo "$restored_files" | wc -l) files)" >&2
+                restore_failed=1
+            else
+                echo "  auto-restore step 3b/5: restored release matches prior file set ($(echo "$snapshot_files" | wc -l) files)"
+                # Sha256 verification of every file (most expensive check)
+                sha_mismatch=0
+                while IFS= read -r rel; do
+                    [[ -z "$rel" ]] && continue
+                    actual=$(sha256sum "$RELEASE_DST/$rel" | cut -d' ' -f1)
+                    expected=$(awk -v r="$rel" '$2 == r {print $1}' "$SNAPSHOT_DIR/RELEASE_TREE_BACKUP.MANIFEST.txt" | head -1)
+                    if [[ "$actual" != "$expected" ]]; then
+                        echo "  RESTORE FAILED: sha256 mismatch for $rel (got $actual, want $expected)" >&2
+                        sha_mismatch=1
+                    fi
+                done <<< "$snapshot_files"
+                if (( sha_mismatch )); then
+                    restore_failed=1
+                else
+                    echo "  auto-restore step 3b/5: restored release sha256 verified for every file"
+                fi
+            fi
+        fi
     fi
 
     # Step 4: verify the restored Caddyfile's sha256 matches the snapshot's.
@@ -422,6 +520,18 @@ echo "================================================================"
 echo "G3: stage release files (full manifest verify)"
 echo "================================================================"
 
+# Record whether RELEASE_DST existed BEFORE publication (REPLACEMENT vs FIRST).
+# This is critical for do_restore: on first-install failure the freshly
+# published release must be removed; on replacement failure the prior
+# release (which was renamed aside as $RELEASE_BACKED_UP) must be restored.
+if [[ -d "$RELEASE_DST" ]]; then
+    RELEASE_PRIOR_EXISTED=1
+    echo "G3: $RELEASE_DST already existed -- REPLACEMENT mode (prior release will be renamed aside)"
+else
+    RELEASE_PRIOR_EXISTED=0
+    echo "G3: $RELEASE_DST did not exist -- FIRST-INSTALL mode (no prior release to back up)"
+fi
+
 # Counters live in a sibling file outside $STAGING_DIR so the published
 # release never contains the sentinel.
 STAGING_DIR="$RELEASE_DST.staging.$$"
@@ -480,22 +590,45 @@ if [[ -n "$missing_in_stage" ]]; then
 fi
 echo "G3: staged tree exactly matches manifest (excluding Caddyfile.dewata.proposed)"
 
-# Atomic publish: rename staging -> release.
-#   1. Move the OLD release to a sibling backup (without deleting it)
-#      so we can recover if anything goes wrong later.
-#   2. Move the staging directory to the release target atomically.
-#   3. After publish, run the same exact-set comparison on the
-#      published tree.
-if [[ -d "$RELEASE_DST" ]]; then
+# Atomic publish:
+#   REPLACEMENT (RELEASE_PRIOR_EXISTED=1):
+#     1a. Move the OLD release to a SIBLING backup (without deleting it) so
+#         we can recover if anything goes wrong later.
+#     2a. Move staging into RELEASE_DST atomically.
+#     3a. The $BACKUP_PATH is preserved for do_restore (replacement case).
+#   FIRST-INSTALL (RELEASE_PRIOR_EXISTED=0):
+#     1b. NO prior release to back up.
+#     2b. Move staging into RELEASE_DST atomically.
+#     3b. do_restore will DELETE the freshly-published release on failure.
+if (( RELEASE_PRIOR_EXISTED )); then
     BACKUP_PATH="$RELEASE_DST.bak.$(date -u +%Y%m%dT%H%M%SZ)"
-    echo "G3: pre-existing $RELEASE_DST found; preserving as $BACKUP_PATH"
+    echo "G3: REPLACEMENT mode: renaming prior $RELEASE_DST aside to $BACKUP_PATH"
     if ! mv "$RELEASE_DST" "$BACKUP_PATH"; then
         echo "FATAL: could not move $RELEASE_DST aside before publish" >&2
         do_restore "backup move failed"
     fi
-    echo "G3: backup secured at $BACKUP_PATH"
-    RELEASE_BACKED_UP="$BACKUP_PATH"
+    echo "G3: REPLACEMENT mode: prior release secured at $BACKUP_PATH"
+    RELEASE_PRIOR_BACKUP="$BACKUP_PATH"
+
+    # Also capture a manifest of the prior release's file set so rollback
+    # can verify exact-set equality when restoring on the rollback path.
+    ( cd "$BACKUP_PATH" && find . -type f | sed 's|^./||' | sort ) | while IFS= read -r rel; do
+        [[ -z "$rel" ]] && continue
+        sum=$(sha256sum "$BACKUP_PATH/$rel" | cut -d' ' -f1)
+        printf "%s  %s\n" "$sum" "$rel"
+    done > "$SNAPSHOT_DIR/RELEASE_TREE_BACKUP.MANIFEST.txt"
+
+    # Mirror the prior release's file set into the snapshot so the
+    # rollback can recreate it byte-for-byte even if $BACKUP_PATH
+    # were later moved or removed by an external process.
+    mkdir -p "$SNAPSHOT_DIR/RELEASE_TREE_BACKUP"
+    ( cd "$BACKUP_PATH" && find . -type f | sed 's|^./||' | tar -cf - -T - ) | ( cd "$SNAPSHOT_DIR/RELEASE_TREE_BACKUP" && tar -xf - )
+    echo "G3: REPLACEMENT mode: prior release mirrored into $SNAPSHOT_DIR/RELEASE_TREE_BACKUP/"
+else
+    echo "G3: FIRST-INSTALL mode: no prior release to back up; do_restore will delete on failure"
 fi
+
+# Move staging into the live location.
 if ! mv "$STAGING_DIR" "$RELEASE_DST"; then
     echo "FATAL: atomic publish failed (mv $STAGING_DIR -> $RELEASE_DST)" >&2
     do_restore "atomic publish failed"
@@ -596,6 +729,15 @@ if [[ "$POST_INSTALL_PROD_SHA" == "$PRE_INSTALL_PROD_SHA" ]]; then
     echo "G6: $DEWATA_CADDY_SERVICE MainPID unchanged: $OLD_PID"
 else
     echo "G6: candidate caddyfile differs from production (was $PRE_INSTALL_PROD_SHA, now $POST_INSTALL_PROD_SHA); restart decision pending"
+    # Restart decision tree:
+    #   APPLY_PROD=1 + IS_PROD_PATH=1   -> real systemctl restart (production).
+    #   DISPOSABLE=1 + DEWATA_DISPOSABLE_SERVICE_MODE=restart -> invoke the
+    #       configured shim's restart command.  The shim is what the test
+    #       controls; the assertion is that the test invoked the shim.
+    #   DISPOSABLE=1 + DEWATA_DISPOSABLE_SERVICE_MODE=no-restart -> skip
+    #       restart (legacy behavior; only valid for tests that explicitly
+    #       want to bypass the restart).
+    #   any other combination of flags -> FATAL.
     if [[ "$APPLY_PROD" == "1" && "$IS_PROD_PATH" -eq 1 ]]; then
         OLD_PID=$(${SYSTEMCTL_CMD:-systemctl} show "$DEWATA_CADDY_SERVICE" -p MainPID --value)
         echo "G6: pre-restart $DEWATA_CADDY_SERVICE MainPID=$OLD_PID"
@@ -616,26 +758,58 @@ else
             NEW_PID=$(${SYSTEMCTL_CMD:-systemctl} show "$DEWATA_CADDY_SERVICE" -p MainPID --value)
             echo "G6: post-restart $DEWATA_CADDY_SERVICE MainPID=$NEW_PID"
         fi
-    elif [[ "$DISPOSABLE" == "1" ]]; then
+    elif [[ "$DISPOSABLE" == "1" && "$DEWATA_DISPOSABLE_SERVICE_MODE" == "restart" ]]; then
+        # New behavior: invoke restart through the configured shim.
+        OLD_PID=$(${SYSTEMCTL_CMD:-systemctl} show "$DEWATA_CADDY_SERVICE" -p MainPID --value 2>/dev/null || echo 0)
+        echo "G6: pre-restart $DEWATA_CADDY_SERVICE MainPID=$OLD_PID"
+        if [[ "${DEWATA_FAKE_RESTART_FAILURE:-0}" == "1" ]]; then
+            echo "G6: DEWATA_FAKE_RESTART_FAILURE=1 -> shim sees restart failure"
+            ${SYSTEMCTL_CMD:-systemctl} restart "$DEWATA_CADDY_SERVICE" || true
+            RESTART_INVOKED=1
+            NEW_PID=$(${SYSTEMCTL_CMD:-systemctl} show "$DEWATA_CADDY_SERVICE" -p MainPID --value)
+            echo "G6: post-restart $DEWATA_CADDY_SERVICE MainPID=$NEW_PID"
+        else
+            ${SYSTEMCTL_CMD:-systemctl} restart "$DEWATA_CADDY_SERVICE"
+            RESTART_INVOKED=1
+            NEW_PID=$(${SYSTEMCTL_CMD:-systemctl} show "$DEWATA_CADDY_SERVICE" -p MainPID --value)
+            echo "G6: post-restart $DEWATA_CADDY_SERVICE MainPID=$NEW_PID"
+            # Listener check (disposable mode + restart mode also gets the listener check,
+            # since the assertion is that the shim's restart produced a usable PID).
+            # The shim's PIDFILE is the source of truth here; the listener (port 18443)
+            # is checked by the lifecycle driver which launches an actual disposable caddy.
+        fi
+    elif [[ "$DISPOSABLE" == "1" && "$DEWATA_DISPOSABLE_SERVICE_MODE" == "no-restart" ]]; then
+        # Legacy behavior: explicitly skip restart in disposable mode.
         OLD_PID=$(${SYSTEMCTL_CMD:-systemctl} show "$DEWATA_CADDY_SERVICE" -p MainPID --value 2>/dev/null || echo 0)
         NEW_PID=0
         RESTART_INVOKED=0
-        echo "G6: DEWATA_DISPOSABLE_MODE=1 -> skipping ${SYSTEMCTL_CMD:-systemctl} restart (driver will take over)"
+        echo "G6: DISPOSABLE+no-restart -> skipping ${SYSTEMCTL_CMD:-systemctl} restart (driver will take over)"
         echo "G6: pre-restart $DEWATA_CADDY_SERVICE MainPID=$OLD_PID"
         echo "G6: post-restart $DEWATA_CADDY_SERVICE MainPID=$NEW_PID (driver will take over)"
     else
-        echo "FATAL: restart requested but DEWATA_APPLY_PRODUCTION=1 not set" >&2
+        echo "FATAL: restart requested but no valid mode combination (APPLY_PROD=$APPLY_PROD IS_PROD_PATH=$IS_PROD_PATH DISPOSABLE=$DISPOSABLE SERVICE_MODE=$DEWATA_DISPOSABLE_SERVICE_MODE)" >&2
         exit 6
     fi
 fi
 
-# Post-restart listener check (production mode AND only against a
-# known production path).
-if [[ "$APPLY_PROD" == "1" && "$IS_PROD_PATH" -eq 1 ]]; then
-    ss -ltn | grep -q ":$LISTENER_PORT " && echo "G6: :$LISTENER_PORT listening" || {
-        echo "FATAL: :$LISTENER_PORT not listening after restart"
-        do_restore "post-restart listener check"
-    }
+# Post-restart listener check.
+#   APPLY_PROD=1 + IS_PROD_PATH=1                       -> real ss probe on production port.
+#   DISPOSABLE=1 + DEWATA_DISPOSABLE_SERVICE_MODE=restart -> probe the disposable port.
+#   DISPOSABLE=1 + DEWATA_DISPOSABLE_SERVICE_MODE=no-restart -> skip.
+if [[ "$APPLY_PROD" == "1" && "$IS_PROD_PATH" -eq 1 ]] \
+   || [[ "$DISPOSABLE" == "1" && "$DEWATA_DISPOSABLE_SERVICE_MODE" == "restart" ]]; then
+    # Look for the listener on $LISTENER_PORT.  In disposable-restart mode
+    # the listener is a real disposable caddy the lifecycle driver launches;
+    # the installer's invocation should NOT cause a real ss probe unless
+    # DEWATA_PROBE_LISTENER=1 is explicitly set.
+    if [[ "${DEWATA_PROBE_LISTENER:-1}" == "1" ]]; then
+        ss -ltn 2>/dev/null | grep -q ":$LISTENER_PORT " && echo "G6: :$LISTENER_PORT listening" || {
+            echo "FATAL: :$LISTENER_PORT not listening after restart"
+            do_restore "post-restart listener check"
+        }
+    else
+        echo "G6: skipping post-restart listener probe (DEWATA_PROBE_LISTENER=$DEWATA_PROBE_LISTENER)"
+    fi
 fi
 
 # Failure-injection hook: simulate a post-G6 failure even in
