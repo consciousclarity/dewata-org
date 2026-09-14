@@ -10,10 +10,24 @@ cultural_review_note: |
 computed:
   - "engine: dewata spatial protocol (DSP) v0.1"
   - "ruleset: pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0"
-  - "calendar api: api.dewata.org/dsp/v0.1/calendar/date/{YYYY-MM-DD}"
   - "no real cultural records ingested"
   - "no banjar or pura onboarded"
   - "no customary sign-off recorded"
+links:
+  - label_ban: "kalender api: aturan v0.1"
+    label_id: "kalender api: ruleset v0.1"
+    label_en: "calendar api: ruleset v0.1"
+    href: "https://api.dewata.org/dsp/v0.1/calendar/ruleset"
+    caption_ban: "tata cara kalender sane aktif"
+    caption_id: "ruleset kalender yang aktif"
+    caption_en: "the active calendar ruleset"
+  - label_ban: "kalender api: tanggal sane khusus"
+    label_id: "kalender api: tanggal tertentu"
+    label_en: "calendar api: a specific date"
+    href: "https://api.dewata.org/dsp/v0.1/calendar/date/2026-09-14"
+    caption_ban: "conto URL antuk tanggal 2026-09-14"
+    caption_id: "contoh URL untuk tanggal 2026-09-14"
+    caption_en: "example URL for the date 2026-09-14"
 registered:
   - "system actor only: dewata-admin (placeholder)"
 predicted:

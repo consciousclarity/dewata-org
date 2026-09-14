@@ -24,7 +24,7 @@
     # HTTP/2 to this origin over its private backbone.  we accept
     # plaintext on :8443 and route to specific vhosts.
     log {
-        output file /opt/dewata.online/deploy/logs/caddy-private.log {
+        output file {$DEWATA_LOG_FILE:/opt/dewata.online/deploy/logs/caddy-private.log} {
             roll_size 50mb
             roll_keep 3
         }
@@ -40,7 +40,7 @@
     @apex host dewata.org
 
     handle @apex {
-        root * /opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1
+        root * {$DEWATA_RELEASE_ROOT:/opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1}
         encode gzip zstd
         file_server
     }

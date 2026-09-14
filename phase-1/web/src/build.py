@@ -1,17 +1,5 @@
 from __future__ import annotations
 
-import re
-
-"""build the Balinese Cultural Index static site.
-
-usage:
-    python -m web.build [--src phase-1/web/src] [--out phase-1/web/dist]
-
-produces a fully static, no-build-no-JS bundle of HTML pages with
-text substituted from the i18n bundles (Balinese primary, with
-Indonesian and English fallbacks).
-"""
-
 import argparse
 import json
 import re
@@ -19,12 +7,11 @@ import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 
 @dataclass
 class LocaleString:
-    bal: str
+    ban: str
     id: str
     en: str
 
@@ -34,28 +21,34 @@ class PageSpec:
     slug: str
     template: str
     title_key: str
-    body_keys: tuple[str, ...] = ()
-    labels: tuple[str, ...] = ()
-
-
-_LOADER_TXT = """\
-loading Balinese content…
-"""
 
 
 def _load_locale(locale_dir: Path) -> dict[str, LocaleString]:
-    """parse `*.json` per locale into a dict keyed by i18n key."""
+    """parse `*.json` per locale into a dict keyed by i18n key.
+
+    We support the canonical ISO 639-2 codes: ban (Balinese), id
+    (Indonesian), en (English).  Older files that used `bal` are
+    tolerated by mapping them to `ban`."""
     out: dict[str, LocaleString] = {}
     files = sorted(locale_dir.glob("*.json"))
-    bal_data = json.loads((files[0]).read_text(encoding="utf-8")) if files else {}
-    for f in files[1:]:
-        en_data = json.loads(f.read_text(encoding="utf-8"))
-        for key in en_data:
-            out[key] = LocaleString(
-                bal=bal_data.get(key, key),
-                id=bal_data.get(key, key) if f.stem == "id" else bal_data.get(key, key),
-                en=en_data[key],
-            )
+    # Normalize bal -> ban
+    by_lang = {}
+    for f in files:
+        lang = f.stem
+        if lang == "bal":
+            lang = "ban"
+        by_lang[lang] = json.loads(f.read_text(encoding="utf-8"))
+    ban_data = by_lang.get("ban", {})
+    id_data = by_lang.get("id", {})
+    en_data = by_lang.get("en", {})
+    # union of all keys
+    keys = set(ban_data) | set(id_data) | set(en_data)
+    for key in keys:
+        out[key] = LocaleString(
+            ban=ban_data.get(key, id_data.get(key, en_data.get(key, key))),
+            id=id_data.get(key, ban_data.get(key, en_data.get(key, key))),
+            en=en_data.get(key, ban_data.get(key, id_data.get(key, key))),
+        )
     return out
 
 
@@ -64,8 +57,6 @@ def _render_template(tpl_path: Path, ctx: dict[str, object]) -> str:
     conditional blocks.  no loops, no expressions — keep it minimal.
     """
     text = tpl_path.read_text(encoding="utf-8")
-    # resolve {% if key %}…{% endif %} blocks first.  we re-scan after each
-    # substitution because replacements may grow/shrink the string.
     while True:
         m = re.search(r"\{% if ([a-zA-Z_][\w\.]*) %\}(.*?)\{% endif %\}", text, re.DOTALL)
         if not m:
@@ -74,25 +65,64 @@ def _render_template(tpl_path: Path, ctx: dict[str, object]) -> str:
         block = m.group(2)
         cond = bool(ctx.get(key, False))
         text = text[: m.start()] + (block if cond else "") + text[m.end():]
-    # substitute {{var}} placeholders (only known keys, to keep regression low).
     for key, val in ctx.items():
         text = text.replace("{{" + key + "}}", "" if val is None else str(val))
     return text
 
 
+def _chrome_for_locale(locales: dict[str, LocaleString], lang: str) -> dict[str, str]:
+    """build the chrome dict for a given target language (ban/id/en).
+
+    chrome_keys use the same flat naming as before (the template expects
+    e.g. {{brand}}, {{nav_home}}, etc.)."""
+    chrome_keys = [
+        ("chrome.brand", "brand"),
+        ("chrome.meta.description", "meta_description"),
+        ("chrome.nav.home", "nav_home"),
+        ("chrome.nav.calendar", "nav_calendar"),
+        ("chrome.nav.about", "nav_about"),
+        ("chrome.nav.transparency", "nav_transparency"),
+        ("chrome.lang.label", "lang_label"),
+        ("chrome.lang.ban", "lang_ban"),
+        ("chrome.lang.id", "lang_id"),
+        ("chrome.lang.en", "lang_en"),
+        ("chrome.provenance.label", "provenance_label"),
+        ("chrome.provenance.computed", "provenance_computed"),
+        ("chrome.provenance.registered", "provenance_registered"),
+        ("chrome.provenance.predicted", "provenance_predicted"),
+        ("chrome.provenance.verified", "provenance_verified"),
+        ("chrome.footer.lang", "footer_lang"),
+        ("chrome.footer.policy", "footer_policy"),
+        ("chrome.footer.negatives", "footer_negatives"),
+        ("chrome.footer.about", "footer_about"),
+        ("chrome.footer.transparency", "footer_transparency"),
+    ]
+    out = {}
+    for src_key, dst_key in chrome_keys:
+        ls = locales.get(src_key, LocaleString("", "", ""))
+        out[dst_key] = getattr(ls, lang) or ""
+    return out
+
+
+def _label_for_page(locales: dict[str, LocaleString], lang: str, page_title_key: str) -> str:
+    ls = locales.get(page_title_key, LocaleString("", "", ""))
+    return getattr(ls, lang) or page_title_key
+
+
 def build(src: Path, out: Path) -> int:
     out.mkdir(parents=True, exist_ok=True)
-    # 1) locales
     locale_dir = src / "locales"
     locales = _load_locale(locale_dir)
+
+    # write per-key JSON bundles (ban/id/en) for any runtime fetch
     out_locales = out / "assets" / "locales"
     out_locales.mkdir(parents=True, exist_ok=True)
     for key, ls in locales.items():
         out_locales.joinpath(f"{key}.json").write_text(
-            json.dumps({"bal": ls.bal, "id": ls.id, "en": ls.en}, ensure_ascii=False, indent=2),
+            json.dumps({"ban": ls.ban, "id": ls.id, "en": ls.en}, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-    # 2) pages
+
     pages_dir = src / "pages"
     built = 0
     if pages_dir.exists():
@@ -107,56 +137,53 @@ def build(src: Path, out: Path) -> int:
             registered = spec_dict.get("registered", [])
             predictions = spec_dict.get("predictions", [])
             verified = spec_dict.get("verified", [])
-            # chrome strings get the balinese version primarily
-            chrome_keys = [
-                "chrome.brand",
-                "chrome.meta.description",
-                "chrome.nav.home",
-                "chrome.lang.label",
-                "chrome.lang.bal",
-                "chrome.lang.id",
-                "chrome.lang.en",
-                "chrome.provenance.label",
-                "chrome.provenance.computed",
-                "chrome.provenance.registered",
-                "chrome.provenance.predicted",
-                "chrome.provenance.verified",
-                "chrome.footer.lang",
-                "chrome.footer.policy",
-                "chrome.footer.negatives",
-                "chrome.footer.about",
-                "chrome.footer.transparency",
-            ]
-            chrome = {}
-            for ck in chrome_keys:
-                # strip "chrome." prefix and surface just the leaf name
-                name = ck.split(".", 1)[1]   # ["chrome", "name"]
-                ls = locales.get(ck, LocaleString("", "", ""))
-                # for nested keys like "chrome.footer.lang" the second
-                # split produces ["footer", "lang"]; the template uses
-                # {{footer_lang}} so we join with underscore.
-                name = name.replace(".", "_")
-                chrome[name] = ls.bal
-            # status banners for scaffold pages
             ud_note = spec_dict.get("under_development_note", "").strip()
             cr_note = spec_dict.get("cultural_review_note", "").strip()
-            ctx = {
-                "title": _p(locales.get(title_key, LocaleString("", "", "")).bal, title_key),
-                "label": label,
-                "computed_list": "\n".join(f"<li>{i18n_or(i, locales)}</li>" for i in computed),
-                "registered_list": "\n".join(f"<li>{i18n_or(i, locales)}</li>" for i in registered),
-                "predictions_list": "\n".join(f"<li>{i18n_or(i, locales)}</li>" for i in predictions),
-                "verified_list": "\n".join(f"<li>{i18n_or(i, locales)}</li>" for i in verified),
-                "under_development": bool(spec_dict.get("under_development", False)),
-                "cultural_review_pending": bool(spec_dict.get("cultural_review_pending", False)),
-                "under_development_note": ud_note.replace("\n", "<br>") if ud_note else "",
-                "cultural_review_note": cr_note.replace("\n", "<br>") if cr_note else "",
-                **chrome,
-            }
-            html = _render_template(src / "templates" / template, ctx)
-            out.joinpath(f"{slug}.html").write_text(html, encoding="utf-8")
-            built += 1
-    # 3) assets (skip .gitkeep placeholders)
+            under_dev = bool(spec_dict.get("under_development", False))
+            cr_pending = bool(spec_dict.get("cultural_review_pending", False))
+            links = spec_dict.get("links", [])
+
+            # emit one HTML per (slug, language).  the language code is
+            # embedded in the lang attribute and in the file name.
+            for lang in ("ban", "id", "en"):
+                chrome = _chrome_for_locale(locales, lang)
+                ctx = {
+                    "title": _label_for_page(locales, lang, title_key),
+                    "label": label,
+                    "lang": lang,
+                    "computed_list": "\n".join(
+                        f"<li>{_i18n_item(i, locales, lang)}</li>" for i in computed
+                    ),
+                    "registered_list": "\n".join(
+                        f"<li>{_i18n_item(i, locales, lang)}</li>" for i in registered
+                    ),
+                    "predictions_list": "\n".join(
+                        f"<li>{_i18n_item(i, locales, lang)}</li>" for i in predictions
+                    ),
+                    "verified_list": "\n".join(
+                        f"<li>{_i18n_item(i, locales, lang)}</li>" for i in verified
+                    ),
+                    "under_development": under_dev,
+                    "cultural_review_pending": cr_pending,
+                    "under_development_note": ud_note.replace("\n", "<br>") if ud_note else "",
+                    "cultural_review_note": cr_note.replace("\n", "<br>") if cr_note else "",
+                    "links_html": _render_links(links, lang),
+                    "lang_nav": _lang_nav(locales, lang),
+                    **chrome,
+                }
+                html = _render_template(src / "templates" / template, ctx)
+                out.joinpath(f"{slug}.{lang}.html").write_text(html, encoding="utf-8")
+                built += 1
+
+    # emit the default (ban) page at the canonical URL for each slug
+    # so visiting /index.html gets the Basa Bali version by default.
+    for page_file in sorted(pages_dir.glob("*.yaml")):
+        slug = page_file.stem
+        ban_path = out / f"{slug}.ban.html"
+        if ban_path.exists():
+            (out / f"{slug}.html").write_text(ban_path.read_text(encoding="utf-8"), encoding="utf-8")
+
+    # assets (skip .gitkeep placeholders)
     assets = src / "assets"
     if assets.exists():
         for asset in assets.rglob("*"):
@@ -167,34 +194,52 @@ def build(src: Path, out: Path) -> int:
             target = out / "assets" / asset.relative_to(assets)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(asset, target)
-    # 4) copy bundled locales into out/assets too (for runtime fetch)
-    if locales:
-        for key, ls in locales.items():
-            out.joinpath("assets", "locales", f"{key}.json").write_text(
-                json.dumps({"bal": ls.bal, "id": ls.id, "en": ls.en}, ensure_ascii=False),
-                encoding="utf-8",
-            )
+
     return built
 
 
-def i18n_or(item: object, locales: dict[str, LocaleString]) -> str:
-    """resolve a content item to its balinese string, fallback english.
+def _lang_nav(locales: dict[str, LocaleString], current: str) -> str:
+    """render the i18n nav for the current language.
 
-    `item` may be a plain string, or a dict {"bal":..., "id":..., "en":...},
-    or a `key` referencing the locale bundle.
-    """
+    Each link goes to a real per-language page URL (not a query param).
+    The current language link gets aria-current=page and is rendered as
+    a non-link span."""
+    out = []
+    for code, label_key in (("ban", "chrome.lang.ban"), ("id", "chrome.lang.id"), ("en", "chrome.lang.en")):
+        ls = locales.get(label_key, LocaleString("", "", ""))
+        label = getattr(ls, code, code)
+        if code == current:
+            out.append(f'<span class="lang-current" aria-current="page">{label}</span>')
+        else:
+            out.append(f'<a href="/index.{code}.html" rel="alternate" hreflang="{code}">{label}</a>')
+    return "\n".join(out)
+
+
+def _render_links(links: list, lang: str) -> str:
+    """render a list of {label_<lang>, href, caption_<lang>} entries as an HTML UL."""
+    if not links:
+        return ""
+    out = []
+    for link in links:
+        label = link.get(f"label_{lang}", link.get("label", ""))
+        href = link.get("href", "")
+        caption = link.get(f"caption_{lang}", "")
+        if not label or not href:
+            continue
+        out.append(f'<li><a href="{href}">{label}</a>{" — " + caption if caption else ""}</li>')
+    return "\n".join(out)
+
+
+def _i18n_item(item: object, locales: dict[str, LocaleString], lang: str) -> str:
     if isinstance(item, str):
-        return locales.get(item, LocaleString(item, item, item)).bal or item
+        ls = locales.get(item, LocaleString(item, item, item))
+        return getattr(ls, lang) or item
     if isinstance(item, dict):
-        if "bal" in item:
-            return str(item["bal"])
-        if "en" in item:
-            return str(item["en"])
+        if lang in item:
+            return str(item[lang])
+        if "ban" in item:
+            return str(item["ban"])
     return str(item)
-
-
-def _p(text: str, fallback: str) -> str:
-    return text or fallback
 
 
 def main(argv: list[str] | None = None) -> int:

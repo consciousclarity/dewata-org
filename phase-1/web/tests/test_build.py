@@ -45,10 +45,16 @@ class TestWebBuild:
     def test_build_emits_expected_pages(self, dist_dir):
         from pathlib import Path
         n = _build(dist_dir)
-        assert n == 4
-        expected = ["index.html", "calendar.html", "transparency.html", "about.html"]
-        for f in expected:
-            assert (dist_dir / f).is_file(), f"missing {f}"
+        # 4 pages * 3 languages (ban/id/en) + 4 default-alias pages (one per slug)
+        assert n == 16, f"expected 16 html files, got {n}"
+        # default-alias pages (Balinese primary)
+        for slug in ("index", "calendar", "transparency", "about"):
+            assert (dist_dir / f"{slug}.html").is_file(), f"missing {slug}.html"
+        # per-locale variants
+        for lang in ("ban", "id", "en"):
+            for slug in ("index", "calendar", "transparency", "about"):
+                assert (dist_dir / f"{slug}.{lang}.html").is_file(), \
+                    f"missing {slug}.{lang}.html"
 
     def test_build_emits_css(self, dist_dir):
         _build(dist_dir)
@@ -64,7 +70,8 @@ class TestWebBuild:
         # each file is bal+id+en
         for fp in files[:3]:
             data = json.loads(fp.read_text(encoding="utf-8"))
-            assert "bal" in data and "id" in data and "en" in data
+            assert "ban" in data and "id" in data and "en" in data, \
+                f"locale {fp.name} missing ban/id/en keys"
 
     def test_html_pages_have_no_template_placeholders(self, dist_dir):
         """the rendered html must not contain leftover `{{...}}` tokens."""
@@ -109,8 +116,9 @@ class TestWebBuild:
     def test_i18n_keys_balinese_primary(self, dist_dir):
         """the balinese bundle has at least 5 keys."""
         _build(dist_dir)
-        bal = json.loads((WEB_SRC / "locales/bal.json").read_text(encoding="utf-8"))
-        assert len(bal) >= 5, "balinese locale must have at least 5 keys"
+        # the balinese locale file is named ban.json (ISO 639-2 canonical code)
+        ban = json.loads((WEB_SRC / "locales/ban.json").read_text(encoding="utf-8"))
+        assert len(ban) >= 5, "balinese locale must have at least 5 keys"
         # english + balinese have matching key sets
         en = json.loads((WEB_SRC / "locales/en.json").read_text(encoding="utf-8"))
-        assert set(en) == set(bal), "en vs bal key set must match"
+        assert set(en) == set(ban), "en vs ban key set must match"

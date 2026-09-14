@@ -1,1 +1,5 @@
-{"bal": "diproduksi olih mesin", "id": "diproduksi olih mesin", "en": "dihasilkan oleh mesin"}
+{
+  "ban": "diproduksi olih mesin",
+  "id": "dihasilkan oleh mesin",
+  "en": "engine-generated"
+}

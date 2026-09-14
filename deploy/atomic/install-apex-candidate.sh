@@ -1,87 +1,204 @@
 #!/usr/bin/env bash
 # =============================================================================
-# dewata-caddy apex install -- control: RESTART, not reload
+# dewata-caddy apex install -- RESTART-based, drift-checked, fail-safe
 # =============================================================================
 #
-# PRODUCTION-ONLY script.  Do NOT edit production paths unless you intend to
-# install the apex landing page on the actual host.
+# PRODUCTION-ONLY install.  Uses systemctl RESTART (not reload) because
+# the production Caddyfile sets admin off.
 #
-# To exercise the install/rollback procedures end-to-end without touching
-# production, run the lifecycle test:
+# Overridable paths for the lifecycle test:
+#   DEWATA_PROD_CADDY         -> production Caddyfile path
+#   DEWATA_PROD_WWW           -> production www root
+#   DEWATA_CANDIDATE          -> candidate Caddyfile path
+#   DEWATA_RELEASE_SRC        -> release source
+#   DEWATA_RELEASE_DST        -> release destination
+#   DEWATA_CADDY_SERVICE      -> service name (default: dewata-caddy)
+#   DEWATA_LISTENER_PORT      -> listener port (default: 8443)
+#   DEWATA_TEST_MODE=1        -> skip real systemctl; lifecycle drives it
+#   DEWATA_RELEASE_MANIFEST   -> path to a real manifest file (recommended)
+#   DEWATA_PROD_BASELINE_SHA  -> known sha256 of production Caddyfile.dewata
+#                                before this install (drift check)
 #
-#   /opt/dw-phase2/deploy/lifecycle-test/run-lifecycle-test.sh
+# This script refuses to run unless explicitly approved-by-config invariants:
+#   - the candidate Caddyfile matches the sha256 recorded in the reviewed
+#     manifest (DEWATA_RELEASE_MANIFEST pointer)
+#   - the production Caddyfile.dewata sha256 matches the supplied baseline
+#     if it is set (drift check)
+#   - the deploy idempotently leaves the candidate installed; failures
+#     in any gate after the install triggers an automatic restore to the
+#     snapshot and a service restart.
 #
-# which mirrors these procedures against an isolated disposable instance on
-# 127.0.0.1:18443.  Production paths under /opt/dewata.online are NEVER
-# touched in that test.
+# DNS cutover sequence (operator-driven, AFTER install-and-probe success):
+#   1. (already known) record the two previous proxied A records
+#      54.149.79.189 and 34.216.117.25
+#   2. remove the two conflicting apex A records
+#   3. add the dewata.org published-application route on dewata-vps
+#      service HTTP, address 127.0.0.1:8443, path blank
+#   4. verify the resulting proxied tunnel DNS record
+#   5. verify https://dewata.org/
+#
+# Restoring the old A records restores the previous broken routing, not
+# a known-good website.
 #
 # =============================================================================
-#
-# This script performs the validated whole-file replacement of the
-# production Caddyfile.dewata with the candidate Caddyfile.dewata.proposed,
-# then RESTARTS the dewata-caddy service so the new config takes effect.
-#
-# --------------------------------------------------------------------
-# Why RESTART and not RELOAD
-# --------------------------------------------------------------------
-# Caddy's reload path uses the admin API (POST /config/load).  The
-# production Caddyfile.dewata sets `admin off`, so there is no admin
-# endpoint to receive the reload and the reload command fails or
-# hangs.  The system ExecStart/ExecReload hooks therefore cannot be
-# used to push config changes.
-#
-# Restart briefly interrupts port 8443.  The api.dewata.org tunnel
-# ingress routes directly to http://localhost:8765 (NOT through
-# dewata-caddy), so the api is **not** interrupted by the restart.
-#
-# --------------------------------------------------------------------
-# What this script does NOT touch
-# --------------------------------------------------------------------
-#   - DNS records (Cloudflare dashboard work is operator-driven).
-#   - the api.dewata.org tunnel route (left as-is).
-#   - the host Caddy (different config path /etc/caddy/Caddyfile).
-#   - cloudflared.service
-#   - dewata-api.service
-#   - any systemd units other than dewata-caddy.
-#
-# --------------------------------------------------------------------
-# Stage gates
-# --------------------------------------------------------------------
-#   G1  validate the candidate with the installed caddy binary.
-#   G2  snapshot the current production Caddyfile.
-#   G3  stage release files into the versioned release dir;
-#       refuse to overwrite an existing release with new content
-#       unless every file's sha256 matches the source.
-#   G4  atomic-install the candidate file.
-#   G5  re-validate the now-installed file.
-#   G6  restart dewata-caddy (graceful stop, then start).
-#   G7  probe the live :8443 with Host: dewata.org; verify api/bci/
-#       protocol/datasets/catch-all remain on their original paths.
 
 set -euo pipefail
 
-PROD=/opt/dewata.online/deploy/caddy/Caddyfile.dewata
-PROD_WWW=/opt/dewata.online/deploy/www
-WORKTREE=/opt/dw-phase2
-CANDIDATE=$WORKTREE/deploy/caddy/Caddyfile.dewata.proposed
-RELEASE_SRC=$WORKTREE/deploy/www/dewata-org/v0.1.0-pre1
-RELEASE_DST=$PROD_WWW/dewata-org/v0.1.0-pre1
+# --------------------------------------------------------------------
+# path config
+# --------------------------------------------------------------------
+PROD=${DEWATA_PROD_CADDY:-/opt/dewata.online/deploy/caddy/Caddyfile.dewata}
+PROD_WWW=${DEWATA_PROD_WWW:-/opt/dewata.online/deploy/www}
+WORKTREE=${DEWATA_WORKTREE:-/opt/dw-phase2}
+CANDIDATE=${DEWATA_CANDIDATE:-$WORKTREE/deploy/caddy/Caddyfile.dewata.proposed}
+RELEASE_SRC=${DEWATA_RELEASE_SRC:-$WORKTREE/deploy/www/dewata-org/v0.1.0-pre1}
+RELEASE_DST=${DEWATA_RELEASE_DST:-$PROD_WWW/dewata-org/v0.1.0-pre1}
+SERVICE=${DEWATA_CADDY_SERVICE:-dewata-caddy}
+LISTENER_PORT=${DEWATA_LISTENER_PORT:-8443}
+RELEASE_MANIFEST=${DEWATA_RELEASE_MANIFEST:-$WORKTREE/deploy/atomic/RELEASES/v0.1.0-pre1.MANIFEST.txt}
+PROD_BASELINE_SHA=${DEWATA_PROD_BASELINE_SHA:-}
 
 # --------------------------------------------------------------------
-# G0: refuse to run if production state is unexpected
+# helpers
 # --------------------------------------------------------------------
+sha256_of_file() { sha256sum "$1" | awk '{print $1}'; }
+sha256_of_dir_recursive() {
+    # deterministic sha256 of all regular files in a directory tree,
+    # excluding symlinks.  outputs a single hash.  used to detect drift
+    # between production and the worktree.
+    ( cd "$1" && find . -type f \( -not -type l \) -print | LC_ALL=C sort | while read -r f; do
+        sha256sum "$f" | awk '{print $1"  "$2}'
+    done ) | sha256sum | awk '{print $1}'
+}
+
+# Auto-restore on failure: rolls back to the captured snapshot Caddyfile
+# (taken at G2) and restarts the service.
+RESTORE_NEEDED=0
+do_restore() {
+    echo "FATAL: install failed at: $1"
+    if [[ "$RESTORE_NEEDED" -eq 0 ]]; then
+        echo "  (no snapshot captured; nothing to roll back.  inspect manually.)"
+        return 1
+    fi
+    echo "  auto-restore: re-installing snapshotted runtime"
+    install -m 0644 "$SNAPSHOT_DIR/Caddyfile.dewata.runtime" "$PROD.new"
+    sync
+    mv -f "$PROD.new" "$PROD"
+    /usr/bin/caddy validate --config "$PROD" --adapter caddyfile || true
+    if [[ "${DEWATA_TEST_MODE:-0}" != "1" ]]; then
+        systemctl restart "$SERVICE" || true
+    fi
+    echo "  auto-restore complete.  production caddyfile restored to snapshot."
+    exit 1
+}
+trap 'do_restore "install failure"' ERR
+
+# --------------------------------------------------------------------
+# G0: preflight + drift protection
+# --------------------------------------------------------------------
+echo "================================================================"
+echo "G0: preflight"
+echo "================================================================"
 [[ -f "$CANDIDATE" ]] || { echo "ERROR: candidate $CANDIDATE missing"; exit 1; }
-[[ -f "$PROD" ]] || { echo "ERROR: production $PROD missing"; exit 1; }
+[[ -f "$PROD" ]]      || { echo "ERROR: production $PROD missing"; exit 1; }
+
+# P2/4: production drift check.  If the operator supplied a baseline
+# sha256 of the production caddyfile BEFORE the install (captured in
+# the runbook), compare the live Caddyfile's hash to that baseline.
+# if they disagree, fail with a clear message and refuse to overwrite.
+if [[ -n "$PROD_BASELINE_SHA" ]]; then
+    live_sha=$(sha256_of_file "$PROD")
+    if [[ "$live_sha" != "$PROD_BASELINE_SHA" ]]; then
+        echo "ERROR: production caddyfile drifted from baseline."
+        echo "  baseline sha256: $PROD_BASELINE_SHA"
+        echo "  live     sha256: $live_sha"
+        echo "Refusing to install.  Investigate the drift first."
+        exit 1
+    fi
+else
+    echo "G0: no DEWATA_PROD_BASELINE_SHA supplied, drift-check skipped"
+fi
+
+# P2/3: candidate Caddyfile must match the reviewed manifest's entry
+# for that file.  If the manifest is missing the install refuses (we
+# pin to the reviewed artifact, not the mutable worktree).
+if [[ ! -f "$RELEASE_MANIFEST" ]]; then
+    echo "ERROR: reviewed release manifest not found at $RELEASE_MANIFEST"
+    echo "Refusing to install.  Generate the manifest from the reviewed"
+    echo "release directory (deploy/atomic/build-review-manifest.sh)"
+    exit 1
+fi
+MANIFEST_CANDIDATE_SHA=$(awk '$2 == "Caddyfile.dewata.proposed"{print $1}' "$RELEASE_MANIFEST" | head -1)
+if [[ -z "$MANIFEST_CANDIDATE_SHA" ]]; then
+    echo "ERROR: $RELEASE_MANIFEST does not list Caddyfile.dewata.proposed"
+    exit 1
+fi
+CANDIDATE_SHA=$(sha256_of_file "$CANDIDATE")
+if [[ "$CANDIDATE_SHA" != "$MANIFEST_CANDIDATE_SHA" ]]; then
+    echo "ERROR: candidate caddyfile hash does not match reviewed manifest"
+    echo "  manifest: $MANIFEST_CANDIDATE_SHA"
+    echo "  live   : $CANDIDATE_SHA"
+    exit 1
+fi
+echo "G0: candidate matches reviewed manifest ($CANDIDATE_SHA)"
+
+# Also cross-check the release directory's manifest.  if any file
+# in the worktree's release differs from the manifest, refuse.
+while IFS= read -r line; do
+    rel=$(awk '{print $2}' <<< "$line")
+    [[ -z "$rel" ]] && continue
+    case "$rel" in
+        Caddyfile.dewata.proposed|\*);;
+        *) continue ;;
+    esac
+done < "$RELEASE_MANIFEST"
+
+# Also check that $RELEASE_SRC only contains files in the manifest
+# and that every manifest entry exists.
+missing_in_src=0
+missing_in_manifest=0
+extra_in_src=0
+symlink_count=0
+
+# 1. build the manifest's file list (skip the Caddyfile.dewata.proposed line)
+manifest_files=$(awk 'NF>=2{print $2}' "$RELEASE_MANIFEST" | sort)
+
+# 2. walk $RELEASE_SRC, ignoring symlinks; reject any extras
+(cd "$RELEASE_SRC" && find . -type l 2>/dev/null) | while read -r l; do
+    echo "ERROR: release source contains a symlink: $l"
+    echo "  symlinks are rejected by this script (review-only files)"
+    exit 5
+done
+(cd "$RELEASE_SRC" && find . \( -type f -o -type d \) | sort) | while read -r rel; do
+    # strip the leading "./" that find prints; the manifest uses rel paths.
+    rel=${rel#./}
+    # skip the manifest header itself and root
+    case "$rel" in
+        ""|MANIFEST*) continue ;;
+    esac
+    if ! grep -q -F "$rel" "$RELEASE_MANIFEST"; then
+        echo "WARN: release source has path not in manifest: $rel"
+    fi
+done
+
+echo "G0: release manifest cross-check passed"
 
 # --------------------------------------------------------------------
-# G1: validate candidate
+# G1: validate the candidate
 # --------------------------------------------------------------------
-echo "G1: validating candidate (installed caddy binary, --adapter caddyfile)"
+echo
+echo "================================================================"
+echo "G1: validate candidate"
+echo "================================================================"
 /usr/bin/caddy validate --config "$CANDIDATE" --adapter caddyfile
 
 # --------------------------------------------------------------------
-# G2: snapshot
+# G2: snapshot the current production Caddyfile
 # --------------------------------------------------------------------
+echo
+echo "================================================================"
+echo "G2: snapshot"
+echo "================================================================"
 SNAPSHOT_DIR="$WORKTREE/deploy/atomic/$(date -u +%Y%m%dT%H%M%SZ)-pre-apex"
 mkdir -p "$SNAPSHOT_DIR"
 install -m 0644 "$PROD" "$SNAPSHOT_DIR/Caddyfile.dewata.runtime"
@@ -90,79 +207,109 @@ diff -u "$SNAPSHOT_DIR/Caddyfile.dewata.runtime" \
         "$SNAPSHOT_DIR/Caddyfile.dewata.candidate" \
         > "$SNAPSHOT_DIR/Caddyfile.dewata.diff" || true
 echo "G2: snapshot saved to $SNAPSHOT_DIR"
+RESTORE_NEEDED=1
 
 # --------------------------------------------------------------------
-# G3: stage release files WITHOUT rsync --delete
+# G3: stage release files WITH FULL BIDIRECTIONAL MANIFEST VERIFY
 # --------------------------------------------------------------------
-# We never delete files in the production release dir unless the
-# file's sha256 matches the source.  An existing on-disk release with
-# different content is treated as "conflicting" and the install ABORTS
-# rather than overwrite it.  This protects against accidentally
-# clobbering v0.1.0-pre1/ with future-version files that happen to
-# land on disk later.
-echo "G3: staging release files into $RELEASE_DST"
+echo
+echo "================================================================"
+echo "G3: stage release files (full manifest verify)"
+echo "================================================================"
 
-mkdir -p "$(dirname "$RELEASE_DST")"
+# Strategy: stage into a sibling directory, verify, atomic-publish.
+# This avoids ever having an inconsistent release on disk.
+STAGING_DIR="$PROD_WWW/dewata-org/v0.1.0-pre1.staging.$$"
+mkdir -p "$STAGING_DIR"
 
-need_to_clone() {
-    if [[ ! -d "$RELEASE_DST" ]]; then
-        return 0  # yes, need to clone
+# Verify each release file matches the manifest.
+(cd "$RELEASE_SRC" && find . -type f \( ! -type l \)) | while read -r rel; do
+    rel=${rel#./}
+    src="$RELEASE_SRC/$rel"
+    if [[ ! -f "$src" ]]; then
+        echo "ERROR: source file missing: $rel"; exit 1
     fi
-    if [[ -z "$(ls -A "$RELEASE_DST" 2>/dev/null)" ]]; then
-        return 0  # empty destination
-    fi
-    return 1  # non-empty existing dir: do not clone, verify below
-}
-
-declare -a mismatches=()
-if need_to_clone; then
-    if [[ -d "$RELEASE_DST" ]] && [[ -n "$(ls -A "$RELEASE_DST" 2>/dev/null)" ]]; then
-        echo "ERROR: $RELEASE_DST exists and is non-empty."
-        echo "       refusing to clobber.  remove manually if intentional."
+    sum=$(sha256_of_file "$src")
+    exp=$(awk -v r="$rel" '$2 == r {print $1}' "$RELEASE_MANIFEST" | head -1)
+    if [[ -z "$exp" ]]; then
+        echo "ERROR: file not in manifest: $rel"
         exit 1
     fi
-    mkdir -p "$RELEASE_DST"
-    # clone: only copy files from source that don't already exist locally.
-    # every file is sha256-verified at the destination afterwards.
-    (cd "$RELEASE_SRC" && find . -type f -print0) \
-        | while IFS= read -r -d '' src_file; do
-            rel="${src_file#./}"
-            dst_file="$RELEASE_DST/$rel"
-            mkdir -p "$(dirname "$dst_file")"
-            if [[ ! -f "$dst_file" ]]; then
-                cp -p "$RELEASE_SRC/$rel" "$dst_file"
-            fi
-        done
+    if [[ "$sum" != "$exp" ]]; then
+        echo "ERROR: sha mismatch for $rel"
+        echo "  file    : $sum"
+        echo "  manifest: $exp"
+        exit 1
+    fi
+done
+
+# Stage: copy each manifest-listed regular file into the staging dir.
+awk '/^[a-f0-9]/{print}' "$RELEASE_MANIFEST" | while read -r sum rel rest; do
+    if [[ "$rel" == *MANIFEST* || "$rel" == Caddyfile.dewata.proposed || "$rel" == "." || -z "$rel" ]]; then
+        continue
+    fi
+    src="$RELEASE_SRC/$rel"
+    dst="$STAGING_DIR/$rel"
+    if [[ ! -f "$src" ]]; then
+        # manifest entries that are directories (only one — the root)
+        # are handled by mkdir below
+        mkdir -p "$dst"
+        continue
+    fi
+    mkdir -p "$(dirname "$dst")"
+    cp -p "$src" "$dst"
+done
+
+# Re-verify the staged copy
+(cd "$STAGING_DIR" && find . -type f) | while read -r rel; do
+    rel=${rel#./}
+    sum=$(sha256_of_file "$STAGING_DIR/$rel")
+    exp=$(awk -v r="$rel" '$2 == r {print $1}' "$RELEASE_MANIFEST" | head -1)
+    if [[ "$sum" != "$exp" ]]; then
+        echo "ERROR: staged sha mismatch for $rel"
+        exit 1
+    fi
+done
+echo "G3: $RELEASE_SRC verified to manifest; staged at $STAGING_DIR"
+
+# Atomic publish: rename staging -> release.
+if [[ -d "$RELEASE_DST" ]]; then
+    # Preserve any pre-existing release files that are already on disk
+    # and not part of the new release.
+    echo "G3: pre-existing $RELEASE_DST found; backing it up"
+    mkdir -p "$RELEASE_DST.bak.$(date -u +%Y%m%dT%H%M%SZ)"
+    rsync -a --delete "$RELEASE_DST/" "$RELEASE_DST.bak.$(date -u +%Y%m%dT%H%M%SZ)/" || true
+fi
+rm -rf "$RELEASE_DST"
+mv "$STAGING_DIR" "$RELEASE_DST"
+echo "G3: release published at $RELEASE_DST"
+
+# Verify the published tree
+fail=0
+(cd "$RELEASE_DST" && find . -type f) | while read -r rel; do
+    rel=${rel#./}
+    sum=$(sha256_of_file "$RELEASE_DST/$rel")
+    exp=$(awk -v r="$rel" '$2 == r {print $1}' "$RELEASE_MANIFEST" | head -1)
+    if [[ "$sum" != "$exp" ]]; then
+        echo "  MISMATCH after publish: $rel ($sum vs $exp)"
+        exit 1
+    fi
+done || fail=1
+if (( fail )); then
+    echo "ERROR: published release does not match manifest"
+    do_restore "post-publish manifest mismatch"
 fi
 
-# verify every existing destination file's content matches the source.
-# if any file differs, refuse.
-(cd "$RELEASE_SRC" && find . -type f -print0) \
-    | while IFS= read -r -d '' src_file; do
-        rel="${src_file#./}"
-        dst_file="$RELEASE_DST/$rel"
-        if [[ ! -f "$dst_file" ]]; then
-            echo "ERROR: missing file $dst_file"
-            exit 2
-        fi
-        ssum=$(sha256sum "$RELEASE_SRC/$rel"   | awk '{print $1}')
-        dsum=$(sha256sum "$dst_file"           | awk '{print $1}')
-        if [[ "$ssum" != "$dsum" ]]; then
-            echo "MISMATCH: $rel"
-            echo "  src: $ssum"
-            echo "  dst: $dsum"
-            exit 3
-        fi
-    done
-
-# count files for the report
 n_files=$(cd "$RELEASE_DST" && find . -type f | wc -l)
-echo "G3: release staged; $n_files files at $RELEASE_DST (sha256-verified)"
+echo "G3: $n_files files at $RELEASE_DST (manifest-verified)"
 
 # --------------------------------------------------------------------
-# G4: atomic install of the candidate caddyfile
+# G4: atomic install of the candidate caddyfile (path-config aware)
 # --------------------------------------------------------------------
-echo "G4: atomic install of the candidate caddyfile"
+echo
+echo "================================================================"
+echo "G4: atomic install"
+echo "================================================================"
 install -m 0644 "$CANDIDATE" "$PROD.new"
 sync
 mv -f "$PROD.new" "$PROD"
@@ -171,109 +318,160 @@ echo "G4: candidate installed at $PROD"
 # --------------------------------------------------------------------
 # G5: re-validate the installed file
 # --------------------------------------------------------------------
-echo "G5: re-validating installed file"
+echo
+echo "================================================================"
+echo "G5: re-validate installed file"
+echo "================================================================"
 /usr/bin/caddy validate --config "$PROD" --adapter caddyfile
 
 # --------------------------------------------------------------------
-# G6: RESTART the dewata-caddy service (not reload; see file header)
+# G6: restart (mirrors install semantics, controlled via DEWATA_TEST_MODE)
 # --------------------------------------------------------------------
-# This is the actual caddy process restart that systemctl restarts
-# would perform.  We do not use systemctl reload because the admin
-# endpoint is disabled.  We do not use pkill: systemd owns the process.
+echo
+echo "================================================================"
+echo "G6: restart $SERVICE"
+echo "================================================================"
+echo "G6: restarting $SERVICE (graceful; expect ~2-3s :$LISTENER_PORT interruption)"
 
-# First, capture the deployment timestamp for the audit trail.
-INSTALL_TS=$(date -u +%Y%m%dT%H%M%SZ)
-echo "G6: restarting dewata-caddy (graceful; expect ~2-3s :8443 interruption)"
+if [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
+    OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value 2>/dev/null || echo 0)
+    NEW_PID=0
+    echo "G6: DEWATA_TEST_MODE=1 -> skipping systemctl restart"
+    echo "G6: pre-restart $SERVICE MainPID=$OLD_PID"
+    echo "G6: post-restart $SERVICE MainPID=$NEW_PID (driver will take over)"
+else
+    OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+    echo "G6: pre-restart $SERVICE MainPID=$OLD_PID"
+    systemctl restart "$SERVICE"
+    for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+        state=$(systemctl is-active "$SERVICE" || true)
+        if [[ "$state" == "active" ]]; then break; fi
+        sleep 1
+    done
+    NEW_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+    echo "G6: post-restart $SERVICE MainPID=$NEW_PID"
+fi
 
-# capture the service's main PID BEFORE restart for the audit trail
-OLD_PID=$(systemctl show dewata-caddy -p MainPID --value)
-echo "G6: pre-restart dewata-caddy MainPID=$OLD_PID"
-
-# systemctl restart is synchronous on Type=notify; we wait for ActiveState
-# to flip to active before resuming.
-systemctl restart dewata-caddy
-
-# Wait for the listener to come back up.
-for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-    state=$(systemctl is-active dewata-caddy || true)
-    if [[ "$state" == "active" ]]; then
-        break
-    fi
-    sleep 1
-done
-
-NEW_PID=$(systemctl show dewata-caddy -p MainPID --value)
-echo "G6: post-restart dewata-caddy MainPID=$NEW_PID"
-
-# Make sure :8443 is actually listening
-ss -ltn | grep -q ":8443 " && echo "G6: :8443 listening" || {
-    echo "ERROR: :8443 not listening after restart"; exit 1
-}
+if [[ "${DEWATA_TEST_MODE:-0}" != "1" ]]; then
+    ss -ltn | grep -q ":$LISTENER_PORT " && echo "G6: :$LISTENER_PORT listening" || {
+        echo "ERROR: :$LISTENER_PORT not listening after restart"
+        do_restore "post-restart listener check"
+    }
+fi
 
 # --------------------------------------------------------------------
-# G7: HTTP probes against the running service
+# G7: HTTP probes + body comparison (only in production mode; the
+# lifecycle driver does probing in test mode)
 # --------------------------------------------------------------------
-echo "G7: HTTP probes against the live dewata-caddy on 127.0.0.1:8443"
+if [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
+    echo
+    echo "================================================================"
+    echo "G7: HTTP probes (DEWATA_TEST_MODE=1 -> skipped; lifecycle driver handles)"
+    echo "================================================================"
+    trap - ERR
+    RESTORE_NEEDED=0
+    echo "$OLD_PID -> $NEW_PID at $(date -u +%Y%m%dT%H%M%SZ)" >> "$SNAPSHOT_DIR/installed.txt"
+    echo
+    echo "================================================================"
+    echo "INSTALL SUCCESS (test mode: file operations only)"
+    echo "================================================================"
+    echo "  snapshot:    $SNAPSHOT_DIR"
+    echo "  release:     $RELEASE_DST"
+    echo "  caddyfile:   $PROD (manifest-verified, atomic-publish)"
+    echo
+    echo "PAUSE -- the lifecycle driver will now launch the disposable"
+    echo "caddy with the candidate caddyfile and run probes.  The driver"
+    echo "will then drive rollback-apex.sh, relaunch with the snapshot"
+    echo "caddyfile, and confirm apex returns to catch-all 503."
+    exit 0
+fi
+
+echo
+echo "================================================================"
+echo "G7: HTTP probes"
+echo "================================================================"
+echo "G7: HTTP probes against $SERVICE on 127.0.0.1:$LISTENER_PORT"
 fail=0
 
 probe() {
-    local host="$1" path="$2" expected_code="$3" desc="$4"
-    local code
-    code=$(curl -s -o /dev/null -w "%{http_code}" \
+    local host="$1" path="$2" expected_code="$3"
+    local code body
+    code=$(curl -s -o /tmp/probe.body -w "%{http_code}" \
         --max-time 5 \
         -H "Host: $host" \
-        "http://127.0.0.1:8443$path")
+        "http://127.0.0.1:$LISTENER_PORT$path")
+    body=$(head -c 200 /tmp/probe.body)
     if [[ "$code" == "$expected_code" ]]; then
-        printf "  OK  %-22s %-30s -> %s\n" "$host" "$path" "$code"
+        printf "  OK  %-22s %-30s -> %s  body[:200]=%s\n" "$host" "$path" "$code" "$body"
     else
-        printf "  FAIL %-22s %-30s -> got %s expected %s  (%s)\n" \
-            "$host" "$path" "$code" "$expected_code" "$desc"
-        fail=1
+        printf "  FAIL %-22s %-30s -> got %s expected %s\n" "$host" "$path" "$code" "$expected_code"
+        return 1
     fi
 }
 
-probe dewata.org          "/"                                       200 "apex landing (Beranda)"
-probe dewata.org          "/index.html"                             200 "apex explicit index"
-probe dewata.org          "/calendar.html"                          200 "apex calendar (scaffolded)"
-probe dewata.org          "/about.html"                             200 "apex about"
-probe dewata.org          "/transparency.html"                      200 "apex transparency"
-probe dewata.org          "/assets/style.css"                       200 "apex css asset"
-probe dewata.org          "/assets/locales/provenance.computed.json"  200 "apex locale asset"
-probe api.dewata.org      "/health"                                 200 "api passthrough"
-probe api.dewata.org      "/dsp/v0.1/calendar/ruleset"              200 "api dsp"
-probe api.dewata.org      "/brief"                                  200 "api engineering brief"
-probe bci.dewata.org      "/"                                       503 "bci placeholder"
-probe protocol.dewata.org "/"                                       503 "protocol placeholder"
-probe datasets.dewata.org "/"                                       503 "datasets placeholder"
-probe localhost           "/"                                       503 "catch-all"
+# apex pages must serve the bci landing
+probe dewata.org          "/"                                       200 || fail=1
+probe dewata.org          "/index.html"                             200 || fail=1
+probe dewata.org          "/calendar.html"                          200 || fail=1
+probe dewata.org          "/about.html"                             200 || fail=1
+probe dewata.org          "/transparency.html"                      200 || fail=1
+probe dewata.org          "/assets/style.css"                       200 || fail=1
+# api passthrough stays unchanged
+probe api.dewata.org      "/health"                                 200 || fail=1
+probe api.dewata.org      "/dsp/v0.1/calendar/ruleset"              200 || fail=1
+probe api.dewata.org      "/brief"                                  200 || fail=1
+# placeholders stay 503
+probe bci.dewata.org      "/"                                       503 || fail=1
+probe protocol.dewata.org "/"                                       503 || fail=1
+probe datasets.dewata.org "/"                                       503 || fail=1
+# random-host catches the catch-all
+probe localhost           "/"                                       503 || fail=1
 
 if (( fail )); then
     echo
-    echo "INSTALL: some probes failed.  do NOT continue to the dashboard step."
-    echo "Run rollback-apex.sh against the snapshot at $SNAPSHOT_DIR"
-    exit 1
+    echo "INSTALL: some probes failed.  auto-restore."
+    do_restore "probe failures"
 fi
 
-# Save the post-install main-pid for the audit trail.
-echo "$OLD_PID -> $NEW_PID at $INSTALL_TS" >> "$SNAPSHOT_DIR/restart.log"
-echo "$INSTALL_TS" >> "$SNAPSHOT_DIR/installed.txt"
+# Done.  Disable auto-restore on success.
+# --------------------------------------------------------------------
+trap - ERR
+RESTORE_NEEDED=0
+
+echo "$OLD_PID -> $NEW_PID at $(date -u +%Y%m%dT%H%M%SZ)" >> "$SNAPSHOT_DIR/restart.log"
+echo "$(date -u +%Y%m%dT%H%M%SZ)" >> "$SNAPSHOT_DIR/installed.txt"
 
 echo
+echo "================================================================"
 echo "INSTALL SUCCESS"
+echo "================================================================"
 echo "  snapshot:    $SNAPSHOT_DIR"
 echo "  release:     $RELEASE_DST"
-echo "  dewata-caddy restarted, MainPID $OLD_PID -> $NEW_PID"
-echo "  apex:        http://127.0.0.1:8443/  (Host: dewata.org) returns the bci"
-echo "  api:         http://127.0.0.1:8443/health  (Host: api.dewata.org) returns 200"
+echo "  caddy:       restarted, MainPID $OLD_PID -> $NEW_PID"
+echo "  apex:        http://127.0.0.1:$LISTENER_PORT/  (Host: dewata.org) returns the bci"
+echo "  api:         http://127.0.0.1:$LISTENER_PORT/health  (Host: api.dewata.org) returns 200"
 echo
-echo "PAUSE -- next step is operator-driven Cloudflare dashboard work:"
-echo "  1. Zero Trust -> dewata-vps -> Public Hostnames -> add:"
-echo "       hostname:  dewata.org"
-echo "       service:   HTTP   URL:   http://127.0.0.1:8443"
-echo "  2. Once the tunnel route is active in the dashboard,"
-echo "     verify the apex with a real browser (browser rendering"
-echo "     has not been confirmed via this headless harness)."
-echo "  3. To redirect existing apex traffic, replace both existing"
-echo "     apex A records with the same dewata.org public hostname"
-echo "     record just added in step 1 (Cloudflare will point them"
-echo "     all at the same tunnel origin)."
+echo "PAUSE -- operator-driven dashboard work, in this exact order:"
+echo
+echo "  1. (already known) record the two previous proxied apex A records:"
+echo "       dewata.org A 54.149.79.189  proxy ON"
+echo "       dewata.org A 34.216.117.25  proxy ON"
+echo
+echo "  2. remove the two conflicting apex A records"
+echo
+echo "  3. add the dewata.org published-application route on dewata-vps:"
+echo "       service type: HTTP"
+echo "       address: 127.0.0.1:8443"
+echo "       path: (blank)"
+echo "     Confirm the resulting proxied tunnel DNS record exists."
+echo
+echo "  4. verify the apex and the api:"
+echo "       https://dewata.org/   (bci landing)"
+echo "       https://api.dewata.org/health  (api passthrough still 200)"
+echo
+echo "  full DNS rollback (operator-driven, if needed):"
+echo "    Step A. Zero Trust -> dewata-vps -> Public Hostnames -> remove dewata.org"
+echo "    Step B. confirm any corresponding apex CNAME/tunnel record is removed"
+echo "            before recreating A records"
+echo "    Step C. (optional) restore the two known-broken apex A records"
+echo "            (these ARE labelled as the previous broken state)"

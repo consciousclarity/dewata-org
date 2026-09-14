@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="bal" dir="ltr">
+<html lang="{{lang}}" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,22 +7,21 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="description" content="{{meta_description}}">
 <link rel="stylesheet" href="/assets/style.css">
+<link rel="alternate" hreflang="ban" href="/index.ban.html">
+<link rel="alternate" hreflang="id" href="/index.id.html">
+<link rel="alternate" hreflang="en" href="/index.en.html">
 </head>
 <body class="page">
 <header class="header" role="banner">
-<div class="brand"><a href="/index.html" aria-label="{{nav_home}}">{{brand}}</a></div>
-<nav class="i18n" aria-label="{{lang_label}}">
-<a href="?lang=bal" aria-current="true">{{lang_bal}}</a>
-<a href="?lang=id">{{lang_id}}</a>
-<a href="?lang=en">{{lang_en}}</a>
-</nav>
+<div class="brand"><a href="/index.{{lang}}.html" aria-label="{{nav_home}}">{{brand}}</a></div>
+<nav class="i18n" aria-label="{{lang_label}}">{{lang_nav}}</nav>
 </header>
 
 <main class="main" role="main">
 <h1 class="title">{{title}}</h1>
 
 <div class="provenance-banner">
-<p><strong>provisional</strong></p>
+<p><strong>{{label}}</strong></p>
 <ul>
 <li>{{provenance_computed}}</li>
 <li>{{provenance_registered}}</li>
@@ -45,23 +44,37 @@
 </div>
 {% endif %}
 
+<section aria-labelledby="nav-heading">
+<h2 id="nav-heading">{{brand}}</h2>
+<ul>
+<li><a href="/calendar.{{lang}}.html">{{nav_calendar}}</a></li>
+<li><a href="/about.{{lang}}.html">{{nav_about}}</a></li>
+<li><a href="/transparency.{{lang}}.html">{{nav_transparency}}</a></li>
+</ul>
+<p>{{footer_lang}}</p>
+</section>
+
 <section aria-labelledby="computed-heading">
-<h2 id="computed-heading">computed</h2>
+<h2 id="computed-heading">{{provenance_computed}}</h2>
 <ul class="computed-list">{{computed_list}}</ul>
+{% if links_html %}
+<h3>links</h3>
+<ul class="links-list">{{links_html}}</ul>
+{% endif %}
 </section>
 
 <section aria-labelledby="registered-heading">
-<h2 id="registered-heading">registered</h2>
+<h2 id="registered-heading">{{provenance_registered}}</h2>
 <ul class="registered-list">{{registered_list}}</ul>
 </section>
 
 <section aria-labelledby="predictions-heading">
-<h2 id="predictions-heading">predicted</h2>
+<h2 id="predictions-heading">{{provenance_predicted}}</h2>
 <ul class="predictions-list">{{predictions_list}}</ul>
 </section>
 
 <section aria-labelledby="verified-heading">
-<h2 id="verified-heading">verified</h2>
+<h2 id="verified-heading">{{provenance_verified}}</h2>
 <ul class="verified-list">{{verified_list}}</ul>
 </section>
 </main>
@@ -70,7 +83,7 @@
 <p>{{footer_lang}}</p>
 <p>{{footer_policy}}</p>
 <p>{{footer_negatives}}</p>
-<p><a href="/about.html">{{footer_about}}</a> · <a href="/transparency.html">{{footer_transparency}}</a></p>
+<p><a href="/about.{{lang}}.html">{{footer_about}}</a> · <a href="/transparency.{{lang}}.html">{{footer_transparency}}</a></p>
 </footer>
 </body>
 </html>

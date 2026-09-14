@@ -3,56 +3,21 @@
 # dewata-caddy apex rollback -- control: RESTART, not reload
 # =============================================================================
 #
-# PRODUCTION-ONLY script.  Do NOT execute unless you intend to roll back
-# the apex landing page on the actual host.
+# Restores the previous Caddyfile.dewata from the snapshot directory
+# and RESTARTS the caddy service.  Returns the dewata.org apex to its
+# previous broken state (catch-all 503), pending operator dashboard work.
 #
-# To exercise the install/rollback procedures end-to-end without touching
-# production, run the lifecycle test:
+# Path and service parameters are env-overridable for the lifecycle test:
+#   DEWATA_PROD_CADDY    -> production Caddyfile path (default: prod)
+#   DEWATA_TEST_MODE=1   -> skip the real systemctl call; the lifecycle
+#                          driver will kill and relaunch the disposable
+#                          after this script returns successfully
 #
-#   /opt/dw-phase2/deploy/lifecycle-test/run-lifecycle-test.sh
+# DNS rollback order (operator-driven, see end of script):
+#   1. Cloudflare -> dewata-vps -> Public Hostnames -> remove dewata.org
+#   2. (Optional, see warning below) restore the two known-broken A records
 #
 # =============================================================================
-#
-# Restores the previous Caddyfile.dewata from the snapshot directory
-# and RESTARTS the dewata-caddy service.  Returns the dewata.org apex
-# to its previous broken state (catch-all 503).
-#
-# --------------------------------------------------------------------
-# Mirror of install-apex-candidate.sh's restart semantics
-# --------------------------------------------------------------------
-# We use `systemctl restart` here for the same reason the installer does:
-# the production Caddyfile sets `admin off`, so `systemctl reload`
-# (which executes `caddy reload`) cannot push a config change.
-#
-# --------------------------------------------------------------------
-# What this script does NOT do
-# --------------------------------------------------------------------
-#   - It does NOT delete the release directory.
-#   - It does NOT touch DNS.
-#   - It does NOT touch the host Caddy, dewata-api, or cloudflared.
-#   - It does NOT use pkill or any signal that could affect
-#     processes outside dewata-caddy.service.
-#
-# --------------------------------------------------------------------
-# DNS rollback (operator-driven, in the Cloudflare dashboard)
-# --------------------------------------------------------------------
-# Run the following steps in this order.  Steps A and B below are the
-# "reverse the apex changes" path that makes dewata.org apex unreachable
-# again — explicitly labelled in the user's review notes as the
-# "previous broken state":
-#
-#   A. Cloudflare Zero Trust -> Networks -> dewata-vps ->
-#      Public Hostnames -> remove the dewata.org entry.
-#   B. DNS -> dewata.org -> replace the tunnel route that's currently
-#      in place with the OLD apex A records (these are the user's
-#      previously-broken state, labelled as such):
-#        dewata.org  A  54.149.79.189  proxy ON
-#        dewata.org  A  34.216.117.25  proxy ON
-#
-# If the operator wants the apex to keep working through the tunnel
-# (instead of returning to the previous-broken 522 state), they can
-# leave the tunnel public hostname in place.  Removing the tunnel
-# route is only needed to fully revert this deploy.
 
 set -euo pipefail
 
@@ -62,13 +27,24 @@ SNAPSHOT_DIR="${1:-}"
 if [[ -z "$SNAPSHOT_DIR" ]]; then
     echo "usage: $0 <SNAPSHOT_DIR>"
     echo "  snapshots are at: $WORKTREE/deploy/atomic/<utc-timestamp>-pre-apex/"
-    echo "  the latest is the one to use:"
+    echo "  the latest snapshot is the most recent one"
     ls -1 "$WORKTREE/deploy/atomic" 2>/dev/null | tail -1 || true
     exit 1
 fi
 
+# --------------------------------------------------------------------
+# path config -- production by default; override via env to test.
+# --------------------------------------------------------------------
+PROD=${DEWATA_PROD_CADDY:-/opt/dewata.online/deploy/caddy/Caddyfile.dewata}
+SERVICE=${DEWATA_CADDY_SERVICE:-dewata-caddy}
+LISTENER_PORT=${DEWATA_LISTENER_PORT:-8443}
+RELEASE_DST=${DEWATA_RELEASE_DST:-/opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1}
+
+# --------------------------------------------------------------------
+# G0: validate the snapshot directory + its runtime file
+# --------------------------------------------------------------------
 RUNTIME_BACKUP="$SNAPSHOT_DIR/Caddyfile.dewata.runtime"
-[[ -f "$SNAPSHOT_DIR" ]] || { echo "ERROR: $SNAPSHOT_DIR does not exist"; exit 1; }
+[[ -d "$SNAPSHOT_DIR" ]] || { echo "ERROR: $SNAPSHOT_DIR is not an existing directory"; exit 1; }
 [[ -f "$RUNTIME_BACKUP" ]] || { echo "ERROR: $RUNTIME_BACKUP missing (not a pre-apex snapshot?)"; exit 1; }
 
 # --------------------------------------------------------------------
@@ -83,7 +59,6 @@ echo "G1: validating $RUNTIME_BACKUP"
 # --------------------------------------------------------------------
 # G2: atomic install the saved runtime caddyfile
 # --------------------------------------------------------------------
-PROD=/opt/dewata.online/deploy/caddy/Caddyfile.dewata
 echo "G2: atomic install of saved runtime caddyfile to $PROD"
 install -m 0644 "$RUNTIME_BACKUP" "$PROD.new"
 sync
@@ -97,54 +72,84 @@ echo "G3: re-validating installed file"
 /usr/bin/caddy validate --config "$PROD" --adapter caddyfile
 
 # --------------------------------------------------------------------
-# G4: RESTART dewata-caddy (mirror of install's restart)
+# G4: restart (mirrors install's restart semantics)
 # --------------------------------------------------------------------
-echo "G4: restarting dewata-caddy"
-OLD_PID=$(systemctl show dewata-caddy -p MainPID --value)
-echo "G4: pre-restart dewata-caddy MainPID=$OLD_PID"
-systemctl restart dewata-caddy
-for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-    state=$(systemctl is-active dewata-caddy || true)
-    if [[ "$state" == "active" ]]; then break; fi
-    sleep 1
-done
-NEW_PID=$(systemctl show dewata-caddy -p MainPID --value)
-echo "G4: post-restart dewata-caddy MainPID=$NEW_PID"
+echo "G4: restarting $SERVICE"
 
-ss -ltn | grep -q ":8443 " && echo "G4: :8443 listening" || {
-    echo "ERROR: :8443 not listening after restart"; exit 1
-}
+if [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
+    OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value 2>/dev/null || echo 0)
+    NEW_PID=0
+    echo "G4: DEWATA_TEST_MODE=1 -> skipping systemctl restart"
+    echo "G4: pre-restart $SERVICE MainPID=$OLD_PID"
+    echo "G4: post-restart $SERVICE MainPID=$NEW_PID (driver will take over)"
+else
+    OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+    echo "G4: pre-restart $SERVICE MainPID=$OLD_PID"
+    systemctl restart "$SERVICE"
+    for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+        state=$(systemctl is-active "$SERVICE" || true)
+        if [[ "$state" == "active" ]]; then break; fi
+        sleep 1
+    done
+    NEW_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+    echo "G4: post-restart $SERVICE MainPID=$NEW_PID"
+fi
+
+# verify the listener is back up.  In test mode the driver controls
+# the listener; this check would race.  so only enforce in production.
+if [[ "${DEWATA_TEST_MODE:-0}" != "1" ]]; then
+    ss -ltn | grep -q ":$LISTENER_PORT " && echo "G4: :$LISTENER_PORT listening" || {
+        echo "ERROR: :$LISTENER_PORT not listening after restart"; exit 1
+    }
+fi
 
 # --------------------------------------------------------------------
-# G5: HTTP probes
+# G5: HTTP probes (only in production mode; the lifecycle driver does
+# probing in test mode)
 # --------------------------------------------------------------------
-echo "G5: HTTP probes against the live dewata-caddy on 127.0.0.1:8443"
+if [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
+    echo
+    echo "================================================================"
+    echo "G5: HTTP probes (DEWATA_TEST_MODE=1 -> skipped; lifecycle driver handles)"
+    echo "================================================================"
+    echo
+    echo "================================================================"
+    echo "ROLLBACK SUCCESS (test mode: file operations only)"
+    echo "================================================================"
+    echo "  snapshot:    $SNAPSHOT_DIR"
+    echo "  Caddyfile:   $PROD restored from $SNAPSHOT_DIR/Caddyfile.dewata.runtime"
+    echo "  release dir: $RELEASE_DST retained (no deletion)"
+    echo
+    echo "PAUSE -- the lifecycle driver will now launch the disposable"
+    echo "caddy with the restored snapshot caddyfile and run probes."
+    exit 0
+fi
+echo "G5: HTTP probes against $SERVICE on 127.0.0.1:$LISTENER_PORT"
 fail=0
 
 probe() {
-    local host="$1" path="$2" expected_code="$3" desc="$4"
+    local host="$1" path="$2" expected_code="$3"
     local code
     code=$(curl -s -o /dev/null -w "%{http_code}" \
         --max-time 5 \
         -H "Host: $host" \
-        "http://127.0.0.1:8443$path")
+        "http://127.0.0.1:$LISTENER_PORT$path")
     if [[ "$code" == "$expected_code" ]]; then
         printf "  OK  %-22s %-30s -> %s\n" "$host" "$path" "$code"
     else
-        printf "  FAIL %-22s %-30s -> got %s expected %s  (%s)\n" \
-            "$host" "$path" "$code" "$expected_code" "$desc"
+        printf "  FAIL %-22s %-30s -> got %s expected %s\n" "$host" "$path" "$code" "$expected_code"
         fail=1
     fi
 }
 
 # After rollback, dewata.org apex should be 503 again (catch-all).
-probe dewata.org          "/"                                       503 "apex now 503 (catch-all)"
-probe api.dewata.org      "/health"                                 200 "api passthrough still works"
-probe api.dewata.org      "/dsp/v0.1/calendar/ruleset"              200 "api dsp still works"
-probe bci.dewata.org      "/"                                       503 "bci placeholder"
-probe protocol.dewata.org "/"                                       503 "protocol placeholder"
-probe datasets.dewata.org "/"                                       503 "datasets placeholder"
-probe localhost           "/"                                       503 "catch-all"
+probe dewata.org          "/"                                       503 || fail=1
+probe api.dewata.org      "/health"                                 200 || fail=1
+probe api.dewata.org      "/dsp/v0.1/calendar/ruleset"              200 || fail=1
+probe bci.dewata.org      "/"                                       503 || fail=1
+probe protocol.dewata.org "/"                                       503 || fail=1
+probe datasets.dewata.org "/"                                       503 || fail=1
+probe localhost           "/"                                       503 || fail=1
 
 if (( fail )); then
     echo
@@ -154,20 +159,35 @@ fi
 
 echo
 echo "ROLLBACK SUCCESS"
-echo "  Caddyfile: restored from $SNAPSHOT_DIR"
-echo "  release files retained at /opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1/"
-echo "  dewata-caddy restarted, MainPID $OLD_PID -> $NEW_PID"
+echo "  Caddyfile:    restored from $SNAPSHOT_DIR"
+echo "  release dir:  retained at (no deletion)"
+echo "  caddy:        restarted, MainPID $OLD_PID -> $NEW_PID"
 echo
-echo "PAUSE -- next steps are operator-driven in the Cloudflare dashboard,"
-echo "in this exact order:"
+echo "PAUSE -- operator-driven dashboard work, in this exact order:"
 echo
-echo "  A. Cloudflare Zero Trust -> Networks -> dewata-vps ->"
-echo "     Public Hostnames -> remove the dewata.org entry."
-echo "  B. (Optional, only to return the apex to the user's known-broken"
-echo "     state) replace whatever currently serves dewata.org with:"
-echo "       dewata.org A 54.149.79.189  proxy ON"
-echo "       dewata.org A 34.216.117.25  proxy ON"
+echo "  Step 1 (DNS cutover for rollback, mirror of the install DNS cutover):"
 echo
-echo "  If A is not done before B, the apex A records will briefly"
-echo "  inherit the tunnel routing and serve the apex page on top of"
-echo "  the A record backends.  Do A first."
+echo "    1a. Zero Trust -> dewata-vps -> Public Hostnames -> REMOVE the"
+echo "        dewata.org entry."
+echo "    1b. confirm any corresponding apex CNAME or tunnel DNS record"
+echo "        is removed before doing anything that re-adds A records."
+echo
+echo "  Step 2 (only if you want to return the apex to the documented-"
+echo "          broken baseline state):"
+echo
+echo "    2a. recreate the two known-broken A records, both proxy ON:"
+echo "          dewata.org A 54.149.79.189"
+echo "          dewata.org A 34.216.117.25"
+echo "        Restoring them RE-CREATES the 522 problem; they are"
+echo "        labelled as the previous broken state, not a known-good state."
+echo
+echo "    If Step 2 is done without Step 1, the apex A records will"
+echo "    briefly take precedence over the now-removed tunnel route."
+echo "    Do Step 1 first."
+echo
+echo "  DNS cutover order summary (mirrors the install-side cutover):"
+echo "    Install:   (a) record the two old A records (54.149.79.189 / 34.216.117.25)"
+echo "               (b) remove those A records"
+echo "               (c) add dewata.org published-application tunnel route -> 127.0.0.1:8443"
+echo "    Rollback:  (a) remove the dewata.org published-application tunnel route"
+echo "               (b) optionally restore the two old A records (re-creates 522)"
