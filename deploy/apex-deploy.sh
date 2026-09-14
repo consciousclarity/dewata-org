@@ -1,142 +1,188 @@
 #!/usr/bin/env bash
-# ============================================================
-# Dewata apex deployment (B1) -- one-shot operator script
-# ============================================================
-# Generated 2026-09-14 as part of the fourth-bundle review.
-# Source commit: cd84d4d96638a957cc2bddacf0372806ec4eec4b
-# Branch:        warden/phase2-foundation-20260914
-# Reviewed bundle: dewata-review-bundle-20260914T140000Z.tar.gz
-#                 (see 00-REVIEW-NOTES.md for the response to the
-#                  fourth-bundle review)
+# =============================================================================
+# apex-deploy.sh -- one-shot operator wrapper for install-apex-candidate.sh
+# =============================================================================
 #
-# PRE-FLIGHT
-# ----------
-# 1. Verify the review bundle has been approved.
-# 2. Verify you are ready to perform the dashboard cutover:
-#    a. Remove the two known-broken apex A records:
-#         dewata.org A 54.149.79.189  (proxy ON)
-#         dewata.org A 34.216.117.25  (proxy ON)
-#    b. Add a dewata.org published-application tunnel route on
-#       dewata-vps: service type HTTP, address 127.0.0.1:8443, blank path.
+# The wrapper:
+#   1. Verifies DEWATA_APPLY_PRODUCTION=1 (the installer's authorization
+#      flag).  If unset, refuses to run.
+#   2. Reads the production Caddyfile's actual sha256 and passes it as
+#      DEWATA_PROD_BASELINE_SHA (mandatory drift guard).
+#   3. Invokes the installer with all required env vars set explicitly.
+#      No default values are accepted; every DEWATA_* path is a
+#      mandatory, non-empty env var.
+#   4. Captures the installer's actual snapshot path from stdout so the
+#      operator knows which snapshot to roll back to (rollback is
+#      idempotent -- the same path can be rolled back multiple times).
+#   5. Refuses to run if a fresh install ran in the last 60 seconds
+#      (idempotence / cooldown).
 #
-# USAGE
-# -----
-# Run as root on the VPS (62.72.7.218):
+# Source / destination separation:
+#   Source files (candidate Caddyfile + reviewed release tree) live
+#   under DEWATA_REVIEWED_RELEASE_ROOT, e.g.
+#     /opt/dewata.online/review/v0.1.0-pre1/
+#   Production destination files (live Caddyfile + live release tree)
+#   live under DEWATA_PROD_WWW, e.g.
+#     /opt/dewata.online/deploy/www/
+#   These are SEPARATE trees.  The installer copies FROM source TO
+#   destination; it never reads from the destination as a source.
 #
-#     bash /opt/dewata.online/deploy/apex-deploy.sh
+# Run from /opt/dewata.online/deploy:
+#     bash apex-deploy.sh
 #
-# The script is idempotent: it refuses to run twice in the same
-# minute unless DEWATA_FORCE_REINSTALL=1 is set.
+# Author: operator (run only when the bundle review authorizes it).
+#
+# This script is intentionally small.  All work is in the installer.
+# =============================================================================
 
 set -Eeuo pipefail
 
-# ---------------------------------------------------------------
-# 1. Required environment (operator MUST verify before running)
-# ---------------------------------------------------------------
-: "${PROD_CADDY:=/opt/dewata.online/deploy/caddy/Caddyfile.dewata}"
-: "${PROD_WWW:=/opt/dewata.online/deploy/www}"
-: "${REVIEWED_MANIFEST:=/opt/dewata.online/deploy/atomic/RELEASES/v0.1.0-pre1.MANIFEST.txt}"
-: "${REVIEWED_RELEASE:=/opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1}"
-: "${CANDIDATE_CADDY:=/opt/dewata.online/deploy/caddy/Caddyfile.dewata.proposed}"
-: "${LISTENER_PORT:=8443}"
-
-# ---------------------------------------------------------------
-# 2. Required: capture the production Caddyfile sha BEFORE the
-#    install runs.  The install refuses to proceed if the live file
-#    does not match this baseline.
-# ---------------------------------------------------------------
-PROD_BASELINE_SHA=$(sha256sum "$PROD_CADDY" | cut -d' ' -f1)
-echo "[deploy] PROD_BASELINE_SHA=$PROD_BASELINE_SHA"
-
-# ---------------------------------------------------------------
-# 3. Required: generate a per-deployment snapshot directory.
-# ---------------------------------------------------------------
-SNAPSHOT_PARENT=/opt/dewata.online/deploy/atomic
-SNAPSHOT_DIR="$SNAPSHOT_PARENT/$(date -u +%Y%m%dT%H%M%SZ)-pre-apex"
-mkdir -p "$SNAPSHOT_PARENT"
-
-# ---------------------------------------------------------------
-# 4. Run the install.
-# ---------------------------------------------------------------
-echo "[deploy] running install-apex-candidate.sh..."
-bash /opt/dewata.online/deploy/atomic/install-apex-candidate.sh
-rc=$?
-if (( rc != 0 )); then
-    echo "[deploy] FAILED: install-apex-candidate.sh exited $rc"
-    echo "[deploy] The installer\'s do_restore flow should have already"
-    echo "[deploy] restored both the Caddyfile and the release tree."
-    exit "$rc"
+# Required authorization flag (mutually exclusive with DEWATA_DISPOSABLE_MODE).
+if [[ "${DEWATA_APPLY_PRODUCTION:-0}" != "1" ]]; then
+    echo "FATAL: DEWATA_APPLY_PRODUCTION=1 must be set to authorize a production install." >&2
+    echo "  this script is the only authorized entry point for /opt/dewata.online installs." >&2
+    echo "  set DEWATA_APPLY_PRODUCTION=1 explicitly.  there is no default." >&2
+    exit 2
 fi
 
-# ---------------------------------------------------------------
-# 5. Local production checks.
-# ---------------------------------------------------------------
-echo "[deploy] verifying production state..."
+# Required location of the operator-managed deploy directory.
+# The installer is launched via absolute path, NEVER via $PATH or
+# relative path, to prevent CWD-shadowing attacks.
+INSTALLER="/opt/dewata.online/deploy/atomic/install-apex-candidate.sh"
+ROLLBACK="/opt/dewata.online/deploy/atomic/rollback-apex.sh"
+SERVICE="dewata-caddy"
+LISTENER_PORT="8443"
 
-# Check the production Caddyfile was updated to the candidate.
-new_sha=$(sha256sum "$PROD_CADDY" | cut -d' ' -f1)
-expected_sha=$(sha256sum "$CANDIDATE_CADDY" | cut -d' ' -f1)
-if [[ "$new_sha" != "$expected_sha" ]]; then
-    echo "[deploy] FAILED: production Caddyfile sha ($new_sha) != candidate sha ($expected_sha)"
-    exit 1
-fi
-echo "[deploy]   Caddyfile sha: $new_sha"
+# --------------------------------------------------------------------
+# Configuration -- the absolute paths the operator must verify before
+# running.  No defaults: the operator is expected to edit these if
+# the layout changes.
+# --------------------------------------------------------------------
+PROD_CADDY="/opt/dewata.online/deploy/caddy/Caddyfile.dewata"
+PROD_WWW="/opt/dewata.online/deploy/www"
+PROD_RELEASE_DST="$PROD_WWW/dewata-org/v0.1.0-pre1"
+REVIEWED_RELEASE_ROOT="/opt/dewata.online/review/v0.1.0-pre1"
+REVIEWED_RELEASE_SRC="$REVIEWED_RELEASE_ROOT/www/dewata-org/v0.1.0-pre1"
+REVIEWED_CANDIDATE="$REVIEWED_RELEASE_ROOT/caddy/Caddyfile.dewata.proposed"
+REVIEWED_MANIFEST="/opt/dewata.online/deploy/atomic/RELEASES/v0.1.0-pre1.MANIFEST.txt"
 
-# Check the release directory was published.
-if [[ ! -d "$REVIEWED_RELEASE" ]]; then
-    echo "[deploy] FAILED: release directory $REVIEWED_RELEASE not present"
-    exit 1
-fi
-n_release=$(find "$REVIEWED_RELEASE" -type f | wc -l)
-echo "[deploy]   release files: $n_release"
-
-# Check the listener is up.
-if ss -ltn 2>/dev/null | grep -q ":$LISTENER_PORT "; then
-    echo "[deploy]   listener :$LISTENER_PORT is up"
-else
-    echo "[deploy] FAILED: listener :$LISTENER_PORT is not up"
-    exit 1
-fi
-
-# Check that production http probes return expected codes.
-expect_code() {
-    local host="$1" path="$2" expected="$3" label="$4"
-    local code
-    code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 5 -H "Host: $host" "http://127.0.0.1:$LISTENER_PORT$path")
-    if [[ "$code" == "$expected" ]]; then
-        echo "[deploy]   $label: $host$path -> $code  OK"
-    else
-        echo "[deploy]   $label: $host$path -> $code (expected $expected)  FAIL"
-        exit 1
+# Mandatory preflight: every reviewed and production path must exist.
+require_file() {
+    local name="$1" path="$2"
+    if [[ ! -e "$path" ]]; then
+        echo "FATAL: $name missing at $path" >&2
+        return 1
     fi
 }
+require_file "production Caddyfile" "$PROD_CADDY"
+require_file "reviewed candidate Caddyfile" "$REVIEWED_CANDIDATE"
+require_file "reviewed release source" "$REVIEWED_RELEASE_SRC"
+require_file "reviewed manifest" "$REVIEWED_MANIFEST"
 
-expect_code dewata.org      /                            200 "apex landing"
-expect_code api.dewata.org  /health                      200 "api health"
-expect_code api.dewata.org  /dsp/v0.1/calendar/ruleset   200 "api ruleset"
-expect_code bci.dewata.org  /                            503 "bci placeholder"
+# Snapshots live in the deploy/atomic directory (managed by the installer).
+SNAPSHOT_PARENT="/opt/dewata.online/deploy/atomic"
+mkdir -p "$SNAPSHOT_PARENT"
 
-# ---------------------------------------------------------------
-# 6. Done.  Print the dashboard steps the operator must perform.
-# ---------------------------------------------------------------
+# Idempotence / cooldown: refuse to run if a recent install ran in
+# the last 60 seconds.  This prevents double-clicks on the same
+# bundle from racing.
+recent=$(find "$SNAPSHOT_PARENT" -mindepth 1 -maxdepth 1 -type d -name "*-pre-apex" -mmin -1 -printf '%T@ %p\\n' 2>/dev/null | head -1 || true)
+if [[ -n "$recent" ]]; then
+    recent_age=$(awk "{print \$1}" <<< "$recent")
+    now=$(date +%s)
+    age_seconds=$(awk -v n="$now" -v r="$recent_age" 'BEGIN{print n - r}')
+    recent_path=$(awk '{print $2}' <<< "$recent")
+    if awk -v a="$age_seconds" 'BEGIN{exit !(a < 60)}'; then
+        echo "FATAL: idempotence / cooldown: a previous install ran ${age_seconds}s ago at $recent_path" >&2
+        echo "  wait at least 60 seconds, or remove the recent snapshot, or pass DEWATA_FORCE_REINSTALL=1." >&2
+        exit 3
+    fi
+fi
+
+# --------------------------------------------------------------------
+# Capture the production baseline sha RIGHT NOW.
+# --------------------------------------------------------------------
+PROD_BASELINE_SHA=$(sha256sum "$PROD_CADDY" | cut -d' ' -f1)
+echo "[deploy] production Caddyfile baseline sha256 = $PROD_BASELINE_SHA"
+
+# --------------------------------------------------------------------
+# Print the literal env-var values the installer will receive.
+# --------------------------------------------------------------------
+echo "[deploy] invoking: $INSTALLER"
+echo "        DEWATA_APPLY_PRODUCTION=1"
+echo "        DEWATA_PROD_CADDY=$PROD_CADDY"
+echo "        DEWATA_PROD_WWW=$PROD_WWW"
+echo "        DEWATA_RELEASE_SRC=$REVIEWED_RELEASE_SRC"
+echo "        DEWATA_RELEASE_DST=$PROD_RELEASE_DST"
+echo "        DEWATA_CANDIDATE=$REVIEWED_CANDIDATE"
+echo "        DEWATA_REVIEWED_MANIFEST=$REVIEWED_MANIFEST"
+echo "        DEWATA_PROD_BASELINE_SHA=$PROD_BASELINE_SHA"
+echo "        DEWATA_LISTENER_PORT=$LISTENER_PORT"
+echo "        DEWATA_WORKTREE=/opt/dw-phase2"
+echo "        DEWATA_SNAPSHOT_PARENT=$SNAPSHOT_PARENT"
+echo "        DEWATA_CADDY_SERVICE=$SERVICE"
+
+# --------------------------------------------------------------------
+# Run the installer.
+# --------------------------------------------------------------------
+output=$(
+    env -i \
+        PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+        DEWATA_APPLY_PRODUCTION=1 \
+        DEWATA_PROD_CADDY="$PROD_CADDY" \
+        DEWATA_PROD_WWW="$PROD_WWW" \
+        DEWATA_RELEASE_SRC="$REVIEWED_RELEASE_SRC" \
+        DEWATA_RELEASE_DST="$PROD_RELEASE_DST" \
+        DEWATA_CANDIDATE="$REVIEWED_CANDIDATE" \
+        DEWATA_REVIEWED_MANIFEST="$REVIEWED_MANIFEST" \
+        DEWATA_PROD_BASELINE_SHA="$PROD_BASELINE_SHA" \
+        DEWATA_LISTENER_PORT="$LISTENER_PORT" \
+        DEWATA_WORKTREE="/opt/dw-phase2" \
+        DEWATA_SNAPSHOT_PARENT="$SNAPSHOT_PARENT" \
+        DEWATA_CADDY_SERVICE="$SERVICE" \
+        bash "$INSTALLER"
+    2>&1
+)
+installer_rc=$?
+
+echo "$output"
+
+# Capture the actual_snapshot_path line.
+actual_snapshot=$(grep -E '^[[:space:]]*actual_snapshot_path=' <<< "$output" | head -1 | sed "s/^[[:space:]]*actual_snapshot_path=//")
+if [[ -z "$actual_snapshot" ]]; then
+    echo "[deploy] FATAL: installer did not print actual_snapshot_path=" >&2
+    exit 6
+fi
+echo "[deploy] installer reports: $actual_snapshot"
+
+if (( installer_rc != 0 )); then
+    echo "[deploy] installer rc=$installer_rc -- fail closed." >&2
+    exit "$installer_rc"
+fi
+echo "[deploy] installer rc=0 -- install succeeded."
+
+# --------------------------------------------------------------------
+# Dashboard cutover steps (Cloudflare -- not executed from the script)
+# --------------------------------------------------------------------
 echo
-echo "[deploy] ============================================================"
-echo "[deploy] INSTALL SUCCESS.  Local production is live."
-echo "[deploy] ============================================================"
-echo "[deploy] Caddyfile sha: $new_sha (was $PROD_BASELINE_SHA)"
-echo "[deploy] Release directory: $REVIEWED_RELEASE"
-echo "[deploy] Snapshot: $SNAPSHOT_DIR"
-echo "[deploy] Listener: http://127.0.0.1:$LISTENER_PORT/  (Host: dewata.org)"
+echo "================================================================"
+echo "[deploy] dashboard cutover steps (operator):"
+echo "================================================================"
+echo "1. remove the apex A records at /opt/dewata.online's Cloudflare dashboard:"
+echo "     - host @, value 54.149.79.189, type A,    TTL auto, proxied (delete)"
+echo "     - host @, value 34.216.117.25, type A,    TTL auto, proxied (delete)"
+echo "2. create the apex published-application tunnel route:"
+echo "     - host @, type CNAME, target dewata-vps.cfargotunnel.com"
+echo "     or:"
+echo "     - on the existing tunnel dewata-vps, add an ingress rule:"
+echo "       hostname: dewata.org"
+echo "       service : http://localhost:8443"
+echo "3. verify public:"
+echo "     - curl -4 -I https://dewata.org/           expect 200"
+echo "     - curl -4 -I https://api.dewata.org/health expect 200"
 echo
-echo "[deploy] NEXT STEPS (operator-driven dashboard cutover):"
-echo "[deploy] 1. Cloudflare Zero Trust -> dewata-vps -> Public Hostnames"
-echo "[deploy]    -> REMOVE:  dewata.org A 54.149.79.189  (proxy ON)"
-echo "[deploy]    -> REMOVE:  dewata.org A 34.216.117.25  (proxy ON)"
-echo "[deploy] 2. Add a new dewata.org published-application tunnel route"
-echo "[deploy]    on dewata-vps: service type HTTP, address 127.0.0.1:8443, blank path"
-echo "[deploy] 3. Verify https://dewata.org/  returns 200"
-echo "[deploy] 4. Verify https://api.dewata.org/health  returns 200"
-echo "[deploy] 5. Verify https://dewata.org/ on mobile (cloudflare proxy)"
+echo "================================================================"
+echo "[deploy] rollback reference"
+echo "================================================================"
+echo "    bash $ROLLBACK \${actual_snapshot_path}"
 echo
-echo "[deploy] If anything goes wrong, run rollback:"
-echo "[deploy]   bash /opt/dewata.online/deploy/atomic/rollback-apex.sh $SNAPSHOT_DIR"

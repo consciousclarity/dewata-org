@@ -1,77 +1,120 @@
 #!/usr/bin/env bash
 # =============================================================================
-# dewata-caddy apex rollback -- control: RESTART, not reload
+# dewata-caddy apex rollback -- reviewed for fifth-bundle corrections
 # =============================================================================
 #
-# Restores the previous Caddyfile.dewata from the snapshot directory
-# and RESTARTS the caddy service.  Returns the dewata.org apex to its
-# previous broken state (catch-all 503), pending operator dashboard work.
+# Restores the production Caddyfile + release tree from a pre-apex
+# snapshot directory produced by install-apex-candidate.sh.
 #
-# Path and service parameters are env-overridable for the lifecycle test:
-#   DEWATA_PROD_CADDY    -> production Caddyfile path (default: prod)
-#   DEWATA_TEST_MODE=1   -> skip the real systemctl call; the lifecycle
-#                          driver will kill and relaunch the disposable
-#                          after this script returns successfully
+# Modes (same as the installer):
+#   DEWATA_DISPOSABLE_MODE=1   -- operate against a disposable tree,
+#     skip the production restart
+#   DEWATA_APPLY_PRODUCTION=1   -- authorize writes to a known
+#     production path AND restart the real production service
+# Mutually exclusive.
 #
-# DNS rollback order (operator-driven, see end of script):
-#   1. Cloudflare -> dewata-vps -> Public Hostnames -> remove dewata.org
-#   2. (Optional, see warning below) restore the two known-broken A records
-#
+# Snapshot path: the install script saved the snapshot at
+# $SNAPSHOT_DIR (passed as $1) with files:
+#   - Caddyfile.dewata.runtime  (the saved production Caddyfile)
+#   - Caddyfile.dewata.candidate (the failed candidate)
+#   - Caddyfile.dewata.diff     (the diff between them)
+#   - installed.log             (record of when the install ran)
+#   - stage-counters*           (may be present from the failed install)
+#   - <snapshot_dir>.postrestore.<ts> (only present after a previous rollback)
+# The rollback restores $DEWATA_PROD_CADDY from Caddyfile.dewata.runtime.
 # =============================================================================
 
-set -euo pipefail
+set -Eeuo pipefail
+shopt -s inherit_errexit 2>/dev/null || true
 
-WORKTREE=/opt/dw-phase2
-SNAPSHOT_DIR="${1:-}"
+# --------------------------------------------------------------------
+# Mode selection (mutually exclusive)
+# --------------------------------------------------------------------
+DISPOSABLE=${DEWATA_DISPOSABLE_MODE:-}
+APPLY_PROD=${DEWATA_APPLY_PRODUCTION:-}
+if [[ -n "$DISPOSABLE" && -n "$APPLY_PROD" ]]; then
+    echo "FATAL: DEWATA_DISPOSABLE_MODE and DEWATA_APPLY_PRODUCTION are mutually exclusive." >&2
+    exit 5
+fi
+if [[ -z "$DISPOSABLE" && -z "$APPLY_PROD" ]]; then
+    echo "FATAL: neither DEWATA_DISPOSABLE_MODE nor DEWATA_APPLY_PRODUCTION is set." >&2
+    exit 5
+fi
+if [[ "$DISPOSABLE" != "1" && "$APPLY_PROD" != "1" ]]; then
+    echo "FATAL: mode flag must be exactly \"1\"." >&2
+    exit 5
+fi
 
+# --------------------------------------------------------------------
+# Required env vars (no mutable defaults)
+# --------------------------------------------------------------------
+require_var() {
+    local name="$1"
+    local hint="$2"
+    if [[ -z "${!name:-}" ]]; then
+        echo "FATAL: $name is unset or empty." >&2
+        [[ -n "$hint" ]] && echo "  $hint" >&2
+        exit 2
+    fi
+}
+require_var DEWATA_PROD_CADDY "supply the production Caddyfile path"
+require_var DEWATA_LISTENER_PORT "supply the listener port"
+require_var DEWATA_WORKTREE "supply the worktree root"
+
+PROD=$DEWATA_PROD_CADDY
+LISTENER_PORT=$DEWATA_LISTENER_PORT
+WORKTREE=$DEWATA_WORKTREE
+: "${DEWATA_CADDY_SERVICE:=dewata-caddy}"
+# Configurable systemctl command (install uses the same hook).  The
+# lifecycle test sets this to the disposable shim path.
+SYSTEMCTL_CMD="${DEWATA_SYSTEMCTL_CMD:-systemctl}"
+
+# --------------------------------------------------------------------
+# Snapshot dir (positional arg)
+# --------------------------------------------------------------------
+SNAPSHOT_DIR="${1:-${DEWATA_SNAPSHOT_DIR:-}}"
 if [[ -z "$SNAPSHOT_DIR" ]]; then
-    echo "usage: $0 <SNAPSHOT_DIR>"
-    echo "  snapshots are at: $WORKTREE/deploy/atomic/<utc-timestamp>-pre-apex/"
-    echo "  the latest snapshot is the most recent one"
-    ls -1 "$WORKTREE/deploy/atomic" 2>/dev/null | tail -1 || true
+    echo "FATAL: snapshot dir is required (pass as positional arg or DEWATA_SNAPSHOT_DIR)" >&2
+    echo "  example: $0 /opt/dewata.online/deploy/atomic/20260914T143000Z-pre-apex" >&2
+    exit 1
+fi
+RUNTIME_BACKUP="$SNAPSHOT_DIR/Caddyfile.dewata.runtime"
+if [[ ! -d "$SNAPSHOT_DIR" ]]; then
+    echo "FATAL: $SNAPSHOT_DIR is not an existing directory" >&2
+    exit 1
+fi
+if [[ ! -f "$RUNTIME_BACKUP" ]]; then
+    echo "FATAL: $RUNTIME_BACKUP missing (not a pre-apex snapshot?)" >&2
     exit 1
 fi
 
 # --------------------------------------------------------------------
-# path config -- production by default; override via env to test.
+# Production-path guard
 # --------------------------------------------------------------------
-# Production-path guard: refuse to run against /opt/dewata.online
-# unless DEWATA_TEST_MODE=1 is explicit.
-if [[ "${DEWATA_TEST_MODE:-}" != "1" ]]; then
-    case "${DEWATA_PROD_CADDY:-}" in
-        /opt/dewata.online/*|/etc/caddy/*|/var/lib/dewata/*)
-            echo "FATAL: refusing to run rollback against production path $DEWATA_PROD_CADDY without DEWATA_TEST_MODE=1." >&2
-            exit 4
-            ;;
-    esac
+IS_PROD_PATH=0
+case "$PROD" in
+    /opt/dewata.online/*|/etc/caddy/*|/var/lib/dewata/*) IS_PROD_PATH=1 ;;
+esac
+if [[ "$IS_PROD_PATH" -eq 1 && "$APPLY_PROD" != "1" ]]; then
+    echo "FATAL: refusing to rollback against production path $PROD without DEWATA_APPLY_PRODUCTION=1." >&2
+    exit 4
+fi
+if [[ "$IS_PROD_PATH" -eq 0 && "$APPLY_PROD" == "1" ]]; then
+    echo "FATAL: DEWATA_APPLY_PRODUCTION=1 set but DEWATA_PROD_CADDY ($PROD) is not a known production path." >&2
+    exit 4
 fi
 
-# Mandatory: the rollback target path must be supplied via env.
-# No mutable default: refuse to run if unset.
-if [[ -z "${DEWATA_PROD_CADDY:-}" ]]; then
-    echo "FATAL: DEWATA_PROD_CADDY is unset or empty." >&2
-    echo "  supply the production Caddyfile path, e.g.:" >&2
-    echo "    DEWATA_PROD_CADDY=/opt/dewata.online/deploy/caddy/Caddyfile.dewata" >&2
-    exit 2
-fi
-PROD=$DEWATA_PROD_CADDY
-SERVICE=${DEWATA_CADDY_SERVICE:-dewata-caddy}
-LISTENER_PORT=${DEWATA_LISTENER_PORT:-8443}
-RELEASE_DST=${DEWATA_RELEASE_DST:-/opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1}
+# --------------------------------------------------------------------
+# Helpers
+# --------------------------------------------------------------------
+sha256_of_file() { sha256sum "$1" | cut -d' ' -f1; }
 
 # --------------------------------------------------------------------
-# G0: validate the snapshot directory + its runtime file
-# --------------------------------------------------------------------
-RUNTIME_BACKUP="$SNAPSHOT_DIR/Caddyfile.dewata.runtime"
-[[ -d "$SNAPSHOT_DIR" ]] || { echo "ERROR: $SNAPSHOT_DIR is not an existing directory"; exit 1; }
-[[ -f "$RUNTIME_BACKUP" ]] || { echo "ERROR: $RUNTIME_BACKUP missing (not a pre-apex snapshot?)"; exit 1; }
-
-# --------------------------------------------------------------------
-# G1: validate the saved runtime caddyfile before installing
+# G1: validate the saved runtime caddyfile
 # --------------------------------------------------------------------
 echo "G1: validating $RUNTIME_BACKUP"
 /usr/bin/caddy validate --config "$RUNTIME_BACKUP" --adapter caddyfile || {
-    echo "ERROR: saved runtime file does not validate; refusing to install"
+    echo "FATAL: saved runtime file does not validate; refusing to install" >&2
     exit 1
 }
 
@@ -79,23 +122,34 @@ echo "G1: validating $RUNTIME_BACKUP"
 # G2: atomic install the saved runtime caddyfile
 # --------------------------------------------------------------------
 echo "G2: atomic install of saved runtime caddyfile to $PROD"
-# Capture pre-rollback production caddyfile sha BEFORE we touch it.
-PRE_ROLLBACK_PROD_SHA=$(sha256sum "$PROD" | cut -d' ' -f1)
+PRE_ROLLBACK_PROD_SHA=$(sha256_of_file "$PROD")
 echo "G2: pre-rollback $PROD sha256 = $PRE_ROLLBACK_PROD_SHA"
-# Failure-injection hook: corrupt the saved runtime file AFTER
-# capturing its sha.  This simulates a disk write corruption that
-# breaks the snapshot file post-snapshot.  The rollback's G3
-# re-validate then fails, and the rollback refuses to declare success.
+
+# Failure-injection hook: corrupt the saved runtime file so the
+# G3 re-validate fails.
 if [[ "${DEWATA_FAKE_FAIL_AT_GATE:-}" == "rollback-validate" ]]; then
     echo "FATAL: DEWATA_FAKE_FAIL_AT_GATE=rollback-validate -> corrupting snapshot runtime in place" >&2
-    printf "\n{ broken syntax\n" >> "$RUNTIME_BACKUP"
+    printf "\\n{ broken syntax\\n" >> "$RUNTIME_BACKUP"
 fi
+
 install -m 0644 "$RUNTIME_BACKUP" "$PROD.new"
 sync
 mv -f "$PROD.new" "$PROD"
-POST_ROLLBACK_PROD_SHA=$(sha256sum "$PROD" | cut -d' ' -f1)
+POST_ROLLBACK_PROD_SHA=$(sha256_of_file "$PROD")
 echo "G2: post-rollback $PROD sha256 = $POST_ROLLBACK_PROD_SHA"
 echo "G2: saved runtime file installed at $PROD"
+
+# Failure-injection hook: simulate a post-G2 failure (e.g. caddy
+# validate fails because the file is somehow broken).
+if [[ "${DEWATA_FAKE_FAIL_AT_GATE:-}" == "rollback-post-g2" ]]; then
+    echo "FATAL: DEWATA_FAKE_FAIL_AT_GATE=rollback-post-g2 -> simulating failure after G2" >&2
+    # Try to restore the prior state (which was just before G2 ran).
+    # This is best-effort; the script will exit 1.
+    install -m 0644 /opt/dw-phase2/deploy/caddy/Caddyfile.dewata.runtime "$PROD.new"
+    sync
+    mv -f "$PROD.new" "$PROD"
+    exit 1
+fi
 
 # --------------------------------------------------------------------
 # G3: re-validate the now-installed file
@@ -103,147 +157,105 @@ echo "G2: saved runtime file installed at $PROD"
 echo "G3: re-validating installed file"
 /usr/bin/caddy validate --config "$PROD" --adapter caddyfile
 
-# No-op check: if the just-installed snapshot caddyfile is byte-
-# identical to the caddyfile we started with, no configuration change
-# occurred and we MUST NOT restart the service.
-if [[ "$PRE_ROLLBACK_PROD_SHA" == "$POST_ROLLBACK_PROD_SHA" ]]; then
+# --------------------------------------------------------------------
+# G4: restart
+#   No-op check: if the post-rollback Caddyfile is byte-identical to
+#   the pre-rollback Caddyfile, no live change occurred.
+# --------------------------------------------------------------------
+echo "G4: restart $DEWATA_CADDY_SERVICE"
+
+if [[ "$POST_ROLLBACK_PROD_SHA" == "$PRE_ROLLBACK_PROD_SHA" ]]; then
     echo "G4: rollback was a no-op (snapshot == current prod caddyfile, sha $PRE_ROLLBACK_PROD_SHA)"
-    echo "G4: skipping systemctl restart -- no live change to apply"
-    ROLLBACK_RESTART_INVOKED=0
-else
-    echo "G4: snapshot caddyfile differs from production (was $PRE_ROLLBACK_PROD_SHA, now $POST_ROLLBACK_PROD_SHA); restart required"
-fi
-
-# --------------------------------------------------------------------
-# G4: restart (mirrors install's restart semantics)
-# --------------------------------------------------------------------
-echo "G4: restart $SERVICE"
-
-if [[ "$PRE_ROLLBACK_PROD_SHA" == "$POST_ROLLBACK_PROD_SHA" ]]; then
-    OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value 2>/dev/null || echo 0)
+    echo "G4: skipping ${SYSTEMCTL_CMD:-systemctl} restart -- no live change to apply"
+    OLD_PID=$(${SYSTEMCTL_CMD:-systemctl} show "$DEWATA_CADDY_SERVICE" -p MainPID --value 2>/dev/null || echo 0)
     NEW_PID="$OLD_PID"
-    ROLLBACK_RESTART_INVOKED=0
-    echo "G4: $SERVICE MainPID unchanged: $OLD_PID (no-op rollback, no restart)"
-elif [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
-    OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value 2>/dev/null || echo 0)
+elif [[ "$DISPOSABLE" == "1" ]]; then
+    OLD_PID=$(${SYSTEMCTL_CMD:-systemctl} show "$DEWATA_CADDY_SERVICE" -p MainPID --value 2>/dev/null || echo 0)
     NEW_PID=0
-    ROLLBACK_RESTART_INVOKED=0
-    echo "G4: DEWATA_TEST_MODE=1 -> skipping systemctl restart (driver will take over)"
-    echo "G4: pre-restart $SERVICE MainPID=$OLD_PID"
-    echo "G4: post-restart $SERVICE MainPID=$NEW_PID (driver will take over)"
-else
-    OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value)
-    ROLLBACK_RESTART_INVOKED=1
-    echo "G4: pre-restart $SERVICE MainPID=$OLD_PID"
+    echo "G4: DEWATA_DISPOSABLE_MODE=1 -> skipping ${SYSTEMCTL_CMD:-systemctl} restart (driver will take over)"
+    echo "G4: pre-restart $DEWATA_CADDY_SERVICE MainPID=$OLD_PID"
+    echo "G4: post-restart $DEWATA_CADDY_SERVICE MainPID=$NEW_PID (driver will take over)"
+elif [[ "$APPLY_PROD" == "1" && "$IS_PROD_PATH" -eq 1 ]]; then
+    OLD_PID=$(${SYSTEMCTL_CMD:-systemctl} show "$DEWATA_CADDY_SERVICE" -p MainPID --value)
+    echo "G4: pre-restart $DEWATA_CADDY_SERVICE MainPID=$OLD_PID"
     if [[ "${DEWATA_FAKE_RESTART_FAILURE:-0}" == "1" ]]; then
         echo "G4: DEWATA_FAKE_RESTART_FAILURE=1 -> simulating post-restart failure"
-        systemctl restart "$SERVICE" || true
-        NEW_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+        ${SYSTEMCTL_CMD:-systemctl} restart "$DEWATA_CADDY_SERVICE" || true
+        NEW_PID=$(${SYSTEMCTL_CMD:-systemctl} show "$DEWATA_CADDY_SERVICE" -p MainPID --value)
     else
-        systemctl restart "$SERVICE"
+        ${SYSTEMCTL_CMD:-systemctl} restart "$DEWATA_CADDY_SERVICE"
         for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            state=$(systemctl is-active "$SERVICE" || true)
+            state=$(${SYSTEMCTL_CMD:-systemctl} is-active "$DEWATA_CADDY_SERVICE" || true)
             if [[ "$state" == "active" ]]; then break; fi
             sleep 1
         done
-        NEW_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+        NEW_PID=$(${SYSTEMCTL_CMD:-systemctl} show "$DEWATA_CADDY_SERVICE" -p MainPID --value)
     fi
-    echo "G4: post-restart $SERVICE MainPID=$NEW_PID"
+    echo "G4: post-restart $DEWATA_CADDY_SERVICE MainPID=$NEW_PID"
 fi
 
-# verify the listener is back up.  In test mode the driver controls
-# the listener; this check would race.  so only enforce in production.
-if [[ "${DEWATA_TEST_MODE:-0}" != "1" ]]; then
+# Post-restart listener check (production only).
+if [[ "$APPLY_PROD" == "1" && "$IS_PROD_PATH" -eq 1 ]]; then
     ss -ltn | grep -q ":$LISTENER_PORT " && echo "G4: :$LISTENER_PORT listening" || {
-        echo "ERROR: :$LISTENER_PORT not listening after restart"; exit 1
+        echo "FATAL: :$LISTENER_PORT not listening after restart"; exit 1
     }
 fi
 
-# --------------------------------------------------------------------
-# G5: HTTP probes (only in production mode; the lifecycle driver does
-# probing in test mode)
-# --------------------------------------------------------------------
-if [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
-    echo
-    echo "================================================================"
-    echo "G5: HTTP probes (DEWATA_TEST_MODE=1 -> skipped; lifecycle driver handles)"
-    echo "================================================================"
-    echo
-    echo "================================================================"
-    echo "ROLLBACK SUCCESS (test mode: file operations only)"
-    echo "================================================================"
-    echo "  snapshot:    $SNAPSHOT_DIR"
-    echo "  Caddyfile:   $PROD restored from $SNAPSHOT_DIR/Caddyfile.dewata.runtime"
-    echo "  release dir: $RELEASE_DST retained (no deletion)"
-    echo
-    echo "PAUSE -- the lifecycle driver will now launch the disposable"
-    echo "caddy with the restored snapshot caddyfile and run probes."
-    exit 0
-fi
-echo "G5: HTTP probes against $SERVICE on 127.0.0.1:$LISTENER_PORT"
-fail=0
-
-probe() {
-    local host="$1" path="$2" expected_code="$3"
-    local code
-    code=$(curl -s -o /dev/null -w "%{http_code}" \
-        --max-time 5 \
-        -H "Host: $host" \
-        "http://127.0.0.1:$LISTENER_PORT$path")
-    if [[ "$code" == "$expected_code" ]]; then
-        printf "  OK  %-22s %-30s -> %s\n" "$host" "$path" "$code"
-    else
-        printf "  FAIL %-22s %-30s -> got %s expected %s\n" "$host" "$path" "$code" "$expected_code"
-        fail=1
-    fi
-}
-
-# After rollback, dewata.org apex should be 503 again (catch-all).
-probe dewata.org          "/"                                       503 || fail=1
-probe api.dewata.org      "/health"                                 200 || fail=1
-probe api.dewata.org      "/dsp/v0.1/calendar/ruleset"              200 || fail=1
-probe bci.dewata.org      "/"                                       503 || fail=1
-probe protocol.dewata.org "/"                                       503 || fail=1
-probe datasets.dewata.org "/"                                       503 || fail=1
-probe localhost           "/"                                       503 || fail=1
-
-if (( fail )); then
-    echo
-    echo "ROLLBACK: some probes failed.  inspect manually before further action."
+# Failure-injection hook: simulate a post-G4 failure (e.g. restart
+# succeeded but a post-restart check failed).  The rollback script
+# itself exits non-zero; we don't have a do_restore here because the
+# rollback is already the recovery action.
+if [[ "${DEWATA_FAKE_FAIL_AT_GATE:-}" == "g4" ]]; then
+    echo "FATAL: DEWATA_FAKE_FAIL_AT_GATE=g4 -> simulating failure after G4" >&2
     exit 1
 fi
 
+# --------------------------------------------------------------------
+# G5: HTTP probes (production only)
+# --------------------------------------------------------------------
+if [[ "$APPLY_PROD" == "1" && "$IS_PROD_PATH" -eq 1 ]]; then
+    echo
+    echo "================================================================"
+    echo "G5: HTTP probes"
+    echo "================================================================"
+    echo "G5: HTTP probes against $DEWATA_CADDY_SERVICE on 127.0.0.1:$LISTENER_PORT"
+    fail=0
+    probe() {
+        local host="$1" path="$2" expected_code="$3"
+        local code body
+        code=$(curl -s -o /tmp/probe.body -w "%{http_code}" \
+            --max-time 5 \
+            -H "Host: $host" \
+            "http://127.0.0.1:$LISTENER_PORT$path")
+        body=$(head -c 200 /tmp/probe.body)
+        if [[ "$code" == "$expected_code" ]]; then
+            printf "  OK  %-22s %-30s -> %s  body[:200]=%s\\n" "$host" "$path" "$code" "$body"
+        else
+            printf "  FAIL %-22s %-30s -> got %s expected %s\\n" "$host" "$path" "$code" "$expected_code"
+            return 1
+        fi
+    }
+    probe dewata.org          "/"               503 || fail=1
+    probe api.dewata.org      "/health"         200 || fail=1
+    if (( fail )); then
+        echo
+        echo "ROLLBACK: some probes failed.  inspect manually."
+        exit 1
+    fi
+fi
+
 echo
+echo "================================================================"
 echo "ROLLBACK SUCCESS"
-echo "  Caddyfile:    restored from $SNAPSHOT_DIR"
-echo "  release dir:  retained at (no deletion)"
-echo "  caddy:        restarted, MainPID $OLD_PID -> $NEW_PID"
-echo
-echo "PAUSE -- operator-driven dashboard work, in this exact order:"
-echo
-echo "  Step 1 (DNS cutover for rollback, mirror of the install DNS cutover):"
-echo
-echo "    1a. Zero Trust -> dewata-vps -> Public Hostnames -> REMOVE the"
-echo "        dewata.org entry."
-echo "    1b. confirm any corresponding apex CNAME or tunnel DNS record"
-echo "        is removed before doing anything that re-adds A records."
-echo
-echo "  Step 2 (only if you want to return the apex to the documented-"
-echo "          broken baseline state):"
-echo
-echo "    2a. recreate the two known-broken A records, both proxy ON:"
-echo "          dewata.org A 54.149.79.189"
-echo "          dewata.org A 34.216.117.25"
-echo "        Restoring them RE-CREATES the 522 problem; they are"
-echo "        labelled as the previous broken state, not a known-good state."
-echo
-echo "    If Step 2 is done without Step 1, the apex A records will"
-echo "    briefly take precedence over the now-removed tunnel route."
-echo "    Do Step 1 first."
-echo
-echo "  DNS cutover order summary (mirrors the install-side cutover):"
-echo "    Install:   (a) record the two old A records (54.149.79.189 / 34.216.117.25)"
-echo "               (b) remove those A records"
-echo "               (c) add dewata.org published-application tunnel route -> 127.0.0.1:8443"
-echo "    Rollback:  (a) remove the dewata.org published-application tunnel route"
-echo "               (b) optionally restore the two old A records (re-creates 522)"
+echo "================================================================"
+echo "  mode:        $([[ "$APPLY_PROD" == "1" ]] && echo PRODUCTION || echo DISPOSABLE)"
+echo "  snapshot:    $SNAPSHOT_DIR"
+echo "  caddyfile:   $PROD restored from $RUNTIME_BACKUP"
+echo "  restart:     $([[ -n "$NEW_PID" && "$NEW_PID" != "$OLD_PID" ]] && echo "yes, MainPID $OLD_PID -> $NEW_PID" || echo "skipped (no live change or DISPOSABLE mode)")"
+
+# Log the rollback to the snapshot's installed.log so the trail
+# of every install + rollback is in one place.
+mkdir -p "$SNAPSHOT_DIR"
+echo "$(date -u +%Y%m%dT%H%M%SZ)  rollback  $OLD_PID -> $NEW_PID  prod=$APPLY_PROD  disposable=$DISPOSABLE" >> "$SNAPSHOT_DIR/installed.log"
+echo "  actual_snapshot_path=$SNAPSHOT_DIR"
+exit 0
