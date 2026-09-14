@@ -33,4 +33,15 @@ packages = ["src/dewatacalendar"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "phase-1/tests"]
+
+[pytest]
+pythonpath = ["src", "phase-1/tests"]
+testpaths = ["phase-1/tests"]
+asyncio_mode = "auto"
+markers = [
+    "security: visibility-tier, redaction and negative-path security tests",
+    "db: migration tests; skipped unless DEWATA_TEST_DSN is set",
+    "slow: long-running tests; intentionally excluded from the default suite",
+]
+
