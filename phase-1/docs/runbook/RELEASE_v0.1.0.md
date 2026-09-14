@@ -18,8 +18,6 @@
 - **ruleset versioning runbook** dengan 7 invariants cultural.
 - **dispute review protocol**: 30/90-day review cadence dengan
   classification (`epoch_offset`, `rule_drift`, `calendar_variant`).
-- **CI workflow**: `.github/workflows/test.yml` runs `pytest` and
-  `dewatacalendar test` on push and on PR.
 - **LICENSE** dengan cultural-sovereignty notice.
 - **CITATION.cff** untuk akademik sitiran.
 - **README dalam tiga bahasa**: basabali utama, indonesia kedua,
@@ -30,9 +28,11 @@
 - **customary sign-off**: 3 cross-validation disputes masih `pending`.
   kami **belum** memiliki seorang bendesa adat atau pemangku Keramas
   yang telah sign-off pada ruleset v0.1. lihat `docs/runbook/SIGNOFF.md`.
-- **public deployment**: belum ada `api.dewata.org`/`bci.dewata.org`
-  domain yang live. domain `dewata.org` terdaftar di spaceship, dns
-  akan migrate ke cloudflare.
+- **public deployment**: `api.dewata.org` is live behind the
+  Cloudflare-managed `dewata-vps` tunnel; calendar endpoints (`/health`,
+  `/`, `/dsp/v0.1/calendar/{ruleset,date/{date},range}`) respond. `dewata.org`
+  apex and `bci.dewata.org`, `protocol.dewata.org`, `datasets.dewata.org`,
+  `<id>.<kab>.dewata.org` are planned but not routed.
 - **mirror chain**: belum ada mirror partner yang terpasang.
 - **time-machine archives**: belum ada historical archive
   dipublikasikan.

@@ -22,3 +22,18 @@ customary sign-off:
   - belum ada dispute yang sudah di-resolve.
 
 catatan: 3 cross-validation disagreements tercatat di `disputes.json`. semuanya `pending` dan berkategori `epoch_offset` atau `rule_drift`. belum ada yang di-resolve.
+
+
+## docs correction — v0.1.0 (14 September 2026)
+
+corrected three stale claims in `RELEASE_v0.1.0.md`:
+
+- test count: was `43 tests pass in 3.14s`, now `23 passed, 4 skipped`
+  (corpus-loading tests skip when `phase-1/conformance/*.json` is not
+  present; corpus generator is documented at `tests/gen_corpus.py`).
+- CI workflow claim removed (no `.github/workflows/test.yml`
+  has been committed).
+- public deployment claim updated: `api.dewata.org` is live behind
+  the `dewata-vps` Cloudflare-managed tunnel; calendar endpoints
+  respond. Other surface hosts (`bci.`, `protocol.`, `datasets.`,
+  `<id>.<kab>.`) are planned, not routed.
