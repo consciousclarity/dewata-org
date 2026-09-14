@@ -71,6 +71,15 @@ assert_eq() {
     fi
 }
 
+assert_not_eq() {
+    local got="$1" unexpected="$2" label="$3"
+    if [[ "$got" != "$unexpected" ]]; then
+        record_pass "$label"
+    else
+        record_fail "$label" "got=$got unexpected=$unexpected (should differ)"
+    fi
+}
+
 # Snapshot of the REAL production state.  Captured once at start;
 # re-verified at end.  Any change is a hard failure.
 capture_prod_baseline() {
@@ -161,6 +170,22 @@ launch_disposable_caddy() {
     return 1
 }
 
+# Wrapper that requires the disposable caddy to start.  Records a
+# failure and marks the suite as failed if launch fails.  All sub-tests
+# use this wrapper.
+SUITE_FAILED=0
+
+require_disposable() {
+    local caddyfile="$1"
+    local label="$2"
+    if ! launch_disposable_caddy "$caddyfile"; then
+        record_fail "$label" "launch_disposable_caddy failed for $caddyfile"
+        SUITE_FAILED=1
+        return 1
+    fi
+    return 0
+}
+
 stop_disposable_caddy() {
     for pid in "${TRACKED_PIDS[@]}"; do
         if kill -0 "$pid" 2>/dev/null; then
@@ -223,6 +248,9 @@ run_install() {
         DEWATA_REVIEWED_MANIFEST="${DEWATA_REVIEWED_MANIFEST_OVERRIDE:-$REVIEWED_MANIFEST}" \
         DEWATA_PROD_BASELINE_SHA="${DEWATA_PROD_BASELINE_SHA_OVERRIDE:-}" \
         DEWATA_SNAPSHOT_PARENT="${DEWATA_SNAPSHOT_PARENT_OVERRIDE:-$SNAPSHOT_DIR_PARENT}" \
+        DEWATA_FAKE_FAIL_AT_GATE="${DEWATA_FAKE_FAIL_AT_GATE_OVERRIDE:-}" \
+        DEWATA_FAKE_RESTART_FAILURE="${DEWATA_FAKE_RESTART_FAILURE_OVERRIDE:-0}" \
+        DEWATA_FAKE_RECOVERY_VALIDATION_FAILURE="${DEWATA_FAKE_RECOVERY_VALIDATION_FAILURE_OVERRIDE:-0}" \
         PATH="$PATH" HOME="$WORK" \
         bash "$INSTALL_SH"
 }
@@ -274,7 +302,7 @@ assert_eq "$INSTALLED_SHA" "$CAND_SHA" "POSITIVE: installed caddyfile == candida
 # Verify the installer published the release (not copied from a
 # side-channel).  $DISP_WWW_DIR/dewata-org/v0.1.0-pre1 must contain
 # the same files as $RELEASE_SOURCE.
-RELEASED=$( (cd "$DISP_WWW_DIR/dewata-org/v0.1.0-pre1" && find . -type f -not -name '.counters') | sort -u )
+RELEASED=$( (cd "$DISP_WWW_DIR/dewata-org/v0.1.0-pre1" && find . -type f) | sort -u )
 SOURCE_FILES=$( (cd "$RELEASE_SOURCE" && find . -type f) | sort -u )
 if [[ "$RELEASED" == "$SOURCE_FILES" ]]; then
     record_pass "POSITIVE: published tree == release source tree"
@@ -311,7 +339,7 @@ if "auto_https off" not in src:
         src = "auto_https off\n" + src
 open(cf_path, "w").write(src)
 PYEOF
-if launch_disposable_caddy "$BASELINE_CF"; then
+if require_disposable "$BASELINE_CF" "POSITIVE: baseline disposable launch"; then
     code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -H "Host: dewata.org" "http://127.0.0.1:$TEST_PORT/" || echo 000)
     assert_eq "$code" "503" "POSITIVE: baseline apex / -> 503"
     code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -H "Host: api.dewata.org" "http://127.0.0.1:$TEST_PORT/health" || echo 000)
@@ -344,7 +372,7 @@ if "auto_https off" not in src:
         src = "auto_https off\n" + src
 open(cf_path, "w").write(src)
 PYEOF
-if launch_disposable_caddy "$POST_INSTALL_CF"; then
+if require_disposable "$POST_INSTALL_CF" "POSITIVE: post-install disposable launch"; then
     fail=0
     probe() {
         local host="$1" path="$2" expected_code="$3"
@@ -381,7 +409,7 @@ src = open(cf_path).read()
 src = src.replace(":8443 ", ":$TEST_PORT ")
 open(cf_path, "w").write(src)
 PYEOF
-if launch_disposable_caddy "$DISP_CADDY_DIR/Caddyfile.dewata"; then
+if require_disposable "$DISP_CADDY_DIR/Caddyfile.dewata" "POSITIVE: post-rollback disposable launch"; then
     code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 -H "Host: dewata.org" "http://127.0.0.1:$TEST_PORT/" || echo 000)
     assert_eq "$code" "503" "POSITIVE: post-rollback apex / -> 503"
 fi
@@ -533,80 +561,133 @@ post_sha=$(sha256sum "$PROD_CADDY" | cut -d' ' -f1)
 assert_eq "$post_sha" "$PROD_CADDY_PRE_SHA" "NEGATIVE-5: prod Caddyfile unchanged"
 verify_prod_unchanged "NEGATIVE-5"
 
-# NEGATIVE-6: failed-publish-validation (manifest sha corrupted for an
-# existing release file).  The install must auto-restore.
+# NEGATIVE-6: failure AFTER publication.  We use the install\'s
+# DEWATA_FAKE_FAIL_AT_GATE=g3-post-publish hook to make the install
+# fail AFTER G3 has swapped the staging dir into RELEASE_DST but BEFORE
+# G4 starts.  This is the failure point the previous test missed: the
+# publication completed (release tree is in place), but the caddyfile
+# install has not yet started.
 echo
 echo "================================================================"
-echo "NEGATIVE-6: failed-publish-validation"
+echo "NEGATIVE-6: failure AFTER publication (pre-G4)"
 echo "================================================================"
 reset_disposable
-# Pre-create a "prior release" at the disposable target with known content.
+# Pre-create a "prior release" at the disposable target with known
+# content so we can verify the G3 backup-restore works.
 PRIOR=$DISP_WWW_DIR/dewata-org/v0.1.0-pre1
 mkdir -p "$PRIOR"
 echo "prior release content" > "$PRIOR/index.ban.html"
 PRIOR_SHA=$(sha256sum "$PRIOR/index.ban.html" | cut -d' ' -f1)
-# Build a manifest with the wrong sha for calendar.ban.html
-BADMAN=$WORK/bad-sha.MANIFEST.txt
-sed 's/^56dacb66b662616aa5f6ed2c0a949e12f12e6e8cdaf3c608708bcbdb88a5f89e calendar.ban.html$/0000000000000000000000000000000000000000000000000000000000000000 calendar.ban.html/' \
-    "$REVIEWED_MANIFEST" > "$BADMAN"
 set +e
-DEWATA_REVIEWED_MANIFEST_OVERRIDE="$BADMAN" \
+DEWATA_FAKE_FAIL_AT_GATE_OVERRIDE="g3-post-publish" \
     DEWATA_PROD_BASELINE_SHA_OVERRIDE="$DISPOSABLE_DEFAULTS_BASELINE" \
     run_install "$RELEASE_SOURCE"
 rc=$?
 set -e
-assert_eq "$rc" "1" "NEGATIVE-6: install rc=1 when staging sha verification fails"
+assert_eq "$rc" "1" "NEGATIVE-6: install rc=1 on post-publish failure"
+# After failure, the disposable caddyfile must be restored to baseline
 post_sha=$(sha256sum "$DISP_CADDY_DIR/Caddyfile.dewata" | cut -d' ' -f1)
 assert_eq "$post_sha" "$DISPOSABLE_DEFAULTS_BASELINE" "NEGATIVE-6: disposable caddyfile restored to baseline"
-# the prior release at the disposable target must be restored (G3 backed it up)
+# The prior release tree must be restored (G3 backed it up before
+# publishing the new tree, and do_restore moves it back)
 post_release_sha=$(sha256sum "$PRIOR/index.ban.html" | cut -d' ' -f1)
 assert_eq "$post_release_sha" "$PRIOR_SHA" "NEGATIVE-6: prior release tree restored"
+# Verify the published release (which had been swapped in by G3) has
+# been moved aside as RELEASE_DST.postrestore.<ts> (NOT the active
+# location)
+post_restore_dirs=$(ls -1d ${DISP_WWW_DIR}/dewata-org/v0.1.0-pre1.postrestore.* 2>/dev/null | wc -l)
+assert_eq "$post_restore_dirs" "1" "NEGATIVE-6: post-publish tree moved aside"
 verify_prod_unchanged "NEGATIVE-6"
 
-# NEGATIVE-7: failed-caddyfile-validation (installer's G5 re-validate
-# fails because the installed candidate Caddyfile is invalid).
+# NEGATIVE-7: failure AFTER configuration install.  The candidate
+# caddyfile has been written to $PROD (G4 succeeded), then we trigger
+# a failure via DEWATA_FAKE_FAIL_AT_GATE=g4 (the install\'s post-G4
+# hook).  do_restore must restore the snapshot runtime caddyfile.  The
+# release tree is NOT modified at this point (G3 only swapped the tree
+# on a successful install; G4 failure means G3\'s RELEASE_BACKED_UP
+# may or may not exist).
 echo
 echo "================================================================"
-echo "NEGATIVE-7: failed-caddyfile-validation"
+echo "NEGATIVE-7: failure AFTER configuration install (post-G4)"
 echo "================================================================"
 reset_disposable
-# Build a candidate that is byte-different from the real one AND
-# syntactically invalid (unmatched brace) so caddy validate will
-# reject it at G5.  This simulates a candidate that passed the sha
-# check (because the manifest was regenerated to match) but fails
-# structural validation at G5.
-BAD_CAND="$WORK/bad-candidate"
-{
-    cat "$CAND_SOURCE"
-    echo ""
-    echo "{ not closed"
-} > "$BAD_CAND"
-BAD_CAND_SHA=$(sha256sum "$BAD_CAND" | cut -d' ' -f1)
-CAND_REAL_SHA=$(sha256sum "$CAND_SOURCE" | cut -d' ' -f1)
-# Build a manifest whose candidate entry matches the bad candidate's
-# sha so G0 accepts it.  All other release entries are unchanged.
-BADMAN2=$WORK/bad-cand.MANIFEST.txt
-{
-    # copy the real manifest header (comment lines)
-    grep "^#" "$REVIEWED_MANIFEST" || true
-    printf "%s %s
-" "$BAD_CAND_SHA" "Caddyfile.dewata.proposed"
-    grep "^[a-f0-9]" "$REVIEWED_MANIFEST" | grep -v "Caddyfile.dewata.proposed" || true
-} > "$BADMAN2"
 set +e
-DEWATA_CANDIDATE_OVERRIDE="$BAD_CAND" \
-    DEWATA_REVIEWED_MANIFEST_OVERRIDE="$BADMAN2" \
+DEWATA_FAKE_FAIL_AT_GATE_OVERRIDE="g4" \
     DEWATA_PROD_BASELINE_SHA_OVERRIDE="$DISPOSABLE_DEFAULTS_BASELINE" \
     run_install "$RELEASE_SOURCE"
 rc=$?
 set -e
-# Expected: G0..G4 pass (sha256 only), then G5 caddy validate fails on
-# the bad candidate.  do_restore fires, restores the snapshot runtime to
-# the disposable's caddyfile, validates it (which passes), and exits 1.
-assert_eq "$rc" "1" "NEGATIVE-7: install rc=1 when post-install caddy validate fails"
-post_sha=$(sha256sum "$DISP_CADDY_DIR/Caddyfile.dewata" | cut -d' ' -f1)
+# The install\'s G4 happens, then the post-G4 hook fires do_restore.
+# do_restore restores the snapshot runtime caddyfile.
+assert_eq "$rc" "1" "NEGATIVE-7: install rc=1 on post-G4 failure"
+post_sha=$(sha256sum "$DISP_CADDY_DIR/Caddyfile.dewata" | cut -d ' ' -f1)
 assert_eq "$post_sha" "$DISPOSABLE_DEFAULTS_BASELINE" "NEGATIVE-7: disposable caddyfile restored to baseline"
 verify_prod_unchanged "NEGATIVE-7"
+
+# NEGATIVE-8: failure AFTER G5 caddyfile validation, BEFORE restart.
+# The candidate caddyfile is installed and validates; we then
+# trigger a failure via DEWATA_FAKE_FAIL_AT_GATE=g5 (the install\'s
+# post-G5 hook).  do_restore fires.
+echo
+echo "================================================================"
+echo "NEGATIVE-8: failure AFTER G5 validation (pre-restart)"
+echo "================================================================"
+reset_disposable
+set +e
+DEWATA_FAKE_FAIL_AT_GATE_OVERRIDE="g5" \
+    DEWATA_PROD_BASELINE_SHA_OVERRIDE="$DISPOSABLE_DEFAULTS_BASELINE" \
+    run_install "$RELEASE_SOURCE"
+rc=$?
+set -e
+assert_eq "$rc" "1" "NEGATIVE-8: install rc=1 on post-G5 failure"
+post_sha=$(sha256sum "$DISP_CADDY_DIR/Caddyfile.dewata" | cut -d ' ' -f1)
+assert_eq "$post_sha" "$DISPOSABLE_DEFAULTS_BASELINE" "NEGATIVE-8: disposable caddyfile restored to baseline"
+verify_prod_unchanged "NEGATIVE-8"
+
+# NEGATIVE-9: failure DURING restart/recovery.  Use
+# DEWATA_FAKE_FAIL_AT_GATE=g6 which fires AFTER G6 (after the test-mode
+# restart-skip or after a real restart in production mode).  do_restore
+# fires; the install must restore the caddyfile from snapshot.
+echo
+echo "================================================================"
+echo "NEGATIVE-9: failure during restart/recovery (post-G6)"
+echo "================================================================"
+reset_disposable
+set +e
+DEWATA_FAKE_FAIL_AT_GATE_OVERRIDE="g6" \
+    DEWATA_PROD_BASELINE_SHA_OVERRIDE="$DISPOSABLE_DEFAULTS_BASELINE" \
+    run_install "$RELEASE_SOURCE"
+rc=$?
+set -e
+assert_eq "$rc" "1" "NEGATIVE-9: install rc=1 on post-G6 failure"
+post_sha=$(sha256sum "$DISP_CADDY_DIR/Caddyfile.dewata" | cut -d ' ' -f1)
+assert_eq "$post_sha" "$DISPOSABLE_DEFAULTS_BASELINE" "NEGATIVE-9: disposable caddyfile restored to baseline"
+verify_prod_unchanged "NEGATIVE-9"
+
+# NEGATIVE-10: failure DURING recovery (do_restore).  Combine
+# DEWATA_FAKE_FAIL_AT_GATE=g4 (triggers do_restore) with
+# DEWATA_FAKE_RECOVERY_VALIDATION_FAILURE=1 (corrupts the snapshot
+# runtime file in place, so caddy validate on the restored caddyfile
+# fails).  do_restore must NOT declare success; it must exit non-zero
+# with AUTO-RESTORE INCOMPLETE.
+echo
+echo "================================================================"
+echo "NEGATIVE-10: failure during recovery (do_restore validation fails)"
+echo "================================================================"
+reset_disposable
+set +e
+DEWATA_FAKE_FAIL_AT_GATE_OVERRIDE="g4" \
+    DEWATA_FAKE_RECOVERY_VALIDATION_FAILURE_OVERRIDE="1" \
+    DEWATA_PROD_BASELINE_SHA_OVERRIDE="$DISPOSABLE_DEFAULTS_BASELINE" \
+    run_install "$RELEASE_SOURCE"
+rc=$?
+set -e
+assert_eq "$rc" "2" "NEGATIVE-10: install rc=2 on recovery validation failure"
+# The disposable\'s caddyfile is now the BROKEN one (the corrupted
+# snapshot).  Verify it does NOT match the baseline.
+broken_sha=$(sha256sum "$DISP_CADDY_DIR/Caddyfile.dewata" | cut -d ' ' -f1)
+assert_not_eq "$broken_sha" "$DISPOSABLE_DEFAULTS_BASELINE" "NEGATIVE-10: disposable caddyfile is the broken restored copy, NOT the baseline"
+verify_prod_unchanged "NEGATIVE-10"
 
 # ------------------------------------------------------------
 # Final: production verification
@@ -632,6 +713,12 @@ if (( ${#FAILED[@]} > 0 )); then
     for f in "${FAILED[@]}"; do
         echo "  $f"
     done
+fi
+if (( SUITE_FAILED > 0 )); then
+    echo "LIFECYCLE TEST FAIL: suite-level failure (e.g. disposable caddy failed to start)"
+    exit 2
+fi
+if (( ${#FAILED[@]} > 0 )); then
     exit 1
 fi
 echo "LIFECYCLE TEST PASS"

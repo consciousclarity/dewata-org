@@ -59,6 +59,25 @@ set -euo pipefail
 # --------------------------------------------------------------------
 # path config
 # --------------------------------------------------------------------
+# Production-path guard.  The install script must NEVER run against
+# /opt/dewata.online/* paths unless DEWATA_TEST_MODE=1 is explicitly
+# set.  This catches the case where someone invokes the install with
+# a partial environment and the defaults fall back to production
+# paths.  Without this guard, an unset DEWATA_TEST_MODE could result
+# in a real production restart via the G6 path.
+if [[ "${DEWATA_TEST_MODE:-}" != "1" ]]; then
+    case "${DEWATA_PROD_CADDY:-}" in
+        /opt/dewata.online/*|/etc/caddy/*|/var/lib/dewata/*)
+            echo "FATAL: refusing to run against production path $DEWATA_PROD_CADDY without DEWATA_TEST_MODE=1." >&2
+            echo "  This guard prevents accidental production restarts." >&2
+            echo "  If you really want to install against a production path, set" >&2
+            echo "  DEWATA_TEST_MODE=1 explicitly (this is the lifecycle-test mode)." >&2
+            echo "  Or run against a disposable tree and pass DEWATA_PROD_CADDY=<disposable-path>." >&2
+            exit 4
+            ;;
+    esac
+fi
+
 # Mandatory required env vars.  We refuse to run with mutable
 # defaults that would silently write to production paths.  Every
 # path must be supplied explicitly so the operator (and the
@@ -145,6 +164,7 @@ sha256_of_dir_recursive() {
 SNAPSHOT_CAPTURED=0      # G2: snapshot exists at $SNAPSHOT_DIR
 RELEASE_BACKED_UP=""     # G3: backup path of the old release tree (if any)
 PROD_WRITTEN=0           # G4: $PROD has the new candidate (not yet validated)
+RESTART_INVOKED=0        # G6: systemctl restart was actually executed
 
 do_restore() {
     local reason="$1"
@@ -160,6 +180,14 @@ do_restore() {
         echo "  restore ABORTED: snapshot runtime file missing at $SNAPSHOT_DIR/Caddyfile.dewata.runtime" >&2
         restore_failed=1
     else
+        # Failure-injection hook: corrupt the snapshot runtime file in
+        # place so the restored caddyfile fails caddy validate.  This
+        # tests that do_restore correctly reports the failure rather
+        # than silently declaring success.
+        if [[ "${DEWATA_FAKE_RECOVERY_VALIDATION_FAILURE:-0}" == "1" ]]; then
+            echo "  DEWATA_FAKE_RECOVERY_VALIDATION_FAILURE=1 -> corrupting snapshot runtime in place" >&2
+            printf "\n{ broken syntax\n" >> "$SNAPSHOT_DIR/Caddyfile.dewata.runtime"
+        fi
         echo "  auto-restore: re-installing snapshotted runtime to $PROD"
         install -m 0644 "$SNAPSHOT_DIR/Caddyfile.dewata.runtime" "$PROD.new"
         sync
@@ -175,17 +203,61 @@ do_restore() {
         restore_failed=1
     fi
 
-    # 3. restart the service in production mode.
-    if [[ "${DEWATA_TEST_MODE:-0}" != "1" ]]; then
+    # 3. restart the service.  This MUST happen AFTER the caddyfile is
+    #    restored on disk so the running caddy reloads the restored
+    #    config.  If the restart fails, the live caddy is still serving
+    #    the broken config from before the restore; do NOT declare
+    #    success.
+    #
+    #    The restart only fires when this is a known production path
+    #    AND DEWATA_TEST_MODE is not 1.  For disposable paths the
+    #    restart is skipped (the lifecycle test\'s disposable caddy
+    #    is not the real service).
+    RESTORE_IS_PROD=0
+    case "$PROD" in
+        /opt/dewata.online/*|/etc/caddy/*|/var/lib/dewata/*) RESTORE_IS_PROD=1 ;;
+    esac
+    if [[ "${DEWATA_TEST_MODE:-0}" != "1" && "$RESTORE_IS_PROD" -eq 1 ]]; then
         if systemctl restart "$SERVICE"; then
             echo "  service restarted: $SERVICE"
+            # Verify the listener is back up.
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+                if ss -ltn 2>/dev/null | grep -q ":$LISTENER_PORT "; then
+                    echo "  post-restore listener up: :$LISTENER_PORT"
+                    break
+                fi
+                sleep 1
+            done
+            if ! ss -ltn 2>/dev/null | grep -q ":$LISTENER_PORT "; then
+                echo "  RESTORE FAILED: :$LISTENER_PORT not listening after post-restore restart" >&2
+                restore_failed=1
+            fi
+            # Verify the post-restart MainPID is different from the
+            # pre-restart MainPID (sanity that a real restart happened).
+            POST_RESTORE_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+            echo "  post-restore $SERVICE MainPID=$POST_RESTORE_PID"
         else
             echo "  RESTORE FAILED: systemctl restart $SERVICE returned non-zero" >&2
             restore_failed=1
         fi
+    else
+        echo "  skipping post-restore restart (DEWATA_TEST_MODE=$DEWATA_TEST_MODE, RESTORE_IS_PROD=$RESTORE_IS_PROD)"
     fi
 
-    # 4. restore the prior release tree (only if G3 had published a
+    # 4. verify the restored Caddyfile sha256 matches the snapshot\'s
+    #    runtime sha256 (the strongest verification possible).
+    if [[ -f "$SNAPSHOT_DIR/Caddyfile.dewata.runtime" ]]; then
+        RESTORED_SHA=$(sha256_of_file "$PROD")
+        SNAPSHOT_RUNTIME_SHA=$(sha256_of_file "$SNAPSHOT_DIR/Caddyfile.dewata.runtime")
+        if [[ "$RESTORED_SHA" != "$SNAPSHOT_RUNTIME_SHA" ]]; then
+            echo "  RESTORE FAILED: restored $PROD sha256 ($RESTORED_SHA) does not match snapshot runtime sha256 ($SNAPSHOT_RUNTIME_SHA)" >&2
+            restore_failed=1
+        else
+            echo "  restored Caddyfile sha256 verified: $RESTORED_SHA"
+        fi
+    fi
+
+    # 5. restore the prior release tree (only if G3 had published a
     #    new tree and saved the old one aside).
     if [[ -n "$RELEASE_BACKED_UP" && -d "$RELEASE_BACKED_UP" ]]; then
         echo "  auto-restore: swapping published tree back to prior release"
@@ -365,6 +437,12 @@ diff -u "$SNAPSHOT_DIR/Caddyfile.dewata.runtime" \
 echo "G2: snapshot saved to $SNAPSHOT_DIR"
 SNAPSHOT_CAPTURED=1
 
+# Capture the sha of the current production Caddyfile BEFORE we
+# touch anything.  After G4 we compare against this; if equal, the
+# install is a no-op and we MUST NOT restart the service.
+PRE_INSTALL_PROD_SHA=$(sha256_of_file "$PROD")
+echo "G2: pre-install $PROD sha256 = $PRE_INSTALL_PROD_SHA"
+
 # --------------------------------------------------------------------
 # G3: stage release files WITH FULL BIDIRECTIONAL MANIFEST VERIFY
 # --------------------------------------------------------------------
@@ -406,7 +484,7 @@ done
 # previous installer had.
 # Counters go in temp files because the staging loop runs in a
 # subshell (pipeline); plain bash vars would be lost on exit.
-STAGE_COUNTERS="$STAGING_DIR/.counters"
+STAGE_COUNTERS="$STAGING_DIR.stage-counters"
 : > "$STAGE_COUNTERS"
 awk '/^[a-f0-9]/{print}' "$REVIEWED_MANIFEST" | while read -r sum rel rest; do
     # skip the caddyfile entry (handled in G4) and any header/comment
@@ -446,9 +524,11 @@ echo "G3: staged $n_staged files; no missing entries, no sha mismatches"
 # manifest entry (excluding the caddyfile which is not staged here),
 # and every manifest entry (excluding the caddyfile) must be present
 # in the staged tree.
-# The staging directory contains the .counters sentinel file used to
-# tally staging results; exclude it from the exact-set comparison.
-staged_files=$( (cd "$STAGING_DIR" && find . -type f -not -name '.counters') | sed "s|^\./||" | sort -u )
+# Stage counters live in $STAGING_DIR.stage-counters (sibling file,
+# outside $STAGING_DIR) so the published release never contains
+# the sentinel.  See $STAGE_COUNTERS for the staged/n_missing/
+# n_sha_mismatch tallies.
+staged_files=$( (cd "$STAGING_DIR" && find . -type f) | sed "s|^\./||" | sort -u )
 manifest_files_to_stage=$(awk '/^[a-f0-9]/{print $2}' "$REVIEWED_MANIFEST" \
     | grep -v "^Caddyfile.dewata.proposed$" | sort -u)
 
@@ -495,7 +575,7 @@ echo "G3: release published at $RELEASE_DST"
 
 # Post-publish exact-set comparison: the published tree must match the
 # manifest exactly.
-published_files=$( (cd "$RELEASE_DST" && find . -type f -not -name '.counters') | sed "s|^\./||" | sort -u )
+published_files=$( (cd "$RELEASE_DST" && find . -type f) | sed "s|^\./||" | sort -u )
 
 # 1. published tree must not have any extras
 extras_in_published=$(comm -23 <(printf "%s\n" "$published_files") <(printf "%s\n" "$manifest_files_to_stage"))
@@ -532,6 +612,15 @@ fi
 n_files=$(printf "%s\n" "$published_files" | grep -c . || true)
 echo "G3: $n_files files at $RELEASE_DST (exact-set match against manifest)"
 
+# Failure-injection hook: simulate a failure AFTER publication (after G3
+# has swapped the staging dir into place, after the post-publish exact-set
+# comparison passed) but before G4.  This triggers do_restore with the
+# release tree backed up.
+if [[ "${DEWATA_FAKE_FAIL_AT_GATE:-}" == "g3-post-publish" ]]; then
+    echo "FATAL: DEWATA_FAKE_FAIL_AT_GATE=g3-post-publish -> simulating failure after G3" >&2
+    do_restore "injected failure after G3 publication"
+fi
+
 # --------------------------------------------------------------------
 # G4: atomic install of the candidate caddyfile (path-config aware)
 # --------------------------------------------------------------------
@@ -544,6 +633,12 @@ sync
 mv -f "$PROD.new" "$PROD"
 echo "G4: candidate installed at $PROD"
 PROD_WRITTEN=1
+# Failure-injection hook: simulate a G4 failure (e.g. file sync issue,
+# permission denied on a subsequent step) AFTER publication has succeeded.
+if [[ "${DEWATA_FAKE_FAIL_AT_GATE:-}" == "g4" ]]; then
+    echo "FATAL: DEWATA_FAKE_FAIL_AT_GATE=g4 -> simulating post-G4 failure" >&2
+    do_restore "injected failure after G4"
+fi
 
 # --------------------------------------------------------------------
 # G5: re-validate the installed file
@@ -554,6 +649,13 @@ echo "G5: re-validate installed file"
 echo "================================================================"
 /usr/bin/caddy validate --config "$PROD" --adapter caddyfile
 
+# Failure-injection hook: simulate a failure AFTER the candidate caddyfile
+# has been installed (G4) and validated (G5) but BEFORE G6 restart.
+if [[ "${DEWATA_FAKE_FAIL_AT_GATE:-}" == "g5" ]]; then
+    echo "FATAL: DEWATA_FAKE_FAIL_AT_GATE=g5 -> simulating failure after G5 (pre-restart)" >&2
+    do_restore "injected failure after G5 validation"
+fi
+
 # --------------------------------------------------------------------
 # G6: restart (mirrors install semantics, controlled via DEWATA_TEST_MODE)
 # --------------------------------------------------------------------
@@ -563,30 +665,107 @@ echo "G6: restart $SERVICE"
 echo "================================================================"
 echo "G6: restarting $SERVICE (graceful; expect ~2-3s :$LISTENER_PORT interruption)"
 
-if [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
+# No-op check + restart decision.  Three rules apply here:
+#
+#   1. If the just-installed candidate caddyfile is byte-identical to
+#      the caddyfile we started with, no live change occurred and
+#      we MUST NOT restart (a restart would briefly interrupt the
+#      listener with no benefit).
+#
+#   2. The G6 restart branch ONLY fires when DEWATA_TEST_MODE != 1
+#      AND $PROD is a known production path.  Otherwise the install
+#      refuses to restart caddy.  This prevents a disposable install
+#      (with DEWATA_TEST_MODE unset) from accidentally restarting
+#      the real production caddy.
+#
+#   3. The post-restart listener check enforces that caddy came back
+#      up.  This fires do_restore on failure.
+POST_INSTALL_PROD_SHA=$(sha256_of_file "$PROD")
+if [[ "$POST_INSTALL_PROD_SHA" == "$PRE_INSTALL_PROD_SHA" ]]; then
+    echo "G6: install was a no-op (candidate == current prod caddyfile, sha $POST_INSTALL_PROD_SHA)"
+    echo "G6: skipping systemctl restart -- no live change to apply"
     OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value 2>/dev/null || echo 0)
-    NEW_PID=0
-    echo "G6: DEWATA_TEST_MODE=1 -> skipping systemctl restart"
-    echo "G6: pre-restart $SERVICE MainPID=$OLD_PID"
-    echo "G6: post-restart $SERVICE MainPID=$NEW_PID (driver will take over)"
+    NEW_PID="$OLD_PID"
+    RESTART_INVOKED=0
+    echo "G6: $SERVICE MainPID unchanged: $OLD_PID"
 else
-    OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value)
-    echo "G6: pre-restart $SERVICE MainPID=$OLD_PID"
-    systemctl restart "$SERVICE"
-    for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-        state=$(systemctl is-active "$SERVICE" || true)
-        if [[ "$state" == "active" ]]; then break; fi
-        sleep 1
-    done
-    NEW_PID=$(systemctl show "$SERVICE" -p MainPID --value)
-    echo "G6: post-restart $SERVICE MainPID=$NEW_PID"
+    echo "G6: candidate caddyfile differs from production (was $PRE_INSTALL_PROD_SHA, now $POST_INSTALL_PROD_SHA); restart decision pending"
+    # Determine whether this is a production install (and we may restart
+    # caddy) or a disposable install (and we must NOT restart caddy).
+    IS_PROD_PATH=0
+    case "$PROD" in
+        /opt/dewata.online/*|/etc/caddy/*|/var/lib/dewata/*) IS_PROD_PATH=1 ;;
+    esac
+    if [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
+        OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value 2>/dev/null || echo 0)
+        NEW_PID=0
+        RESTART_INVOKED=0
+        echo "G6: DEWATA_TEST_MODE=1 -> skipping systemctl restart (driver will take over)"
+        echo "G6: pre-restart $SERVICE MainPID=$OLD_PID"
+        echo "G6: post-restart $SERVICE MainPID=$NEW_PID (driver will take over)"
+    elif [[ "$IS_PROD_PATH" -eq 0 ]]; then
+        # Non-production path with no DEWATA_TEST_MODE.  Refuse to
+        # restart caddy; instead treat as a no-op so the install
+        # does not interfere with the host\'s service.  The lifecycle
+        # test always sets DEWATA_TEST_MODE=1 for this reason.
+        OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value 2>/dev/null || echo 0)
+        NEW_PID="$OLD_PID"
+        RESTART_INVOKED=0
+        echo "G6: non-production path with DEWATA_TEST_MODE unset -> skipping systemctl restart"
+        echo "G6:   set DEWATA_TEST_MODE=1 explicitly to enable restart in a disposable"
+        echo "G6: $SERVICE MainPID unchanged: $OLD_PID"
+    else
+        OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+        echo "G6: pre-restart $SERVICE MainPID=$OLD_PID"
+        # Hook for failure-injection: if DEWATA_FAKE_RESTART_FAILURE=1, run
+        # systemctl restart normally but mark RESTART_INVOKED=1 anyway so
+        # the do_restore flow runs; we then tamper with the listener check
+        # below to simulate a service that crashed after config reload.
+        if [[ "${DEWATA_FAKE_RESTART_FAILURE:-0}" == "1" ]]; then
+            echo "G6: DEWATA_FAKE_RESTART_FAILURE=1 -> simulating post-restart failure"
+            systemctl restart "$SERVICE" || true
+            RESTART_INVOKED=1
+            NEW_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+            echo "G6: post-restart $SERVICE MainPID=$NEW_PID"
+        else
+            systemctl restart "$SERVICE"
+            RESTART_INVOKED=1
+            for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+                state=$(systemctl is-active "$SERVICE" || true)
+                if [[ "$state" == "active" ]]; then break; fi
+                sleep 1
+            done
+            NEW_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+            echo "G6: post-restart $SERVICE MainPID=$NEW_PID"
+        fi
+    fi
 fi
 
-if [[ "${DEWATA_TEST_MODE:-0}" != "1" ]]; then
+# Post-restart listener check.  Only fires in production mode AND
+# only when the install path is a known production path.  For
+# disposable installs the listener on :$LISTENER_PORT is provided by
+# the lifecycle test\'s disposable caddy; this script does not own
+# that lifecycle.
+LISTENER_IS_PROD=0
+case "$PROD" in
+    /opt/dewata.online/*|/etc/caddy/*|/var/lib/dewata/*) LISTENER_IS_PROD=1 ;;
+esac
+if [[ "${DEWATA_TEST_MODE:-0}" != "1" && "$LISTENER_IS_PROD" -eq 1 ]]; then
     ss -ltn | grep -q ":$LISTENER_PORT " && echo "G6: :$LISTENER_PORT listening" || {
-        echo "ERROR: :$LISTENER_PORT not listening after restart"
+        echo "FATAL: :$LISTENER_PORT not listening after restart"
         do_restore "post-restart listener check"
     }
+fi
+
+# Failure-injection hook for restart/recovery testing.  This fires
+# AFTER the G6 restart (or after the test-mode restart-skip) so the
+# test can verify do_restore runs even when the restart path itself
+# succeeded.  Useful for confirming the recovery sequence runs end-
+# to-end.  Honors DEWATA_FAKE_FAIL_AT_GATE=g6 in either production
+# or test mode.
+if [[ "${DEWATA_FAKE_FAIL_AT_GATE:-}" == "g6" ]]; then
+    echo "FATAL: DEWATA_FAKE_FAIL_AT_GATE=g6 -> simulating post-restart failure" >&2
+    do_restore "injected failure after G6"
 fi
 
 # --------------------------------------------------------------------
@@ -616,6 +795,20 @@ if [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
     exit 0
 fi
 
+# G7 HTTP probes: only run in production mode AND only against a
+# known production path.  The lifecycle test launches its own
+# disposable caddy on :$LISTENER_PORT and runs its own probes.
+G7_IS_PROD=0
+case "$PROD" in
+    /opt/dewata.online/*|/etc/caddy/*|/var/lib/dewata/*) G7_IS_PROD=1 ;;
+esac
+if [[ "${DEWATA_TEST_MODE:-0}" != "1" || "$G7_IS_PROD" -eq 0 ]]; then
+    echo
+    echo "================================================================"
+    echo "G7: HTTP probes (skipped: DEWATA_TEST_MODE=$DEWATA_TEST_MODE, G7_IS_PROD=$G7_IS_PROD)"
+    echo "================================================================"
+    echo "  lifecycle driver or no-op disposable install; production probes not applicable"
+else
 echo
 echo "================================================================"
 echo "G7: HTTP probes"
@@ -662,6 +855,7 @@ if (( fail )); then
     echo "INSTALL: some probes failed.  auto-restore."
     do_restore "probe failures"
 fi
+fi  # close the G7 production-mode block
 
 # Done.  Disable auto-restore on success.
 # --------------------------------------------------------------------

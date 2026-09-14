@@ -35,6 +35,17 @@ fi
 # --------------------------------------------------------------------
 # path config -- production by default; override via env to test.
 # --------------------------------------------------------------------
+# Production-path guard: refuse to run against /opt/dewata.online
+# unless DEWATA_TEST_MODE=1 is explicit.
+if [[ "${DEWATA_TEST_MODE:-}" != "1" ]]; then
+    case "${DEWATA_PROD_CADDY:-}" in
+        /opt/dewata.online/*|/etc/caddy/*|/var/lib/dewata/*)
+            echo "FATAL: refusing to run rollback against production path $DEWATA_PROD_CADDY without DEWATA_TEST_MODE=1." >&2
+            exit 4
+            ;;
+    esac
+fi
+
 # Mandatory: the rollback target path must be supplied via env.
 # No mutable default: refuse to run if unset.
 if [[ -z "${DEWATA_PROD_CADDY:-}" ]]; then
@@ -68,9 +79,22 @@ echo "G1: validating $RUNTIME_BACKUP"
 # G2: atomic install the saved runtime caddyfile
 # --------------------------------------------------------------------
 echo "G2: atomic install of saved runtime caddyfile to $PROD"
+# Capture pre-rollback production caddyfile sha BEFORE we touch it.
+PRE_ROLLBACK_PROD_SHA=$(sha256sum "$PROD" | cut -d' ' -f1)
+echo "G2: pre-rollback $PROD sha256 = $PRE_ROLLBACK_PROD_SHA"
+# Failure-injection hook: corrupt the saved runtime file AFTER
+# capturing its sha.  This simulates a disk write corruption that
+# breaks the snapshot file post-snapshot.  The rollback's G3
+# re-validate then fails, and the rollback refuses to declare success.
+if [[ "${DEWATA_FAKE_FAIL_AT_GATE:-}" == "rollback-validate" ]]; then
+    echo "FATAL: DEWATA_FAKE_FAIL_AT_GATE=rollback-validate -> corrupting snapshot runtime in place" >&2
+    printf "\n{ broken syntax\n" >> "$RUNTIME_BACKUP"
+fi
 install -m 0644 "$RUNTIME_BACKUP" "$PROD.new"
 sync
 mv -f "$PROD.new" "$PROD"
+POST_ROLLBACK_PROD_SHA=$(sha256sum "$PROD" | cut -d' ' -f1)
+echo "G2: post-rollback $PROD sha256 = $POST_ROLLBACK_PROD_SHA"
 echo "G2: saved runtime file installed at $PROD"
 
 # --------------------------------------------------------------------
@@ -79,27 +103,51 @@ echo "G2: saved runtime file installed at $PROD"
 echo "G3: re-validating installed file"
 /usr/bin/caddy validate --config "$PROD" --adapter caddyfile
 
+# No-op check: if the just-installed snapshot caddyfile is byte-
+# identical to the caddyfile we started with, no configuration change
+# occurred and we MUST NOT restart the service.
+if [[ "$PRE_ROLLBACK_PROD_SHA" == "$POST_ROLLBACK_PROD_SHA" ]]; then
+    echo "G4: rollback was a no-op (snapshot == current prod caddyfile, sha $PRE_ROLLBACK_PROD_SHA)"
+    echo "G4: skipping systemctl restart -- no live change to apply"
+    ROLLBACK_RESTART_INVOKED=0
+else
+    echo "G4: snapshot caddyfile differs from production (was $PRE_ROLLBACK_PROD_SHA, now $POST_ROLLBACK_PROD_SHA); restart required"
+fi
+
 # --------------------------------------------------------------------
 # G4: restart (mirrors install's restart semantics)
 # --------------------------------------------------------------------
-echo "G4: restarting $SERVICE"
+echo "G4: restart $SERVICE"
 
-if [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
+if [[ "$PRE_ROLLBACK_PROD_SHA" == "$POST_ROLLBACK_PROD_SHA" ]]; then
+    OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value 2>/dev/null || echo 0)
+    NEW_PID="$OLD_PID"
+    ROLLBACK_RESTART_INVOKED=0
+    echo "G4: $SERVICE MainPID unchanged: $OLD_PID (no-op rollback, no restart)"
+elif [[ "${DEWATA_TEST_MODE:-0}" == "1" ]]; then
     OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value 2>/dev/null || echo 0)
     NEW_PID=0
-    echo "G4: DEWATA_TEST_MODE=1 -> skipping systemctl restart"
+    ROLLBACK_RESTART_INVOKED=0
+    echo "G4: DEWATA_TEST_MODE=1 -> skipping systemctl restart (driver will take over)"
     echo "G4: pre-restart $SERVICE MainPID=$OLD_PID"
     echo "G4: post-restart $SERVICE MainPID=$NEW_PID (driver will take over)"
 else
     OLD_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+    ROLLBACK_RESTART_INVOKED=1
     echo "G4: pre-restart $SERVICE MainPID=$OLD_PID"
-    systemctl restart "$SERVICE"
-    for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-        state=$(systemctl is-active "$SERVICE" || true)
-        if [[ "$state" == "active" ]]; then break; fi
-        sleep 1
-    done
-    NEW_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+    if [[ "${DEWATA_FAKE_RESTART_FAILURE:-0}" == "1" ]]; then
+        echo "G4: DEWATA_FAKE_RESTART_FAILURE=1 -> simulating post-restart failure"
+        systemctl restart "$SERVICE" || true
+        NEW_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+    else
+        systemctl restart "$SERVICE"
+        for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            state=$(systemctl is-active "$SERVICE" || true)
+            if [[ "$state" == "active" ]]; then break; fi
+            sleep 1
+        done
+        NEW_PID=$(systemctl show "$SERVICE" -p MainPID --value)
+    fi
     echo "G4: post-restart $SERVICE MainPID=$NEW_PID"
 fi
 
