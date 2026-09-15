@@ -1,5 +1,6 @@
 # v0.1.0-pre1 reviewed manifest. Format: <sha256> <rel_path>
 # generated: 2026-09-14T14:31:47.284199Z
+# ruleset: pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0
 # release dir: /opt/dw-phase2/deploy/www/dewata-org/v0.1.0-pre1
 # candidate sha: 4f06ce6f964b309419aee6e258f86ed88522ea9bd0b597b28d8a0987ef69542e
 be72d2c015d98f0644c0f991c3f3865b33eeef7a098d440df86ea4ea012f1a38  about.ban.html
