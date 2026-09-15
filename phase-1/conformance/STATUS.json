@@ -1,20 +1,41 @@
 {
-  "schema_version": "1.0",
-  "last_modified": "2026-09-15T00:00:00Z",
-  "policy": "per PROTOCOL v1.0 §2.4 + gap analysis Finding 5: preserved != trusted. A corpus's directory placement (published/, ground-truth/, etc.) does NOT confer authority. Only status == ATTESTED corpora may satisfy independent-reference validation gates, justify ruleset promotion, be described as ground truth, or have their values silently copied into authoritative fixtures.",
-  "gate_predicates": {
-    "can_satisfy_validation_gate": "status == 'ATTESTED' (fail-closed for any other status, including unrecognized)",
-    "can_promote_ruleset_using": "status == 'ATTESTED'",
-    "can_be_described_as_ground_truth": "status == 'ATTESTED'",
-    "can_be_silently_copied_to_authoritative_fixture": "status == 'ATTESTED'"
+  "schema_version": "2.0",
+  "last_modified": "2026-09-15T22:00:00Z",
+  "policy": "per PROTOCOL v1.0 §2.4 + gap analysis Finding 5: preserved != trusted. A corpus's directory placement (published/, ground-truth/, etc.) does NOT confer authority. Two orthogonal axes govern the gate: verification_status (is the source / citation retrievable?) and reference_eligibility (may this corpus satisfy an independent-reference validation gate for calendar correctness?). The gate requires VERIFIED + ELIGIBLE. Anything else fails closed.",
+  "axes": {
+    "verification_status": {
+      "UNVERIFIED": "the citation could not be independently verified from this host (book not held, ISBN not retrievable, page cannot be cross-checked, etc.)",
+      "VERIFIED": "the source has been fetched / the citation has been confirmed against a retrievable record (the source itself may still be non-authoritative — see reference_eligibility)"
+    },
+    "reference_eligibility": {
+      "INELIGIBLE": "the corpus may inform the work but cannot satisfy an independent-reference validation gate, even if VERIFIED. reasons include: practitioner / non-academic source, source does not actually cover the claimed calendrical relationship, source is older than the regime it claims to describe.",
+      "ELIGIBLE": "the corpus may satisfy an independent-reference validation gate for calendar correctness"
+    },
+    "authority_basis": {
+      "scholarly": "academic publication, peer-reviewed or from a recognized scholarly press",
+      "customary": "attested by a Balinese customary authority (pemangku, bendesa, etc.)",
+      "institutional": "attested by a state institution (university, ministry, heritage body)",
+      "practitioner": "practitioner calendar (commercial or community) — may be VERIFIED but is generally INELIGIBLE for authoritative calendar validation",
+      "software_reference": "a software implementation that itself cites a verifiable source (the source is what matters, not the software)",
+      "unknown": "the basis could not be classified — UNVERIFIED by default"
+    }
   },
+  "gate_predicates": {
+    "can_satisfy_validation_gate": "verification_status == 'VERIFIED' AND reference_eligibility == 'ELIGIBLE' (fail-closed otherwise)",
+    "can_promote_ruleset_using": "verification_status == 'VERIFIED' AND reference_eligibility == 'ELIGIBLE'",
+    "can_be_described_as_ground_truth": "verification_status == 'VERIFIED' AND reference_eligibility == 'ELIGIBLE'",
+    "can_be_silently_copied_to_authoritative_fixture": "verification_status == 'VERIFIED' AND reference_eligibility == 'ELIGIBLE'"
+  },
+  "separation_from_ceremonial_tiers": "this status governs the bibliographic / evidence-chain layer for conformance corpora. It does NOT affect Dewata's ceremonial/record provenance tiers (computed / registered / predicted / verified) governed by PROTOCOL §2.6. A corpus's verification_status: VERIFIED does NOT imply 'verified' in the ceremonial provenance ladder.",
   "corpora": {
     "cunningham_1994": {
       "corpus_file": "phase-1/conformance/published/cunningham_1994.json",
       "corpus_class": "published",
-      "status": "UNVERIFIED",
-      "reason": "Claimed citation ('Cunningham, A.M. (1994), Balinese Calendar: a Pre-Dating Guide, Northern Territory University, Australia, p. 47 / appendix C') could not be independently verified — book not held on this host, no ISBN/OCLC/WorldCat record retrievable, no scanned page available. Per gap analysis Finding 5: claimed reference could not be independently verified and is therefore inadmissible as authoritative evidence until positive bibliographic verification is obtained. The corpus vectors are preserved as historical evidence of what the project previously believed, not as ground truth.",
-      "related_dispute_id": "DISPUTE-CUNNINGHAM-1994-UNVERIFIED-CLAIM (filed in this commit batch)",
+      "verification_status": "UNVERIFIED",
+      "reference_eligibility": "INELIGIBLE",
+      "authority_basis": "unknown",
+      "reason": "Claimed citation ('Cunningham, A.M. (1994), Balinese Calendar: a Pre-Dating Guide, Northern Territory University, Australia, p. 47 / appendix C') could not be independently verified — book not held on this host, no ISBN/OCLC/WorldCat record retrievable, no scanned page available. Per gap analysis Finding 5: claimed reference could not be independently verified and is therefore inadmissible as authoritative evidence until positive bibliographic verification is obtained. The corpus vectors are preserved as historical evidence of what the project previously believed, not as ground truth. This is NOT a claim of fabrication — there is no positive evidence that the citation was fabricated.",
+      "related_dispute_id": "DISPUTE-reference-cunningham-1994-unverified-2026-09-15",
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
       "citation_keys_present_in_corpus": [
@@ -28,9 +49,11 @@
     "igarashi_1999": {
       "corpus_file": "phase-1/conformance/published/igarashi_1999.json",
       "corpus_class": "published",
-      "status": "UNVERIFIED",
+      "verification_status": "UNVERIFIED",
+      "reference_eligibility": "INELIGIBLE",
+      "authority_basis": "unknown",
       "reason": "Claimed citation ('Igarashi, T. (1999), Balinese Calendar Chronology and the Lunisolar Adjustment, Nusa Indah Press, table 2.3') could not be independently verified — no ISBN/WorldCat record for 'Nusa Indah Press' retrievable. Per gap analysis Finding 5: same reasoning as Cunningham. Preserved as historical evidence.",
-      "related_dispute_id": "DISPUTE-IGARASHI-1999-UNVERIFIED-CLAIM (filed in this commit batch)",
+      "related_dispute_id": "DISPUTE-reference-igarashi-1999-unverified-2026-09-15",
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
       "citation_keys_present_in_corpus": [
@@ -44,13 +67,15 @@
     "kalenderbali_2026-09": {
       "corpus_file": "phase-1/conformance/published/kalenderbali_2026-09.json",
       "corpus_class": "unverified",
-      "status": "NON_AUTHORITATIVE",
-      "reason": "Source is kalenderbali.info (I Ketut Suwintana, 2013, practitioner site with fuzzy-logic Metode Mamdani for dewasa ayu). Source returns 200 with verifiable content for 15 of 30 September 2026 day cells. Per gap analysis Finding 9: the source is self-described as 'not peer-reviewed academic'. The source may be used as a diagnostic reference (it returns consistent values for present-day dates) but is not authoritative for calendar correctness. Use is permitted for historical comparison and diagnostic output only.",
+      "verification_status": "VERIFIED",
+      "reference_eligibility": "INELIGIBLE",
+      "authority_basis": "practitioner",
+      "reason": "Source is kalenderbali.info (I Ketut Suwintana, 2013, practitioner site with fuzzy-logic Metodani Mamdani for dewasa ayu). The page returns 200 with verifiable content for 15 of 30 September 2026 day cells — the source IS retrievable, so verification_status is VERIFIED. Per gap analysis Finding 9: the source is self-described as 'not peer-reviewed academic'. The source is a practitioner calendar, so reference_eligibility is INELIGIBLE for authoritative calendar validation. The corpus may be used for historical comparison and diagnostic output only.",
       "related_dispute_id": null,
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_2026-09.md",
       "citation_keys_present_in_corpus": [
-        "KalenderBali-Info-2026-09 (NON_AUTHORITATIVE — practitioner site)"
+        "KalenderBali-Info-2026-09 (VERIFIED page; INELIGIBLE — practitioner source)"
       ],
       "preserved": true,
       "may_satisfy_validation_gate": false,
@@ -58,10 +83,5 @@
       "may_be_described_as_ground_truth": false
     }
   },
-  "status_meanings": {
-    "UNVERIFIED": "the source citation in the corpus could not be independently verified from this host. the corpus is preserved for provenance but may NOT satisfy validation gates, may NOT justify ruleset promotion, may NOT be described as ground truth. values may NOT be silently copied into authoritative fixtures.",
-    "NON_AUTHORITATIVE": "the source is verified (returns 200 with content) but the source itself is not authoritative (practitioner calendar, encyclopedia, etc.). same restrictions as UNVERIFIED for gates/promotion/ground-truth. may be used for historical comparison and diagnostic output.",
-    "ATTESTED": "the source is verified AND authoritative. may satisfy validation gates. no corpus currently has this status."
-  },
-  "enforcement": "Cross-validation machinery (phase-1/src/dewatacalendar/cross_validation.py and conformance.py) and CLI (cli.py) MUST call can_satisfy_validation_gate() before claiming any corpus satisfies an independent-reference validation gate. The cross_validation module annotates outcomes with _corpus_status so downstream consumers cannot accidentally treat unverified data as authoritative."
+  "enforcement": "Cross-validation machinery (phase-1/src/dewatacalendar/cross_validation.py and conformance.py) and CLI (cli.py) MUST call can_satisfy_validation_gate() before claiming any corpus satisfies an independent-reference validation gate. The cross_validation module annotates outcomes with _corpus_verification_status, _corpus_reference_eligibility, _corpus_authority_basis, and _corpus_legacy_status so downstream consumers cannot accidentally treat unverified or ineligible data as authoritative."
 }
