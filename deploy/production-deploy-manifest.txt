@@ -1,9 +1,9 @@
 # Production deployment manifest -- v0.1.0 pre1
 # =============================================================================
 # This is the literal set of values the operator passes to the install script.
-# Generated:       2026-09-15T03:11:15Z
+# Generated:       2026-09-15T03:17:40Z
 # branch:          warden/phase2-foundation-20260914
-# HEAD:            5237d1aaee4ce598a68299a73e51baba655b082e
+# HEAD:            badc6174bc57307e472510f7218d1328b78d7da5
 # commit subject:  chore(apex): update manifest generated timestamp
 #
 # Per-file sha256 of every reviewed deploy/ artifact (verified against
