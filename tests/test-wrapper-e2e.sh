@@ -52,6 +52,9 @@ rm -rf "$DEWATA_TEST_ROOT/review"
 for d in caddy www; do mkdir -p "$DEWATA_TEST_ROOT/review/$d"; done
 cp "${WORKTREE}/deploy/caddy/Caddyfile.dewata.proposed" "$DEWATA_TEST_ROOT/review/caddy/Caddyfile.dewata.proposed"
 cp -r "${WORKTREE}/deploy/www/dewata-org/v0.1.0-pre1/." "$DEWATA_TEST_ROOT/review/www/"
+# release-src (consumed by C.2)
+mkdir -p "$DEWATA_TEST_ROOT/release-src"
+cp -r "${WORKTREE}/deploy/www/dewata-org/v0.1.0-pre1/." "$DEWATA_TEST_ROOT/release-src/"
 
 # Reviewed manifest for the disposable release tree
 disp_manifest=$DEWATA_TEST_ROOT/RELEASES/v0.1.0-pre1.MANIFEST.txt
@@ -424,10 +427,113 @@ echo "    caddyfile sha: $caddy_sha_A (expect exactly $candidate_sha)"
 echo "  Scenario B (install fails closed): wrapper_rc=$wrapper_B_rc (expect exactly 2)"
 echo "    caddyfile sha: $caddy_sha_B (expect exactly $disp_baseline)"
 
+# ====================================================================
+# SCENARIO C: production mode REFUSES every DEPLOY_* override.
+#
+# Per the user's review: "When DEWATA_DEPLOYER_TEST_MODE is not set,
+# reject every DEPLOY_* override and require fixed reviewed paths
+# under /opt/dw-phase2/deploy plus fixed production destinations
+# under /opt/dewata.online."
+#
+# We assert:
+#   - in PRODUCTION mode (no DEPLOYER_TEST_MODE) the wrapper refuses
+#     DEPLOY_* overrides with rc=4;
+#   - in TEST mode (DEPLOYER_TEST_MODE=1) the same DEPLOY_* overrides
+#     are accepted (sanity check that the gate is mode-gated, not
+#     unconditional).
+# ====================================================================
+echo
+echo "================================================================"
+echo "SCENARIO C: production-mode DEPLOY_* override refusal"
+echo "================================================================"
+
+run_wrapper_with_env() {
+    local out_file=$1
+    local rc_file=$2
+    shift 2
+    : > "$out_file"
+    set +e
+    env -i \
+        PATH="${WORKTREE}/tests:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+        DEWATA_APPLY_PRODUCTION=1 \
+        "$@" \
+        bash "${WORKTREE}/deploy/apex-deploy.sh" > "$out_file" 2>&1
+    local rc=$?
+    set -e
+    echo "$rc" > "$rc_file"
+    return 0
+}
+
+# C.1 -- PRODUCTION mode + a DEPLOY_* override MUST be refused.
+run_wrapper_with_env "$DEWATA_TEST_ROOT/wrapper.C1.out" "$DEWATA_TEST_ROOT/wrapper.C1.rc" \
+    DEPLOY_INSTALLER="/tmp/foo/should-not-be-used.sh"
+wrapper_C1_rc=$(cat $DEWATA_TEST_ROOT/wrapper.C1.rc)
+scenario_C_passed=1
+if [[ "$wrapper_C1_rc" == "4" ]]; then
+    echo "  Scenario C.1: wrapper rc=$wrapper_C1_rc (PASS - DEPLOY_* rejected in production mode)"
+else
+    echo "  Scenario C.1: wrapper rc=$wrapper_C1_rc (FAIL - expected exactly 4)"
+    scenario_C_passed=0
+fi
+# The refusal message must mention DEPLOY_* and the immutable paths.
+if grep -qE "DEPLOY_\* overrides are REJECTED|REJECTED in production mode" $DEWATA_TEST_ROOT/wrapper.C1.out; then
+    echo "  Scenario C.1: refusal message includes DEPLOY_* REJECTED (PASS)"
+else
+    echo "  Scenario C.1: refusal message missing DEPLOY_* REJECTED (FAIL)"
+    scenario_C_passed=0
+fi
+if grep -qE "/opt/dw-phase2/deploy|/opt/dewata.online" $DEWATA_TEST_ROOT/wrapper.C1.out; then
+    echo "  Scenario C.1: refusal message references immutable paths (PASS)"
+else
+    echo "  Scenario C.1: refusal message missing immutable paths (FAIL)"
+    scenario_C_passed=0
+fi
+
+# C.2 -- TEST mode + the same DEPLOY_* override MUST be accepted (gate
+# is mode-gated, not unconditional).
+run_wrapper_with_env "$DEWATA_TEST_ROOT/wrapper.C2.out" "$DEWATA_TEST_ROOT/wrapper.C2.rc" \
+    DEWATA_DEPLOYER_TEST_MODE=1 \
+    DEPLOY_PROD_CADDY="$DEWATA_TEST_ROOT/caddy/Caddyfile.dewata" \
+    DEPLOY_PROD_RELEASE_DST="$DEWATA_TEST_ROOT/www/dewata-org/v0.1.0-pre1" \
+    DEPLOY_SNAPSHOT_PARENT="$DEWATA_TEST_ROOT/atomic" \
+    DEPLOY_LISTENER_PORT=18443 \
+    DEPLOY_SERVICE=dewata-caddy-dummy \
+    DEPLOY_REVIEWED_RELEASE_SRC="$DEWATA_TEST_ROOT/release-src" \
+    DEPLOY_REVIEWED_CANDIDATE="$DEWATA_TEST_ROOT/caddy/Caddyfile.dewata.proposed" \
+    DEPLOY_REVIEWED_MANIFEST="$DEWATA_TEST_ROOT/RELEASES/v0.1.0-pre1.MANIFEST.txt" \
+    DEPLOY_INSTALLER="$WORKTREE/deploy/atomic/install-apex-candidate.sh" \
+    DEPLOY_ROLLBACK="$WORKTREE/deploy/atomic/rollback-apex.sh" \
+    DEWATA_SYSTEMCTL_CMD="$SHIM" \
+    DEWATA_DISPOSABLE_SYSTEMCTL_LOG="$DEWATA_TEST_ROOT/shim.log" \
+    DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DEWATA_TEST_ROOT/caddy.pid" \
+    DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DEWATA_TEST_ROOT/caddy.active" \
+    DEWATA_DISPOSABLE_SERVICE_MODE=restart \
+    DEWATA_USE_DISPOSABLE_VALIDATE=1 \
+    DEWATA_VALIDATE_CMD="$WORKTREE/tests/disposable-validate.sh" \
+    DEWATA_VALIDATE_LOG="$DEWATA_TEST_ROOT/validate.log"
+wrapper_C2_rc=$(cat $DEWATA_TEST_ROOT/wrapper.C2.rc)
+# In TEST mode, the wrapper should NOT reject (rc != 4).  rc may be 0
+# (install succeeds) or 1 (AUTO-RESTORE COMPLETE on first-install) or
+# some other non-4 -- the gate is mode-gated, so anything-but-4 is OK.
+if [[ "$wrapper_C2_rc" != "4" ]]; then
+    echo "  Scenario C.2: wrapper rc=$wrapper_C2_rc (PASS - DEPLOY_* accepted in test mode)"
+else
+    echo "  Scenario C.2: wrapper rc=$wrapper_C2_rc (FAIL - expected != 4 in test mode)"
+    scenario_C_passed=0
+fi
+if ! grep -qE "DEPLOY_\* overrides are REJECTED" $DEWATA_TEST_ROOT/wrapper.C2.out; then
+    echo "  Scenario C.2: refusal message NOT printed (PASS)"
+else
+    echo "  Scenario C.2: refusal message printed in test mode (FAIL)"
+    scenario_C_passed=0
+fi
+
 # Final verdict -- EXACT assertions, not "any nonzero."
 if [[ "$wrapper_A_rc" == "0" ]] && [[ "$wrapper_B_rc" == "2" ]] && \
+   [[ "$wrapper_C1_rc" == "4" ]] && [[ "$wrapper_C2_rc" != "4" ]] && \
    [[ "$caddy_sha_A" == "$candidate_sha" ]] && [[ "$caddy_sha_B" == "$disp_baseline" ]] && \
-   (( scenario_A_passed == 1 )) && (( scenario_B_passed == 1 )); then
+   (( scenario_A_passed == 1 )) && (( scenario_B_passed == 1 )) && \
+   (( scenario_C_passed == 1 )); then
     echo "TEST RESULT: PASS"
     exit 0
 else

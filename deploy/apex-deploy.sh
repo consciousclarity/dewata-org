@@ -108,6 +108,68 @@ LISTENER_PORT="${DEPLOY_LISTENER_PORT:-8443}"
 SERVICE="${DEPLOY_SERVICE:-dewata-caddy}"
 
 # --------------------------------------------------------------------
+# Immutability enforcement (production mode only).
+#
+# In production mode (DEWATA_DEPLOYER_TEST_MODE not set), every DEPLOY_*
+# override is REJECTED.  The wrapper must use the immutable reviewed
+# paths under /opt/dw-phase2/deploy and the immutable production
+# destinations under /opt/dewata.online -- no substitutions, no
+# operator-supplied path overrides, no surprises.
+#
+# In test mode (DEWATA_DEPLOYER_TEST_MODE=1), DEPLOY_* overrides are
+# allowed so the wrapper can target a disposable mirror under /tmp/.
+# The installer still refuses any path that is not the immutable
+# production path when DEWATA_APPLY_PRODUCTION=1 (the production-path
+# guard inside the installer is a second line of defense).
+#
+# This is the user's review: "When DEWATA_DEPLOYER_TEST_MODE is not
+# set, reject every DEPLOY_* override and require fixed reviewed
+# paths under /opt/dw-phase2/deploy plus fixed production destinations
+# under /opt/dewata.online."
+# --------------------------------------------------------------------
+if [[ "${DEWATA_DEPLOYER_TEST_MODE:-0}" != "1" ]]; then
+    deploy_overrides=()
+    for v in DEPLOY_INSTALLER DEPLOY_ROLLBACK DEPLOY_REVIEWED_MANIFEST \
+              DEPLOY_REVIEWED_RELEASE_SRC DEPLOY_REVIEWED_CANDIDATE \
+              DEPLOY_PROD_CADDY DEPLOY_PROD_RELEASE_DST \
+              DEPLOY_SNAPSHOT_PARENT DEPLOY_LISTENER_PORT DEPLOY_SERVICE; do
+        if [[ -n "${!v:-}" ]]; then
+            deploy_overrides+=("$v=${!v}")
+        fi
+    done
+    if (( ${#deploy_overrides[@]} > 0 )); then
+        echo "FATAL: DEPLOY_* overrides are REJECTED in production mode." >&2
+        echo "  DEWATA_DEPLOYER_TEST_MODE is not set; every DEPLOY_* override is ignored." >&2
+        echo "  The wrapper must use the immutable reviewed paths under" >&2
+        echo "  /opt/dw-phase2/deploy and the immutable production destinations" >&2
+        echo "  under /opt/dewata.online -- no operator-supplied substitutions." >&2
+        echo "" >&2
+        echo "  Offending overrides:" >&2
+        for o in "${deploy_overrides[@]}"; do
+            echo "    $o" >&2
+        done
+        echo "" >&2
+        echo "  To exercise DEPLOY_* overrides, set DEWATA_DEPLOYER_TEST_MODE=1" >&2
+        echo "  (and verify the production Caddyfile is unchanged afterwards)." >&2
+        exit 4
+    fi
+
+    # The defaults above are already the immutable reviewed paths, but
+    # make this explicit so a future edit doesn't accidentally relax it.
+    if [[ "$REVIEWED_ROOT_DEFAULT" != "/opt/dw-phase2/deploy" ]] || \
+       [[ "$PROD_CADDY_DEFAULT" != "/opt/dewata.online/deploy/caddy/Caddyfile.dewata" ]] || \
+       [[ "$PROD_RELEASE_DST_DEFAULT" != "/opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1" ]] || \
+       [[ "$SNAPSHOT_PARENT_DEFAULT" != "/opt/dewata.online/deploy/atomic" ]]; then
+        echo "FATAL: production-mode defaults drifted away from the immutable reviewed paths." >&2
+        echo "  REVIEWED_ROOT_DEFAULT=$REVIEWED_ROOT_DEFAULT (expect /opt/dw-phase2/deploy)" >&2
+        echo "  PROD_CADDY_DEFAULT=$PROD_CADDY_DEFAULT (expect /opt/dewata.online/deploy/caddy/Caddyfile.dewata)" >&2
+        echo "  PROD_RELEASE_DST_DEFAULT=$PROD_RELEASE_DST_DEFAULT (expect /opt/dewata.online/deploy/www/dewata-org/v0.1.0-pre1)" >&2
+        echo "  SNAPSHOT_PARENT_DEFAULT=$SNAPSHOT_PARENT_DEFAULT (expect /opt/dewata.online/deploy/atomic)" >&2
+        exit 5
+    fi
+fi
+
+# --------------------------------------------------------------------
 # Pre-flight checks: every reviewed and production path must exist.
 # --------------------------------------------------------------------
 require_file() {
