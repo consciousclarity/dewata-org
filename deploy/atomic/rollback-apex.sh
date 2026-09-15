@@ -158,47 +158,96 @@ echo "rollback step 2: restore release tree"
 echo "================================================================"
 if (( REPLACEMENT_MODE )); then
     echo "rollback step 2: REPLACEMENT mode: restoring prior release from $RELEASE_TREE_BACKUP_DIR"
-    # Move the current $RELEASE_DST aside for inspection (do not delete it).
-    if [[ -d "$RELEASE_DST" ]]; then
-        if ! mv "$RELEASE_DST" "$RELEASE_DST.rejected.$(date -u +%Y%m%dT%H%M%SZ)"; then
-            echo "  RESTORE FAILED: could not move $RELEASE_DST aside" >&2
-            restore_failed=1
-        fi
-    fi
-    # Restore the prior release from the snapshot's mirrored backup.
+    # CRITICAL: the snapshot's $RELEASE_TREE_BACKUP_DIR is the recovery
+    # copy -- it must NOT be consumed by this rollback.  We COPY it
+    # into a separate staging sibling (NOT $RELEASE_DST), verify the
+    # copy against the manifest, then atomically publish.
+    #
+    # Sequence:
+    #   1. Create staging dir at $RELEASE_DST.stage-rollback.<ts>
+    #   2. cp -a $RELEASE_TREE_BACKUP_DIR/. $RELEASE_DST.stage-rollback.<ts>/
+    #   3. Verify staged file set + sha256 against $RELEASE_TREE_MANIFEST
+    #   4. Atomically: move $RELEASE_DST aside (if present) to .rejected.<ts>
+    #      then move staging -> $RELEASE_DST
+    #   5. The snapshot's $RELEASE_TREE_BACKUP_DIR is INTACT and can be
+    #      used for repeated rollback.
+    STAGING_ROLLBACK_DIR="$RELEASE_DST.stage-rollback.$(date -u +%Y%m%dT%H%M%SZ)"
     if [[ -d "$RELEASE_TREE_BACKUP_DIR" ]]; then
-        if mv "$RELEASE_TREE_BACKUP_DIR" "$RELEASE_DST"; then
-            echo "  prior release restored from $RELEASE_TREE_BACKUP_DIR"
-        else
-            echo "  RESTORE FAILED: could not move $RELEASE_TREE_BACKUP_DIR to $RELEASE_DST" >&2
+        # Step 1+2: stage
+        mkdir -p "$STAGING_ROLLBACK_DIR"
+        if ! cp -a "$RELEASE_TREE_BACKUP_DIR/." "$STAGING_ROLLBACK_DIR/"; then
+            echo "  RESTORE FAILED: could not cp -a $RELEASE_TREE_BACKUP_DIR -> $STAGING_ROLLBACK_DIR" >&2
             restore_failed=1
-        fi
-    fi
-    # Verify file set + sha256 against $RELEASE_TREE_MANIFEST
-    if [[ -f "$RELEASE_TREE_MANIFEST" ]] && [[ -d "$RELEASE_DST" ]]; then
-        snapshot_files=$(awk '/^[a-f0-9]/{print $2}' "$RELEASE_TREE_MANIFEST" | sort -u)
-        restored_files=$( ( cd "$RELEASE_DST" && find . -type f ) | sed 's|^./||' | sort -u )
-        if [[ "$snapshot_files" != "$restored_files" ]]; then
-            echo "  RESTORE FAILED: restored release file-set does not match snapshot" >&2
-            restore_failed=1
+            rm -rf "$STAGING_ROLLBACK_DIR"
         else
-            echo "  restored release matches prior file set ($(echo "$snapshot_files" | wc -l) files)"
-            sha_mismatch=0
-            while IFS= read -r rel; do
-                [[ -z "$rel" ]] && continue
-                actual=$(sha256sum "$RELEASE_DST/$rel" | cut -d' ' -f1)
-                expected=$(awk -v r="$rel" '$2 == r {print $1}' "$RELEASE_TREE_MANIFEST" | head -1)
-                if [[ "$actual" != "$expected" ]]; then
-                    echo "  RESTORE FAILED: sha256 mismatch for $rel (got $actual, want $expected)" >&2
-                    sha_mismatch=1
+            # Step 3: verify staged file set + sha256 against manifest
+            # (BEFORE moving anything into $RELEASE_DST)
+            staged_ok=1
+            if [[ -f "$RELEASE_TREE_MANIFEST" ]]; then
+                snapshot_files=$(awk '/^[a-f0-9]/{print $2}' "$RELEASE_TREE_MANIFEST" | sort -u)
+                staged_files=$( ( cd "$STAGING_ROLLBACK_DIR" && find . -type f ) | sed 's|^./||' | sort -u )
+                if [[ "$snapshot_files" != "$staged_files" ]]; then
+                    echo "  RESTORE FAILED: staged copy file-set does not match snapshot manifest" >&2
+                    staged_ok=0
+                else
+                    n_staged=$(echo "$staged_files" | wc -l)
+                    echo "  staged $n_staged files; verifying sha256 against manifest..."
+                    sha_mismatch=0
+                    while IFS= read -r rel; do
+                        [[ -z "$rel" ]] && continue
+                        actual=$(sha256sum "$STAGING_ROLLBACK_DIR/$rel" | cut -d' ' -f1)
+                        expected=$(awk -v r="$rel" '$2 == r {print $1}' "$RELEASE_TREE_MANIFEST" | head -1)
+                        if [[ "$actual" != "$expected" ]]; then
+                            echo "  RESTORE FAILED: staged sha256 mismatch for $rel" >&2
+                            sha_mismatch=1
+                        fi
+                    done <<< "$snapshot_files"
+                    if (( sha_mismatch )); then
+                        staged_ok=0
+                    fi
                 fi
-            done <<< "$snapshot_files"
-            if (( sha_mismatch )); then
+            fi
+            if (( staged_ok == 0 )); then
                 restore_failed=1
+                rm -rf "$STAGING_ROLLBACK_DIR"
+                echo "  staging dir removed; snapshot $RELEASE_TREE_BACKUP_DIR untouched" >&2
             else
-                echo "  restored release sha256 verified for every file"
+                echo "  staged copy verified against snapshot manifest"
+                # Step 4: move $RELEASE_DST aside (if present) BEFORE the swap
+                if [[ -d "$RELEASE_DST" ]]; then
+                    if ! mv "$RELEASE_DST" "$RELEASE_DST.rejected.$(date -u +%Y%m%dT%H%M%SZ)"; then
+                        echo "  RESTORE FAILED: could not move $RELEASE_DST aside" >&2
+                        restore_failed=1
+                        rm -rf "$STAGING_ROLLBACK_DIR"
+                    fi
+                fi
+                # Step 5: atomic publish -- staging -> $RELEASE_DST
+                if (( restore_failed == 0 )); then
+                    if mv "$STAGING_ROLLBACK_DIR" "$RELEASE_DST"; then
+                        echo "  prior release restored from staged copy"
+                        echo "  snapshot $RELEASE_TREE_BACKUP_DIR is INTACT (repeat rollback still possible)"
+                    else
+                        echo "  RESTORE FAILED: could not move $STAGING_ROLLBACK_DIR to $RELEASE_DST" >&2
+                        restore_failed=1
+                        rm -rf "$STAGING_ROLLBACK_DIR"
+                    fi
+                fi
             fi
         fi
+    else
+        echo "  RESTORE FAILED: snapshot release backup missing at $RELEASE_TREE_BACKUP_DIR" >&2
+        restore_failed=1
+    fi
+    # Post-publish verification: $RELEASE_TREE_BACKUP_DIR still exists
+    # and the snapshot's manifest is intact (proves we did not consume
+    # the only recovery copy).
+    if [[ ! -d "$RELEASE_TREE_BACKUP_DIR" ]]; then
+        echo "  FATAL: snapshot release backup $RELEASE_TREE_BACKUP_DIR was consumed by rollback" >&2
+        restore_failed=1
+    fi
+    if [[ ! -f "$RELEASE_TREE_MANIFEST" ]]; then
+        echo "  FATAL: snapshot release manifest $RELEASE_TREE_MANIFEST was consumed by rollback" >&2
+        restore_failed=1
     fi
 else
     echo "rollback step 2: FIRST-INSTALL mode: removing $RELEASE_DST (snapshot has no prior release)"

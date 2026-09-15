@@ -285,18 +285,19 @@ echo "$output"
 
 # Capture the actual_snapshot_path line.
 # It's printed by the installer on success and by do_restore on failure.
-actual_snapshot=$(grep -E '^[[:space:]]*actual_snapshot_path=' <<< "$output" \
+# Guard the pipeline with `|| true` so a non-match (grep rc=1) doesn't
+# trip `set -e -o pipefail` and kill the wrapper before it can print
+# the recovery banner.
+actual_snapshot=$(grep -E '^[[:space:]]*actual_snapshot_path=' <<< "$output" 2>/dev/null \
                 | tail -1 \
-                | sed 's/^[[:space:]]*actual_snapshot_path=//')
-if [[ -z "$actual_snapshot" ]]; then
-    echo
-    echo "[deploy] FATAL: installer did not print actual_snapshot_path=" >&2
-    echo "[deploy] rc=$installer_rc -- this is the installer's actual exit code; printed for the audit trail." >&2
-    exit 6
-fi
-echo
-echo "[deploy] installer reports: actual_snapshot_path=$actual_snapshot"
+                | sed 's/^[[:space:]]*actual_snapshot_path=//' || true)
 
+# On failure paths (installer_rc != 0), the installer's do_restore
+# does NOT print actual_snapshot_path= -- it just exits 1 (COMPLETE)
+# or 2 (INCOMPLETE).  The operator-facing exit code is the installer's
+# own exit code, NOT a derived "did it print snapshot path" status.
+# So on failure we propagate installer_rc directly.  The actual_snapshot
+# check applies only when the install succeeded.
 if (( installer_rc != 0 )); then
     echo
     echo "[deploy] FATAL: installer rc=$installer_rc -- fail closed." >&2
@@ -305,7 +306,13 @@ if (( installer_rc != 0 )); then
     echo "[deploy] $PROD_RELEASE_DST.rejected.*" >&2
     exit "$installer_rc"
 fi
-echo "[deploy] installer rc=0 -- install succeeded."
+
+if [[ -z "$actual_snapshot" ]]; then
+    echo
+    echo "[deploy] FATAL: installer succeeded (rc=0) but did not print actual_snapshot_path=" >&2
+    echo "[deploy] this is unexpected -- the bundle is missing the snapshot path." >&2
+    exit 6
+fi
 
 # --------------------------------------------------------------------
 # Dashboard cutover steps (Cloudflare -- NOT executed by this script).

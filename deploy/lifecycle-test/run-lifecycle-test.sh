@@ -133,6 +133,27 @@ DISP_CANDIDATE="$SHIM_LOG_DIR/review/caddy/Caddyfile.dewata.proposed"
 DISP_RELEASE_SRC="$SHIM_LOG_DIR/review/www"
 DISP_RELEASE_DST="$SHIM_LOG_DIR/www/dewata-org/v0.1.0-pre1"
 DISP_PROD_CADDY="$SHIM_LOG_DIR/caddy/Caddyfile.dewata"
+
+# Disposable isolation check: pin adapter hashes, restrict test paths
+# to the disposable root, refuse to run if the real systemctl is
+# reachable.  This guards against the "shell-script/shebang check does
+# not prove an adapter cannot call real systemctl" objection.
+export DEWATA_TEST_ROOT="$SHIM_LOG_DIR"
+export DEWATA_DISPOSABLE_MODE=1
+export DEWATA_SYSTEMCTL_CMD="$DISP_SYSTEMCTL"
+export DEWATA_USE_DISPOSABLE_VALIDATE=1
+export DEWATA_VALIDATE_CMD="$DISP_VALIDATE"
+export DEWATA_PROD_CADDY="$DISP_PROD_CADDY"
+export DEWATA_RELEASE_SRC="$DISP_RELEASE_SRC"
+export DEWATA_RELEASE_DST="$DISP_RELEASE_DST"
+export DEWATA_CANDIDATE="$DISP_CANDIDATE"
+export DEWATA_REVIEWED_MANIFEST="$disp_manifest"
+export DEWATA_SNAPSHOT_PARENT="$SHIM_LOG_DIR/atomic"
+# shellcheck disable=SC1091
+source "$WT/tests/disposable-isolation.sh"
+if ! disposable_isolation_check; then
+    exit 9
+fi
 DISP_SNAPSHOT_PARENT="$SHIM_LOG_DIR/atomic"
 DISP_LISTENER_PORT="18443"
 
@@ -967,6 +988,161 @@ if [[ "$post_restore_sentinel" == "$NEG10_SENTINEL_SHA" ]]; then
     record "NEG10.prior-release-sentinel-restored" PASS "sha=$post_restore_sentinel"
 else
     record "NEG10.prior-release-sentinel-restored" FAIL "got $post_restore_sentinel want $NEG10_SENTINEL_SHA"
+fi
+
+# ====================================================================
+# NEGATIVE-11: rollback must not consume the snapshot's release backup.
+#
+# Per the user's review: "Restore releases by copying from the preserved
+# snapshot into a separate staging directory, verifying the copy, then
+# publishing it.  Never move the only backup out of the snapshot.
+# Verify repeated rollback."
+#
+# Procedure:
+#   1. Reset release tree + caddyfile to baseline.
+#   2. Run a successful REPLACEMENT install with the prior containing a
+#      sentinel file.  Capture the snapshot directory + the snapshot's
+#      RELEASE_TREE_BACKUP/ + RELEASE_TREE_BACKUP.MANIFEST.txt sha256.
+#   3. Run rollback TWICE against the SAME snapshot.
+#   4. Assert after rollback-1:
+#      - $DISP_RELEASE_DST contains the prior (sentinel)
+#      - $SNAPSHOT/RELEASE_TREE_BACKUP/ + manifest sha256 unchanged
+#   5. Assert after rollback-2:
+#      - $DISP_RELEASE_DST still contains the prior (sentinel)
+#      - $SNAPSHOT/RELEASE_TREE_BACKUP/ + manifest sha256 still unchanged
+#      - (proves the snapshot was not consumed)
+# ====================================================================
+echo
+echo "================================================================"
+echo "[lifecycle] NEGATIVE-11: repeated rollback preserves snapshot"
+echo "================================================================"
+reset_disposable_caddyfile
+rm -rf "$DISP_RELEASE_DST" "$DISP_SNAPSHOT_PARENT"/*-pre-apex
+mkdir -p "$DISP_RELEASE_DST"
+NEG11_SENTINEL_CONTENT="prior-release-for-rollback-test-11"
+printf "%s" "$NEG11_SENTINEL_CONTENT" > "$DISP_RELEASE_DST/sentinel.html"
+NEG11_PRIOR_SHA=$(sha256_of_file "$DISP_RELEASE_DST/sentinel.html")
+echo "[lifecycle] NEG11 seeded sentinel sha=$NEG11_PRIOR_SHA"
+
+# Run a successful REPLACEMENT install (no fake gate).
+rc=0
+run_install "DEWATA_USE_DISPOSABLE_VALIDATE=1 DEWATA_VALIDATE_CMD=$DISP_SYSTEMCTL_PATH/disposable-validate.sh DEWATA_VALIDATE_LOG=$SHIM_LOG_DIR/validate.log" || rc=$?
+
+# Find the snapshot directory created by the install.
+NEG11_SNAPSHOT_DIR=$(ls -td "$DISP_SNAPSHOT_PARENT"/*-pre-apex 2>/dev/null | head -1)
+if [[ -z "$NEG11_SNAPSHOT_DIR" ]]; then
+    record "NEG11.snapshot-exists" FAIL "no snapshot directory created by successful install"
+else
+    record "NEG11.snapshot-exists" PASS "snapshot=$NEG11_SNAPSHOT_DIR"
+
+    # Capture sha256 of snapshot's RELEASE_TREE_BACKUP/ and MANIFEST.
+    NEG11_BACKUP_BEFORE_SHA=$( (cd "$NEG11_SNAPSHOT_DIR/RELEASE_TREE_BACKUP" && find . -type f -exec sha256sum {} \; | sort -k2 | sha256sum) | cut -d' ' -f1)
+    NEG11_MANIFEST_BEFORE_SHA=$(sha256_of_file "$NEG11_SNAPSHOT_DIR/RELEASE_TREE_BACKUP.MANIFEST.txt")
+    echo "[lifecycle] NEG11 snapshot RELEASE_TREE_BACKUP/ sha BEFORE rollback=$NEG11_BACKUP_BEFORE_SHA"
+    echo "[lifecycle] NEG11 snapshot MANIFEST sha BEFORE rollback=$NEG11_MANIFEST_BEFORE_SHA"
+
+    # Run rollback (1st time).
+    echo "[lifecycle] NEG11 running rollback (1st time)..."
+    DEWATA_DISPOSABLE_MODE=1 \
+    DEWATA_PROD_CADDY="$DISP_PROD_CADDY" \
+    DEWATA_PROD_WWW="$SHIM_LOG_DIR/www" \
+    DEWATA_RELEASE_SRC="$DISP_RELEASE_SRC" \
+    DEWATA_RELEASE_DST="$DISP_RELEASE_DST" \
+    DEWATA_CANDIDATE="$DISP_CANDIDATE" \
+    DEWATA_REVIEWED_MANIFEST="$disp_manifest" \
+    DEWATA_PROD_BASELINE_SHA="$DISP_BASELINE_SHA" \
+    DEWATA_LISTENER_PORT="$DISP_LISTENER_PORT" \
+    DEWATA_WORKTREE="$WT" \
+    DEWATA_SNAPSHOT_PARENT="$DISP_SNAPSHOT_PARENT" \
+    DEWATA_CADDY_SERVICE=dewata-caddy \
+    DEWATA_SYSTEMCTL_CMD="$DISP_SYSTEMCTL" \
+    DEWATA_DISPOSABLE_SYSTEMCTL_LOG="$DISP_SYSTEMCTL_LOG" \
+    DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
+    DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
+    DEWATA_DISPOSABLE_SERVICE_MODE=restart \
+    DEWATA_PROBE_LISTENER=0 \
+    DEWATA_USE_DISPOSABLE_VALIDATE=1 \
+    DEWATA_VALIDATE_CMD=$DISP_SYSTEMCTL_PATH/disposable-validate.sh \
+    DEWATA_VALIDATE_LOG=$SHIM_LOG_DIR/validate.log \
+        bash "$ROLLBACK" "$NEG11_SNAPSHOT_DIR" > "/tmp/dewata-lifecycle.rollback1.out" 2>&1
+    neg11_rb1_rc=$?
+    echo "[lifecycle] NEG11 rollback-1 rc=$neg11_rb1_rc"
+
+    # Capture sha256 AFTER rollback-1.
+    NEG11_BACKUP_AFTER_RB1_SHA=$( (cd "$NEG11_SNAPSHOT_DIR/RELEASE_TREE_BACKUP" && find . -type f -exec sha256sum {} \; | sort -k2 | sha256sum) | cut -d' ' -f1)
+    NEG11_MANIFEST_AFTER_RB1_SHA=$(sha256_of_file "$NEG11_SNAPSHOT_DIR/RELEASE_TREE_BACKUP.MANIFEST.txt")
+    echo "[lifecycle] NEG11 snapshot RELEASE_TREE_BACKUP/ sha AFTER rb1=$NEG11_BACKUP_AFTER_RB1_SHA"
+    echo "[lifecycle] NEG11 snapshot MANIFEST sha AFTER rb1=$NEG11_MANIFEST_AFTER_RB1_SHA"
+
+    if [[ "$NEG11_BACKUP_AFTER_RB1_SHA" == "$NEG11_BACKUP_BEFORE_SHA" ]]; then
+        record "NEG11.snapshot-backup-unchanged-after-rb1" PASS "sha unchanged"
+    else
+        record "NEG11.snapshot-backup-unchanged-after-rb1" FAIL "before=$NEG11_BACKUP_BEFORE_SHA after-rb1=$NEG11_BACKUP_AFTER_RB1_SHA"
+    fi
+    if [[ "$NEG11_MANIFEST_AFTER_RB1_SHA" == "$NEG11_MANIFEST_BEFORE_SHA" ]]; then
+        record "NEG11.snapshot-manifest-unchanged-after-rb1" PASS "sha unchanged"
+    else
+        record "NEG11.snapshot-manifest-unchanged-after-rb1" FAIL "before=$NEG11_MANIFEST_BEFORE_SHA after-rb1=$NEG11_MANIFEST_AFTER_RB1_SHA"
+    fi
+
+    # Run rollback (2nd time).
+    echo "[lifecycle] NEG11 running rollback (2nd time)..."
+    DEWATA_DISPOSABLE_MODE=1 \
+    DEWATA_PROD_CADDY="$DISP_PROD_CADDY" \
+    DEWATA_PROD_WWW="$SHIM_LOG_DIR/www" \
+    DEWATA_RELEASE_SRC="$DISP_RELEASE_SRC" \
+    DEWATA_RELEASE_DST="$DISP_RELEASE_DST" \
+    DEWATA_CANDIDATE="$DISP_CANDIDATE" \
+    DEWATA_REVIEWED_MANIFEST="$disp_manifest" \
+    DEWATA_PROD_BASELINE_SHA="$DISP_BASELINE_SHA" \
+    DEWATA_LISTENER_PORT="$DISP_LISTENER_PORT" \
+    DEWATA_WORKTREE="$WT" \
+    DEWATA_SNAPSHOT_PARENT="$DISP_SNAPSHOT_PARENT" \
+    DEWATA_CADDY_SERVICE=dewata-caddy \
+    DEWATA_SYSTEMCTL_CMD="$DISP_SYSTEMCTL" \
+    DEWATA_DISPOSABLE_SYSTEMCTL_LOG="$DISP_SYSTEMCTL_LOG" \
+    DEWATA_DISPOSABLE_SYSTEMCTL_PIDFILE="$DISP_SYSTEMCTL_PIDFILE" \
+    DEWATA_DISPOSABLE_SYSTEMCTL_ACTIVE="$DISP_SYSTEMCTL_ACTIVE" \
+    DEWATA_DISPOSABLE_SERVICE_MODE=restart \
+    DEWATA_PROBE_LISTENER=0 \
+    DEWATA_USE_DISPOSABLE_VALIDATE=1 \
+    DEWATA_VALIDATE_CMD=$DISP_SYSTEMCTL_PATH/disposable-validate.sh \
+    DEWATA_VALIDATE_LOG=$SHIM_LOG_DIR/validate.log \
+        bash "$ROLLBACK" "$NEG11_SNAPSHOT_DIR" > "/tmp/dewata-lifecycle.rollback2.out" 2>&1
+    neg11_rb2_rc=$?
+    echo "[lifecycle] NEG11 rollback-2 rc=$neg11_rb2_rc"
+
+    # Capture sha256 AFTER rollback-2.
+    NEG11_BACKUP_AFTER_RB2_SHA=$( (cd "$NEG11_SNAPSHOT_DIR/RELEASE_TREE_BACKUP" && find . -type f -exec sha256sum {} \; | sort -k2 | sha256sum) | cut -d' ' -f1)
+    NEG11_MANIFEST_AFTER_RB2_SHA=$(sha256_of_file "$NEG11_SNAPSHOT_DIR/RELEASE_TREE_BACKUP.MANIFEST.txt")
+    echo "[lifecycle] NEG11 snapshot RELEASE_TREE_BACKUP/ sha AFTER rb2=$NEG11_BACKUP_AFTER_RB2_SHA"
+    echo "[lifecycle] NEG11 snapshot MANIFEST sha AFTER rb2=$NEG11_MANIFEST_AFTER_RB2_SHA"
+
+    if [[ "$NEG11_BACKUP_AFTER_RB2_SHA" == "$NEG11_BACKUP_BEFORE_SHA" ]]; then
+        record "NEG11.snapshot-backup-unchanged-after-rb2" PASS "sha unchanged across 2 rollbacks"
+    else
+        record "NEG11.snapshot-backup-unchanged-after-rb2" FAIL "before=$NEG11_BACKUP_BEFORE_SHA after-rb2=$NEG11_BACKUP_AFTER_RB2_SHA"
+    fi
+    if [[ "$NEG11_MANIFEST_AFTER_RB2_SHA" == "$NEG11_MANIFEST_BEFORE_SHA" ]]; then
+        record "NEG11.snapshot-manifest-unchanged-after-rb2" PASS "sha unchanged across 2 rollbacks"
+    else
+        record "NEG11.snapshot-manifest-unchanged-after-rb2" FAIL "before=$NEG11_MANIFEST_BEFORE_SHA after-rb2=$NEG11_MANIFEST_AFTER_RB2_SHA"
+    fi
+
+    # Also assert rollback-2 rc is 0 (it succeeded).
+    if [[ "$neg11_rb2_rc" == "0" ]]; then
+        record "NEG11.repeated-rollback-succeeds" PASS "rollback-2 rc=0"
+    else
+        record "NEG11.repeated-rollback-succeeds" FAIL "rollback-2 rc=$neg11_rb2_rc"
+    fi
+
+    # And the prior-release sentinel is present in RELEASE_DST after rb2.
+    rb2_sentinel_sha=$(sha256_of_file "$DISP_RELEASE_DST/sentinel.html" 2>/dev/null || echo MISSING)
+    if [[ "$rb2_sentinel_sha" == "$NEG11_PRIOR_SHA" ]]; then
+        record "NEG11.prior-release-restored-by-rb2" PASS "sha=$rb2_sentinel_sha"
+    else
+        record "NEG11.prior-release-restored-by-rb2" FAIL "got $rb2_sentinel_sha want $NEG11_PRIOR_SHA"
+    fi
 fi
 
 # ====================================================================

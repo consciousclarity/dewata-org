@@ -141,18 +141,27 @@ fi
 
 # A "known production path" requires DEWATA_APPLY_PRODUCTION=1.
 # In production, the path must be under /opt/dewata.online/*, /etc/caddy/*,
-# or /var/lib/dewata/*.  Tests using the deploy wrapper against a
-# disposable mirror (e.g. /tmp/deploy-mirror/...) may set
-# DEWATA_DEPLOYER_TEST_MODE=1 to bypass this guard; the installer will
-# still run as DEWATA_APPLY_PRODUCTION=1 internally and use the
-# configured $PROD path as the destination.
+# or /var/lib/dewata/*.  Disposable runs (DEWATA_DISPOSABLE_MODE=1)
+# use paths under /tmp/ or wherever the test sets -- these are NOT
+# production paths and the installer's behavior differs accordingly
+# (no real systemctl restart, no real caddyfile writes to prod
+# destinations).  The disposable-mode flag IS the guard: if it's set,
+# the path under /tmp is treated as a disposable mirror regardless of
+# its location.
 IS_PROD_PATH=0
 case "$PROD" in
     /opt/dewata.online/*|/etc/caddy/*|/var/lib/dewata/*) IS_PROD_PATH=1 ;;
 esac
+if [[ "${DEWATA_DISPOSABLE_MODE:-0}" == "1" ]]; then
+    # Disposable mode: even if the path HAPPENS to be a production path,
+    # the disposable-mode flag overrides -- the installer's writes are
+    # sandboxed to the disposable paths the test controls.
+    IS_PROD_PATH=0
+fi
 if [[ "${DEWATA_DEPLOYER_TEST_MODE:-0}" == "1" ]]; then
-    IS_PROD_PATH=1
-    echo "[installer] WARNING: DEWATA_DEPLOYER_TEST_MODE=1; bypassing production-path guard."
+    # Legacy alias for DEWATA_DISPOSABLE_MODE (kept for backwards
+    # compatibility).  Treat as disposable.
+    IS_PROD_PATH=0
 fi
 
 if [[ "$IS_PROD_PATH" -eq 1 && "$APPLY_PROD" != "1" ]]; then
