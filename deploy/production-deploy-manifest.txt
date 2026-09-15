@@ -1,7 +1,7 @@
 # Production deployment manifest -- v0.1.0 pre1
 # =============================================================================
 # This is the literal set of values the operator passes to the install script.
-# Generated:       2026-09-15T03:56:01Z
+# Generated:       2026-09-15T04:05:35Z
 # branch:          warden/phase2-foundation-20260914
 #
 # COMMITTED CODE BASELINE (the reviewer's reference):
@@ -36,7 +36,8 @@
 #   disposable-systemctl.sh.sha256 (pin):                      c652d00c957a5db358fc7d4102a88f87151362f148871fdd3d64bb32112d950d
 #   disposable-validate.sh.sha256 (pin):                       f1ba1937a423a96950c0ec34bd1e291667e7b253d388f63799dcababfc081b1e
 #
-#   release tree aggregate (50 files):                         8bd2d6ba4434d5413451bef2b4f8a2e202242ec15010ee4b68f74b29e195a7f2
+# release tree aggregate (50 files, sha256_of_tree algorithm):
+#   9167cdb9b3e4f84ba1d5a5042b576ff3c468b55f5291f471a6826806c6da53d5
 #   (50 files, 1 root dir)
 #
 # =============================================================================
