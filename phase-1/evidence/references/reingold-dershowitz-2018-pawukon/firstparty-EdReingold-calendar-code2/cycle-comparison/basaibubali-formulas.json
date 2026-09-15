@@ -1,0 +1,66 @@
+{
+  "source": "basaibubali.org",
+  "source_type": "Balinese-language community wiki / dictionary",
+  "retrieval_date": "2026-09-15",
+  "URLs": {
+    "Caturwara": "https://basaibubali.org/Caturwara",
+    "Sangawara": "https://basaibubali.org/Sangawara",
+    "Dasawara": "https://basaibubali.org/Dasawara",
+    "Dwiwara": "https://basaibubali.org/Dwiwara",
+    "Astawa": "https://basaibubali.org/Astawa"
+  },
+  "formulas": {
+    "Caturwara": {
+      "formula": "(bilangan uku x 7 + bilangan saptawara) / 4",
+      "remainder_to_name": {
+        "1": "Sri",
+        "2": "Laba",
+        "3": "Jaya",
+        "0": "Menala"
+      },
+      "type": "simple_modular_arithmetic"
+    },
+    "Sangawara": {
+      "formula": "(bilangan uku x 7 + bilangan Saptawara) / 9",
+      "remainder_to_name": {
+        "1": "Dangu",
+        "2": "Jangur",
+        "3": "Gigis",
+        "4": "Nohan",
+        "5": "Ogan",
+        "6": "Erangan",
+        "7": "Urungan",
+        "8": "Tulus",
+        "0": "Dadi"
+      },
+      "type": "simple_modular_arithmetic"
+    },
+    "Dasawara": {
+      "formula": "(urip Pancawara + urip Saptawara + 1) / 10",
+      "remainder_to_name": {
+        "1": "Pandita",
+        "2": "Pati",
+        "3": "Suka",
+        "4": "Duka",
+        "5": "Sri",
+        "6": "Manuh",
+        "7": "Manusa",
+        "8": "Eraja",
+        "9": "Dewa",
+        "0": "Raksasa"
+      },
+      "urip_pancawara": "(not given on this page; must be derived from external source)",
+      "urip_saptawara": "(not given on this page; must be derived from external source)",
+      "type": "urip_derivation_with_external_tables"
+    },
+    "Dwiwara": {
+      "formula": "urip Pancawara + urip Saptawara",
+      "rule": "if sum is odd: Pepet; if sum is even: Menga",
+      "type": "parity_check"
+    }
+  },
+  "summary": {
+    "structural_approach": "BASAbali describes these wewaran via simple modular arithmetic on (uku \u00d7 7 + saptawara). No special-case handling for day 72 / first 3 days.",
+    "contrast_with_calendrica": "CALENDRICA uses special-case formulas (max(6, 4+mod(day-70,210)) for Astawara, max(0, day-3) for Sangawara). These two formulations disagree for many cycle positions."
+  }
+}
