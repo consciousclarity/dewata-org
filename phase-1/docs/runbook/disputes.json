@@ -87,5 +87,85 @@
       "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_2026-09.md"
     ],
     "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-ENGINE-PAWUKON-EPOCH-OFFSET-84-DAYS",
+    "date": "2026-09-01..30 (verified across 30 days)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (4-implementation cross-validation)",
+    "component": "pawukon",
+    "class": "pawukon_position_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "peradnya/balinese-date-js-lib-0.4.3 (TS), SHA888/balinese-calendar-0.3.0 (Rust), edysantosa/sakacalendar-2.0 (Java)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "pawukon_position_drift",
+    "resolution": "pending",
+    "notes": "Engine pawukon position is exactly 84 days (= 12 wuku) earlier than Peradnya/Rust/TS on every date in September 2026. Root cause: engine uses epoch 1981-08-23 (asserted in rulesets.py pawukon.epoch); Peradnya/Rust use epoch 1971-01-24 (JDN 2440976, derived from Peradnya PIVOT_1971 = 1971-01-27 pawukonDay=3). The engine's epoch JDN is 2444840 = 1981-08-23. Difference: 2444840 - 2440976 = 3864 = 18*210 + 84. Reproducible on all 30 days of September 2026 and on the engine's own 1981-08-23 anchor (engine: wuku=Sinta, pan=Paing, sapt=Redite, saka=1903; Rust/TS: wuku=Langkir, pan=Umanis, sapt=Redite, saka=1903). Java library uses a third epoch (no Pawukon 1981-08-23 or 1971-01-27 match).",
+    "evidence": [
+      "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md",
+      "/tmp/cross-2026-09.jsonl (30 rows x 4 impls)",
+      "/tmp/repos/balinese-date-js-lib/src/internal/Pivot.ts",
+      "/tmp/repos/balinese-calendar/src/utils.rs (PAWUKON_EPOCH_JDN = 2440976)"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-ENGINE-PANCAWARA-OFFSET-1-DAY",
+    "date": "2026-09-01..30 (verified across 30 days)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (4-implementation cross-validation)",
+    "component": "wewaran.pancawara",
+    "class": "wewaran_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "peradnya/balinese-date-js-lib-0.4.3 (TS), SHA888/balinese-calendar-0.3.0 (Rust), edysantosa/sakacalendar-2.0 (Java)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "Engine Pancawara is shifted +1 day vs Peradnya/Rust/TS on all 30 days of September 2026. Cyclic offset (engine - rust) mod 5 = 1 in 30/30 cases. Java is also shifted (same direction as engine). Rust/TS agree with each other (Peradnya is the reference). The Pancawara is computed from pawukon position via `((position - 1) % 5) + 1`; the 1-day shift is consistent with the pawukon epoch offset (engine is 84 days earlier; 84 mod 5 = 4, which means engine is at position-4 of the cycle, i.e. 1 day ahead in the 5-day cycle). Likely same root cause as the pawukon epoch dispute; fixing the epoch should also fix the pancawara.",
+    "evidence": [
+      "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md",
+      "/tmp/cross-2026-09.jsonl"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-SASAH-JAVA-VS-PERADNYA-OFFSET",
+    "date": "2026-09-01..30 (8 of 26 days)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (4-implementation cross-validation)",
+    "component": "saka_sasih",
+    "class": "sasih_index_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "edysantosa/sakacalendar-2.0 (Java) vs TS/Rust/Engine",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "sasih_index_drift",
+    "resolution": "pending",
+    "notes": "Java library's Sasih output diverges from Peradnya/Rust/TS on 8 of 26 days in September 2026. The Peradnya/Rust/TS trio agrees on Sasih position; the Java library's nampih handling (which uses a different internal state machine) gives a different result. Our engine matches Peradnya/Rust/TS on Sasih position. This is a data-quality note about the Java library; does NOT affect our engine.",
+    "evidence": [
+      "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-JAVA-WUKU-EPOCH-DIFFERENT",
+    "date": "2026-09-01..30 (verified across 30 days)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (4-implementation cross-validation)",
+    "component": "pawukon",
+    "class": "pawukon_position_drift",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "edysantosa/sakacalendar-2.0 (Java)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "pawukon_position_drift",
+    "resolution": "pending",
+    "notes": "Java's wuku output does not match Peradnya/Rust/TS/Engine on any day. The Java library appears to use yet a different pawukon epoch or wuku ordering. This is a data-quality note about the Java library, not about our engine. Non-blocking because we do not depend on Java output.",
+    "evidence": [
+      "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md"
+    ],
+    "recorded_at": "2026-09-15T..."
   }
 ]
