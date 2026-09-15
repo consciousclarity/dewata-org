@@ -339,5 +339,128 @@
       "supersedes: phase-1/docs/runbook/disputes.json entry DISPUTE-IGARASHI-1999-UNVERIFIED-CLAIM (resolution now 'superseded')"
     ],
     "recorded_at": "2026-09-15T22:00:00Z"
+  },
+  {
+    "id": "DISPUTE-reference-reingold-dershowitz-2018-license-classification-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, item 4 of remediation order)",
+    "component": "reference_chain",
+    "class": "bibliographic",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "Edward M. Reingold and Nachum Dershowitz, CALENDRICA 4.0 Common Lisp source, COPYRIGHT_DERSHOWITZ_RHEINGOLD.txt",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "bibliographic",
+    "resolution": "pending",
+    "notes": "The user-supplied instruction stated that CALENDRICA 4.0 is 'Apache-licensed'. This is INCORRECT. The actual LICENSE file (retrieved from the authors' canonical distribution) is a custom personal-use + non-commercial/non-profit-reuse license. License clause 1 explicitly prohibits 'allowing the code or its output to be accessed, used, or available to others.' License clause 1 also states that 'The Authors' public service intent is more liberal than suggested by the License below, as are their licensing policies for otherwise nonallowed uses such as ... commercial, web-site, and large-scale academic contexts. Please see the web-site http://www.calendarists.com for all uses not authorized below.' This means: (a) the source file itself cannot be redistributed in the Dewata public repository; (b) the LICENSE file can be redistributed (it is the author's license grant); (c) the sample data file (dates4.csv) CAN be committed because the LICENSE explicitly directs users to the sample values in Appendix C of the book; (d) any other re-use requires contacting the Authors (reingold@iit.edu) and/or visiting http://www.calendarists.com. This is a chat-vs-evidence correction per PROTOCOL v1.0 §2.4 ('Chat is not evidence'). Non-blocking because the work-around (redact full source, commit metadata + LICENSE + sample data) preserves evidence-chain integrity.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/METADATA.json",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/COPYRIGHT_DERSHOWITZ_RHEINGOLD.txt (SHA-256 d34115459b34df91fdd60134384e2f427d29e483a6991b11c2cea42df237412c)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/bibliographic-metadata.md (§license clarification)"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z"
+  },
+  {
+    "id": "DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, CALENDRICA runtime comparison)",
+    "component": "pawukon.epoch",
+    "class": "calendar_semantics",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "CALENDRICA 4.0 (Reingold & Dershowitz, first-party Common Lisp implementation, bali-epoch = fixed-from-jd 146)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "epoch_convention_difference",
+    "resolution": "pending",
+    "notes": "CALENDRICA 4.0 (Reingold & Dershowitz) defines `bali-epoch = fixed-from-jd 146 = RD -1721279`, equivalent to Julian Day Number 146 = proleptic Gregorian 4714-07-02. For Gregorian 1981-08-23 (RD 723415), CALENDRICA's bali-day-from-fixed = 84 (0-indexed) = position 85 (1-indexed). The Dewata engine uses EPOCH = date(1981, 8, 23) which makes 1981-08-23 = position 1 of the cycle. The two engines therefore differ by 84 cycle-positions (mod 210) for any given Gregorian date. The Pawukon has no canonical epoch (per Wikipedia: 'cycles are unnumbered, so the calendar has no epoch, and the choice of date on which to base a correspondence is arbitrary'). Both conventions are technically valid, but they produce different (and non-trivially-shifted) outputs for any calendar-aware application. This dispute is BLOCKING for any ruleset promotion until the choice of epoch is recorded as an explicit convention decision. Resolution requires customary or scholarly authority validation.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/METADATA.json",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-001)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md",
+      "phase-1/docs/runbook/disputes.json DISPUTE-ENGINE-PAWUKON-EPOCH-OFFSET-84-DAYS (related, informational-only)"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z"
+  },
+  {
+    "id": "DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, CALENDRICA runtime comparison)",
+    "component": "wewaran.asatawara",
+    "class": "calendar_semantics",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "CALENDRICA 4.0 (bali-asatawara-from-fixed = 1 + mod(max(6, 4 + mod((day-70), 210)), 8)) vs Dewata (special case p==72 → 7, p==73 → 8, else ((p-1) % 8) + 1)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "The 8-day Astawara cycle does not divide 210 evenly (210/8 = 26.25). Both CALENDRICA and Dewata implement special-case handling, but their formulas disagree. CALENDRICA uses a continuous `max(6, 4 + mod(day-70, 210))` formula; Dewata uses a hardcoded day-72/day-73 special case. The disagreement is reproducible on multiple test dates (1981-08-23, 1981-08-24, 2025-01-01, 2026-09-01, 2026-09-15, 2026-09-16, 2026-09-30, 2000-01-01, 2050-12-31, 1945-08-17 — all 14 test dates disagree on Astawara except for the 2 positions where Dewata's special case happens to align with CALENDRICA's formula). Since Caturwara is derived from Asatawara in CALENDRICA, this dispute transitively affects Caturwara. Resolution requires source-level confirmation from D&R prose chapter or customary authority.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-008, CALC-009)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z"
+  },
+  {
+    "id": "DISPUTE-wewaran-sangawara-special-case-formula-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, CALENDRICA runtime comparison)",
+    "component": "wewaran.sangawara",
+    "class": "calendar_semantics",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "CALENDRICA 4.0 (bali-sangawara-from-fixed = 1 + mod(max(0, day - 3), 9)) vs Dewata (days 1-3 all map to 1 = Dangu, else ((p-1) % 9) + 1)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "The 9-day Sangawara cycle does not divide 210 evenly (210/9 = 23.33). Both engines have special-case logic but disagree. CALENDRICA: bali-sangawara-from-fixed = 1 + mod(max(0, day - 3), 9). This gives different values than Dewata's 'first 3 days all Dangu' rule. The disagreement appears on dates like 1981-08-24, 2000-01-01, 2050-12-31 (3/14 test dates). Resolution requires source-level confirmation from D&R prose chapter or customary authority.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-010)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z"
+  },
+  {
+    "id": "DISPUTE-wewaran-dasawara-urip-5-table-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, CALENDRICA runtime comparison)",
+    "component": "wewaran.dasawara.urip_5",
+    "class": "calendar_semantics",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "CALENDRICA 4.0 (urip_5 = (5, 9, 7, 4, 8) for Pancawara positions Paing..Umanis) vs Dewata (urip_5 = (9, 7, 4, 8, 5))",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "Dewata's urip_5 table (9, 7, 4, 8, 5) is a cyclic left-rotation of CALENDRICA's urip_5 table (5, 9, 7, 4, 8). Both tables contain the same values; they map the same urip values to different Pancawara positions. urip_7 matches between the two engines. The dasawara formula structure (urip_5 + urip_7 + 1 mod 10) matches in form. The disagreement appears on all 14 test dates for the Dasawara field. This is a substantive disagreement requiring source-level confirmation from D&R prose chapter or customary authority to determine which table is canonical.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-011)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z"
+  },
+  {
+    "id": "DISPUTE-wewaran-dwiwara-parity-basis-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, CALENDRICA runtime comparison)",
+    "component": "wewaran.dwiwara",
+    "class": "calendar_semantics",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "CALENDRICA 4.0 (bali-dwiwara-from-fixed = amod(bali-dasawara-from-fixed(date), 2)) vs Dewata (Menga if urip_sum odd, Pepet if even, where urip_sum = (urip_5 + urip_7 + 1) mod 10)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "CALENDRICA computes dwiwara as the parity of the DASAWARA INDEX (1..10); Dewata computes dwiwara as the parity of the DASAWARA URIP VALUE (the value derived from the urip_5 + urip_7 sum). These two parities differ because the urip value is not always equal to the index. The disagreement appears on 6/14 test dates (1981-08-30, 1981-09-01, 1981-09-15, 1981-10-01, 2025-01-01, 2026-09-15, 2026-09-30, 2050-12-31). Note: this dispute is dependent on the resolution of DISPUTE-wewaran-dasawara-urip-5-table-2026-09-15. Non-blocking because the dwiwara name (Menga/Pepet) is informational, not used in calendrical arithmetic elsewhere in the engine.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (related to CALC-011)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z"
   }
 ]

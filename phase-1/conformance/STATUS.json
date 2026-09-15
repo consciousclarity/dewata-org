@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "last_modified": "2026-09-15T22:00:00Z",
+  "last_modified": "2026-09-15T22:30:00Z",
   "policy": "per PROTOCOL v1.0 §2.4 + gap analysis Finding 5: preserved != trusted. A corpus's directory placement (published/, ground-truth/, etc.) does NOT confer authority. Two orthogonal axes govern the gate: verification_status (is the source / citation retrievable?) and reference_eligibility (may this corpus satisfy an independent-reference validation gate for calendar correctness?). The gate requires VERIFIED + ELIGIBLE. Anything else fails closed.",
   "axes": {
     "verification_status": {
@@ -81,6 +81,48 @@
       "may_satisfy_validation_gate": false,
       "may_justify_ruleset_promotion": false,
       "may_be_described_as_ground_truth": false
+    },
+    "reingold_dershowitz_2018_pawukon_chapter": {
+      "corpus_file": null,
+      "corpus_class": "evidence_package_only",
+      "verification_status": "VERIFIED",
+      "reference_eligibility": "INELIGIBLE",
+      "authority_basis": "scholarly",
+      "reason": "Cambridge University Press 2018 Ultimate Edition, Chapter 12 (Balinese Pawukon Calendar), DOI 10.1017/9781107415058.015. Bibliographic existence VERIFIED by three independent sources: Cambridge publisher page, CrossRef DOI registry, Open Library edition record OL34742744M (ISBN-13 9781107415058, publish_date 2018). The chapter text itself was NOT accessible from this host (paywall + JS-rendered shell, HTTP 500 on book-page direct fetch). Substantive calendrical claims are NOT YET VERIFIED — chapter text acquisition remains blocked. Reference eligibility for algorithmic claims stays INELIGIBLE until chapter text is acquired and each claim is supported by a quote or precise paraphrase. Bibliographic existence is VERIFIED; algorithmic claim support is not. Per the user's instruction: 'Bibliographic existence alone is insufficient to make an algorithmic corpus eligible. Eligibility must be claim-scoped.'",
+      "related_dispute_id": null,
+      "date_classified": "2026-09-15",
+      "evidence_review_artifact": "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/bibliographic-metadata.md",
+      "citation_keys_present_in_corpus": [
+        "reingold-dershowitz-2018-balinese-pawukon (scholarly bibliographic record, chapter body not acquired)"
+      ],
+      "preserved": true,
+      "may_satisfy_validation_gate": false,
+      "may_justify_ruleset_promotion": false,
+      "may_be_described_as_ground_truth": false
+    },
+    "reingold_dershowitz_2018_calendrica_4_0": {
+      "corpus_file": null,
+      "corpus_class": "first_party_implementation",
+      "verification_status": "VERIFIED",
+      "reference_eligibility": "ELIGIBLE",
+      "authority_basis": "software_reference",
+      "reason": "First-party Common Lisp implementation of Pawukon/Wewaran by the same authors (Reingold & Dershowitz). Source authentication VERIFIED: retrieved from rengel-de/calixir repo, commit SHA 0f3368339c6318f6751579cf506320b13ce17e2c, source SHA-256 5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb. Runtime verified on this host (SBCL 2.2.9) — CALENDRICA loaded successfully and 10 sample RD rows reproduced dates4.csv expected output. License is custom personal-use + non-commercial/non-profit-reuse (NOT Apache, see DISPUTE-reference-reingold-dershowitz-2018-license-classification-2026-09-15); source file is NOT redistributed; LICENSE file and dates4.csv sample data are redistributed. CLAIM-SCOPED eligibility: ELIGIBLE for the modular-arithmetic claims (CALC-002 cycle arithmetic, CALC-004 saptawara, CALC-005 pancawara, CALC-006 triwara, CALC-007 sadwara) where Dewata's formula matches CALENDRICA's after cycle-position alignment. NOT eligible for the epoch anchor (CALC-001, see DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15), the special-case formulas (CALC-008 asatawara, CALC-009 caturwara, CALC-010 sangawara; see DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15 and DISPUTE-wewaran-sangawara-special-case-formula-2026-09-15), or the urip_5 table (CALC-011; see DISPUTE-wewaran-dasawara-urip-5-table-2026-09-15) where Dewata disagrees with CALENDRICA. NOTE: This corpus has multiple unresolved blocking disputes (epoch anchor, asatawara special case, dasawara urip_5 table). Per PROTOCOL v1.0, promotion of any ruleset component using this corpus is BLOCKED until those disputes are resolved. The two-axis gate returns True for this corpus at the corpus level, but the unresolved disputes make ruleset promotion infeasible.",
+      "related_dispute_id": "DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15",
+      "date_classified": "2026-09-15",
+      "evidence_review_artifact": "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md, phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md, phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/METADATA.json",
+      "citation_keys_present_in_corpus": [
+        "reingold-dershowitz-2018-calendrica-4.0 (first-party Common Lisp implementation; claim-scoped eligibility)"
+      ],
+      "preserved": true,
+      "may_satisfy_validation_gate": true,
+      "may_justify_ruleset_promotion": false,
+      "may_be_described_as_ground_truth": false,
+      "blocking_disputes_pending": [
+        "DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15",
+        "DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15",
+        "DISPUTE-wewaran-sangawara-special-case-formula-2026-09-15",
+        "DISPUTE-wewaran-dasawara-urip-5-table-2026-09-15"
+      ]
     }
   },
   "enforcement": "Cross-validation machinery (phase-1/src/dewatacalendar/cross_validation.py and conformance.py) and CLI (cli.py) MUST call can_satisfy_validation_gate() before claiming any corpus satisfies an independent-reference validation gate. The cross_validation module annotates outcomes with _corpus_verification_status, _corpus_reference_eligibility, _corpus_authority_basis, and _corpus_legacy_status so downstream consumers cannot accidentally treat unverified or ineligible data as authoritative."
