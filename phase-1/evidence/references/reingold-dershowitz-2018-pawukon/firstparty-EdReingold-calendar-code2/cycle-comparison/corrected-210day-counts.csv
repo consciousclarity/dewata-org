@@ -1,0 +1,25 @@
+comparison|field|numeric_ok|numeric_no|semantic_ok|semantic_no|note
+RAW_GREGORIAN_MAPPING|||
+|Pancawara|210|0|0|210|numeric matches but names differ (convention shift)
+|Saptawara|210|0|210|0|
+|Triwara|210|0|210|0|
+|Sadwara|210|0|210|0|
+|Caturwara|12|198|12|198|
+|Asatawara|12|198|12|198|
+|Sangawara|125|85|125|85|
+|Dasawara|12|198|0|210|numeric matches but names differ (convention shift)
+|Dwiwara|126|84|126|84|
+|cycle_position|0|210|n/a|n/a|raw: constant +84 offset; normalized: 210/210 after -84 shift
+|Luang|n/a|n/a|n/a|n/a|SEMANTICS_DIFFER
+PHASE_NORMALIZED_FORMULA|||
+|Pancawara|210|0|0|210|numeric matches but names differ (convention shift)
+|Saptawara|210|0|210|0|
+|Triwara|210|0|210|0|
+|Sadwara|210|0|210|0|
+|Caturwara|12|198|12|198|
+|Asatawara|12|198|12|198|
+|Sangawara|125|85|125|85|
+|Dasawara|12|198|0|210|numeric matches but names differ (convention shift)
+|Dwiwara|126|84|126|84|
+|cycle_position|0|210|n/a|n/a|raw: constant +84 offset; normalized: 210/210 after -84 shift
+|Luang|n/a|n/a|n/a|n/a|SEMANTICS_DIFFER
