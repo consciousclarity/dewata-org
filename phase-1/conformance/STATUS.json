@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "last_modified": "2026-09-15T23:00:00Z",
+  "last_modified": "2026-09-15T23:30:00Z",
   "policy": "per PROTOCOL v1.0 §2.4 + gap analysis Finding 5: preserved != trusted. A corpus's directory placement (published/, ground-truth/, etc.) does NOT confer authority. Two orthogonal axes govern the gate: verification_status (is the source / citation retrievable?) and reference_eligibility (may this corpus satisfy an independent-reference validation gate for calendar correctness?). The gate requires VERIFIED + ELIGIBLE. Anything else fails closed.",
   "axes": {
     "verification_status": {
@@ -144,6 +144,111 @@
       "may_justify_ruleset_promotion": false,
       "may_be_described_as_ground_truth": false,
       "superseded_by": "reingold_dershowitz_2018_calendrica_4_0_firstparty"
+    },
+    "wariga_suparta_ardhana_2006": {
+      "corpus_file": null,
+      "corpus_class": "evidence_package_only",
+      "verification_status": "VERIFIED",
+      "reference_eligibility": "INELIGIBLE",
+      "authority_basis": "scholarly",
+      "reason": "Bibliographic record for I.B. Suparta Ardhana, 'Pokok-pokok Wariga', Paramita Surabaya, ISBN-10 979722242X, LCCN 2007308755, Cet. 1, x + 182 pp. Open Library work OL5988117W, author OL1493268A. Bibliographic existence VERIFIED via Open Library edition record (which includes Library of Congress MARC source records) and via independent academic citations (ISI Yogyakarta journal; DOI 10.31091/sw.v3i0.214). Chapter text NOT accessible from this host (Open Library ebook_access=no_ebook; commercial purchase required). Per user instruction: 'If only bibliographic metadata is accessible, stop short of substantive verification for that source.' Algorithmic claims about Wewaran/Pawukon from this source are NOT YET VERIFIED. Reference eligibility INELIGIBLE until chapter text is acquired and each claim is supported by a quote. The Java implementation edysantosa/sakacalendar (wariga_edysantosa_sakacalendar) cites this book as its source of truth, which corroborates existence but does not substitute for direct text.",
+      "related_dispute_id": null,
+      "date_classified": "2026-09-15",
+      "evidence_review_artifact": "phase-1/evidence/references/balinese-wariga-sources/bibliographic-records.md",
+      "citation_keys_present_in_corpus": [
+        "wariga-suparta-ardhana-2006-pokok-pokok (VERIFIED bibliographic, chapter body not acquired)"
+      ],
+      "preserved": true,
+      "may_satisfy_validation_gate": false,
+      "may_justify_ruleset_promotion": false,
+      "may_be_described_as_ground_truth": false
+    },
+    "wariga_putra_manik_ariana_2009": {
+      "corpus_file": null,
+      "corpus_class": "evidence_package_only",
+      "verification_status": "VERIFIED",
+      "reference_eligibility": "INELIGIBLE",
+      "authority_basis": "scholarly",
+      "reason": "Bibliographic record for I.B. Putra Manik Aryana, SS., M.Si, 'Tenung Wariga', Bali Aga, Denpasar, 2009. Bibliographic existence VERIFIED via academic citation in DOI 10.31091/sw.v3i0.214 and via Java implementation edysantosa/sakacalendar which cites this book as source of truth. Open Library search returned numFound=0 (book not cataloged in Open Library). Chapter text NOT accessible from this host. Algorithmic claims NOT YET VERIFIED.",
+      "related_dispute_id": null,
+      "date_classified": "2026-09-15",
+      "evidence_review_artifact": "phase-1/evidence/references/balinese-wariga-sources/bibliographic-records.md",
+      "citation_keys_present_in_corpus": [
+        "wariga-putra-manik-ariana-2009-tenung (VERIFIED bibliographic, chapter body not acquired)"
+      ],
+      "preserved": true,
+      "may_satisfy_validation_gate": false,
+      "may_justify_ruleset_promotion": false,
+      "may_be_described_as_ground_truth": false
+    },
+    "wariga_kemendikbud_hindu_bs_kls_ix_2022": {
+      "corpus_file": "phase-1/evidence/references/balinese-wariga-sources/kemendikbud-hindu-bs-kls-ix/pages-37-40-extracted.txt",
+      "corpus_class": "institutional_textbook",
+      "verification_status": "VERIFIED",
+      "reference_eligibility": "ELIGIBLE",
+      "authority_basis": "institutional",
+      "reason": "Indonesian Ministry of Education (Kemendikbud) + Ministry of Religious Affairs textbook 'Hindu-BS-KLS-IX' (Hindu Religion Book, Grade 9, Kurikulum 21/Merdeka, 2022). PDF SHA-256 0ac38bf5e59c3ef755d3296894a3d865da43c0945c92b3ed4d1e19457b9fe429, 20157376 bytes. Pages 37-40 contain Wewaran tables (Pancawara, Saptawara, Caturwara, Astawara, Sangawara, Dasawara, Triwara, Sadwara) and explicit Pawukon exceptions ('Namun yang perlu dipahami ada beberapa pengecualian yaitu'). Documented verbatim: Caturwara 3 consecutive Jaya at Wuku Dungulan starting from Redite; Astawara 3 consecutive Kala at Wuku Dungulan starting from Redite; Sangawara 4 consecutive Dangu at Wuku Sinta starting from Redite. Pancawara mapping explicit on page 37: '(1) Umanis, (2) Pahing, (3) Pon, (4) Wage, (5) Kliwon' — confirms Mapping B. License: Indonesian government open-content (free for educational use). Authority basis: institutional (state curriculum textbook). ELIGIBLE for substantive claims about Wewaran/Pawukon special-case structure, but only within scope of pages 37-40 (no Wuku/Gregorian examples). Multiple-tradition preserved per PROTOCOL v1.0.",
+      "related_dispute_id": null,
+      "date_classified": "2026-09-15",
+      "evidence_review_artifact": "phase-1/evidence/references/balinese-wariga-sources/bibliographic-records.md, phase-1/evidence/references/balinese-wariga-sources/claim-register.md",
+      "citation_keys_present_in_corpus": [
+        "wariga-kemendikbud-hindu-bs-kls-ix-2022 (ELIGIBLE — institutional government textbook, pages 37-40 retrieved)"
+      ],
+      "preserved": true,
+      "may_satisfy_validation_gate": true,
+      "may_justify_ruleset_promotion": false,
+      "may_be_described_as_ground_truth": false,
+      "scope_limitations": [
+        "no Wuku/Gregorian examples in pages 37-40 — Wuku/Gregorian phase remains insufficiently evidenced",
+        "Pancawara ordering confirmed (mapping B) but does not adjudicate the Dewata vs CALENDRICA naming convention dispute",
+        "special-case content (Caturwara=Jaya, Astawara=Kala, Sangawara=Dangu) provides independent confirmation of CALENDRICA-like special-case structure but disagrees on Sangawara duration (4 days vs CALENDRICA's 3)"
+      ]
+    },
+    "wariga_babadbali_com": {
+      "corpus_file": "phase-1/evidence/references/balinese-wariga-sources/babadbali-pancawara-extracted.txt",
+      "corpus_class": "balinese_cultural_reference_site",
+      "verification_status": "VERIFIED",
+      "reference_eligibility": "ELIGIBLE",
+      "authority_basis": "practitioner",
+      "reason": "Independent Balinese cultural reference site babadbali.com. Pancawara page (SHA-256 a2958109770f38e448cbbf2b5624231ecac520152c1cb868668b66f1054c3adb, 10340 bytes) and Wuku page (SHA-256 3a970cf779236dda3d40800db1e66829e60d936eabaa231b43b4f010fb710af9, 20983 bytes). Pancawara page lists Pancawara elements as 'Pon, Wage, Kliwon, Umanis dan Paing' and explicitly assigns numeric indices 1-5: '1 Legi or manis... 2 Paing or Pait... 3 Pon or Petak... 4 Wage or Cemeng... 5 Kliwon or Kasih' — confirms Mapping B convention. Wuku page contains all 30 wuku names with urip values, location, sifat, and symbolic associations. Authority basis: practitioner (cultural reference site, not peer-reviewed). ELIGIBLE for Wuku/Pancawara ordering claims but not for customary attestation. Same lineage as peradnya/balinese-date-js-lib (derivative) but independent of CALENDRICA, kb.org, Kemendikbud textbook.",
+      "related_dispute_id": null,
+      "date_classified": "2026-09-15",
+      "evidence_review_artifact": "phase-1/evidence/references/balinese-wariga-sources/bibliographic-records.md",
+      "citation_keys_present_in_corpus": [
+        "wariga-babadbali-com (VERIFIED — independent Balinese cultural reference site)"
+      ],
+      "preserved": true,
+      "may_satisfy_validation_gate": true,
+      "may_justify_ruleset_promotion": false,
+      "may_be_described_as_ground_truth": false,
+      "scope_limitations": [
+        "no special-case structure documented for Caturwara/Astawara/Sangawara on these pages",
+        "no Gregorian/Wuku mapping examples",
+        "practitioner source — customary attestation requires separate authority"
+      ]
+    },
+    "wariga_edysantosa_sakacalendar_java": {
+      "corpus_file": "phase-1/evidence/references/balinese-wariga-sources/edysantosa-sakacalendar/extracted-functions.txt",
+      "corpus_class": "derivative_software_implementation",
+      "verification_status": "VERIFIED",
+      "reference_eligibility": "ELIGIBLE",
+      "authority_basis": "software_reference",
+      "reason": "Java implementation of Balinese Pawukon/Saka calendar by edysantosa/sakacalendar (https://github.com/edysantosa/sakacalendar). Source file SHA-256 dda574c4d0434c9fcc35fa60fa700e1ae1f8e7b5eafc88d20346ed93d5687579, 119709 bytes, LGPL-2.1 license. Source code explicitly cites S1 (I.B. Suparta Ardhana's Pokok-pokok Wariga) and S2 (I.B. Putra Manik Aryana's Tenung Wariga) as its source of truth. Implements: Pancawara `noPancawara = (noWuku % 5) + 1` (mapping B convention), Caturwara with Jaya Tiga exception at Wuku Dungulan, Astawara with Kala exception at days 71-73, Sangawara with Dangu Pat exception for days 1-4 (4 consecutive Dangu), Dasawara via urip_sum mod 10, Dwiwara via urip_sum parity. NOTE: This is a DERIVATIVE of S1+S2 — same lineage as Pokok-pokok Wariga + Tenung Wariga. Counts as one witness, not two independent witnesses, in source-dependency analysis.",
+      "related_dispute_id": null,
+      "date_classified": "2026-09-15",
+      "evidence_review_artifact": "phase-1/evidence/references/balinese-wariga-sources/bibliographic-records.md",
+      "citation_keys_present_in_corpus": [
+        "wariga-edysantosa-sakacalendar-java (ELIGIBLE — software derivative of S1+S2, same lineage)"
+      ],
+      "preserved": true,
+      "may_satisfy_validation_gate": true,
+      "may_justify_ruleset_promotion": false,
+      "may_be_described_as_ground_truth": false,
+      "scope_limitations": [
+        "derivative of S1+S2 — same lineage, not independent witness for Wewaran formulas",
+        "no Gregorian/Wuku examples in source code (purely algorithmic)",
+        "LGPL-2.1 license — derivative works must respect license terms"
+      ]
     }
   },
   "enforcement": "Cross-validation machinery (phase-1/src/dewatacalendar/cross_validation.py and conformance.py) and CLI (cli.py) MUST call can_satisfy_validation_gate() before claiming any corpus satisfies an independent-reference validation gate. The cross_validation module annotates outcomes with _corpus_verification_status, _corpus_reference_eligibility, _corpus_authority_basis, and _corpus_legacy_status so downstream consumers cannot accidentally treat unverified or ineligible data as authoritative."

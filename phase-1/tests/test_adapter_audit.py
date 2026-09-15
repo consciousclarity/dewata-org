@@ -101,7 +101,13 @@ def test_new_pancawara_dispute_filed():
     by_id = {d.get("id"): d for d in disputes if d.get("id")}
     assert "DISPUTE-pancawara-convention-shift-dewata-vs-cultural-2026-09-15" in by_id
     new = by_id["DISPUTE-pancawara-convention-shift-dewata-vs-cultural-2026-09-15"]
-    assert new["class"] == "naming_only"
+    # Corrected from naming_only to indexing_representation per user instruction (2026-09-15):
+    # "That is more accurately: indexing_representation, rather than naming_only,
+    # unless Dewata's numeric value is completely internal and never represents
+    # a calendrical position externally."
+    assert new["class"] == "indexing_representation", (
+        f"Pancawara dispute should be classified indexing_representation, got {new['class']!r}"
+    )
     assert new["blocking"] is False
 
 
