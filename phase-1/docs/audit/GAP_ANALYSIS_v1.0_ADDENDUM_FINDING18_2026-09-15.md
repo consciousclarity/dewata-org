@@ -132,3 +132,55 @@ comparison; they just cannot satisfy authority gates.
 `phase-1/conformance/STATUS.json`. It is not in `published/`. The
 `published/` directory contains historical corpus material; authority
 comes from STATUS metadata, not directory placement.
+
+---
+
+## Addendum to Finding 18 — wording correction + implementation defect closed
+
+**Date:** 2026-09-15
+**Author:** Hermes / Warden (Auditor role, post-commit-B review)
+
+### wording correction (governance-owner review)
+
+the original wording of the Blocking summary in the commit B commit
+message used "No new blockers." this was imprecise. The corrected
+wording is:
+
+> "**No new production-availability blockers were discovered.**
+> Finding 18 introduced a scoped blocker for `evidence_chain` /
+> `ruleset_promotion`; Commit B closes the immediate test-coverage
+> defect by exercising the actual published corpora and enforcing
+> the authority gates."
+
+the key distinction: Finding 18 was already a scoped blocker (per
+the Blocking Scope fields above), not a production-availability
+blocker. The commit-B wording conflated the two scopes. This
+addendum records the correction in the audit log so that future
+readers do not misread the prior commit message as claiming "no
+blockers at all".
+
+### implementation defect closed (post-commit-B)
+
+the implementation defect (conformance tests exercised zero real
+published corpus vectors) was closed by Commit B itself. The
+following is the test outcome that closes the defect:
+
+| suite | baseline (c8af8f3, STATUS.json absent) | after Commit B |
+|---|---|---|
+| `test_conformance.py` | 3 passed, 4 SKIPPED | 38 passed, 0 failed, 0 SKIPPED |
+| `test_cultural_adapters.py` | 19 passed, 1 failed (pre-existing dispute-schema) | 19 passed, 1 failed (same pre-existing) |
+
+the gap analysis `Finding 18` finding remains on the record. The
+historical defect — that the parameterized tests enumerated zero
+corpora — is preserved in git history. The current state is
+captured in this addendum so future readers see both the defect
+(the historical finding) and the closure (the test outcome).
+
+### status of the Finding 18 scoped blocker
+
+| blocking scope | status |
+|---|---|
+| `evidence_chain` | the in-tree test suite now exercises the actual published corpora and asserts the gate behaviors. The test-coverage defect that Finding 18 surfaced is closed. |
+| `ruleset_promotion` | the gate predicate now exists and is enforced by test. A ruleset promotion can no longer accidentally cite an UNVERIFIED / INELIGIBLE corpus as authoritative. The **mechanism** is closed. The **substantive question** of whether a ruleset can be promoted remains blocked by the underlying calendar-correctness gaps (Findings 3, 4 in the parent gap analysis). |
+
+no production-availability blocker was ever introduced.

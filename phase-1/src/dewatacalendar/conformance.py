@@ -25,8 +25,6 @@ from typing import Callable, Iterable
 from .api import compose_day
 from .corpus_status import (
     annotate_vectors_with_status,
-    corpus_status_for,
-    can_satisfy_validation_gate,
 )
 
 

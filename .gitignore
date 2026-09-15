@@ -10,6 +10,12 @@ __pycache__/
 # generated — do NOT commit
 **/conformance/*.json
 **/conformance/*.jsonl
+# EXCEPTION: STATUS.json is the canonical corpus-evidence-status
+# registry (PROTOCOL v1.0 §2.7). It is metadata, not a generated
+# corpus, and must be tracked. Narrow re-negation pattern: list the
+# specific canonical metadata file as an exception. Future agents
+# can simply `git add` the file without needing `-f`.
+!/phase-1/conformance/STATUS.json
 src/dewatacalendar/_version.py
 
 # secrets — keep out of repo

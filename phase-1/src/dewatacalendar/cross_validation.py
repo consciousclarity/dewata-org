@@ -23,6 +23,21 @@ a published vector that disagrees with the engine is NEVER silently
 rejected. it is recorded with status `disputed` and the operator has to
 decide whether to (a) update the engine's ruleset, (b) update the corpus,
 or (c) accept the dispute as a documented regional variant.
+
+## corpus evidence status (two-axis model)
+
+every outcome is annotated with the corpus's two-axis evidence status
+per phase-1/conformance/STATUS.json schema v2:
+
+  corpus_verification_status:  UNVERIFIED | VERIFIED
+  corpus_reference_eligibility: INELIGIBLE | ELIGIBLE
+  corpus_authority_basis:       scholarly | customary | institutional |
+                                practitioner | software_reference | unknown
+  corpus_legacy_status:         CorpusStatus (legacy single-axis view)
+
+the gate predicate is `can_satisfy_validation_gate(record)` which is
+`(verification == VERIFIED) AND (eligibility == ELIGIBLE)`. an outcome
+fails closed unless both axes pass.
 """
 
 from __future__ import annotations
@@ -35,8 +50,12 @@ from typing import Any
 
 from .api import compose_day  # noqa: PLC0415
 from .corpus_status import (  # noqa: PLC0415
+    AuthorityBasis,
+    CorpusRecord,
+    ReferenceEligibility,
+    VerificationStatus,
     can_satisfy_validation_gate,
-    corpus_status_for,
+    corpus_record_for,
 )
 from .published_cunningham import load_cunningham_corpus  # noqa: F401 — re-export
 from .published_igarashi import load_igarashi_corpus  # noqa: F401 — re-export
@@ -49,13 +68,23 @@ CORPUS_DIR = Path(__file__).resolve().parent.parent.parent / "conformance" / "pu
 class CrossValidationOutcome:
     """the outcome of comparing one published vector against the engine.
 
-    `corpus_status` records the authority status of the source corpus
-    per phase-1/conformance/STATUS.json. downstream consumers MUST
-    check `corpus_status` before treating any field of `expected` or
-    `actual` as authoritative. an outcome with status
-    UNVERIFIED / NON_AUTHORITATIVE is informational; an outcome with
-    status ATTESTED may satisfy an independent-reference validation
-    gate.
+    corpus evidence status fields (two-axis):
+      corpus_verification_status:  UNVERIFIED | VERIFIED
+      corpus_reference_eligibility: INELIGIBLE | ELIGIBLE
+      corpus_authority_basis:       scholarly | customary | institutional |
+                                    practitioner | software_reference | unknown
+
+    legacy single-axis field (for callers that don't need the two-axis
+    detail; derived from the two axes):
+      corpus_status:               UNVERIFIED | NON_AUTHORITATIVE | ATTESTED
+
+    the gate predicate is `corpus_may_satisfy_validation_gate` which is
+    True iff (verification == VERIFIED) AND (eligibility == ELIGIBLE).
+    downstream consumers MUST check this field before treating any value
+    in `expected` or `actual` as authoritative.
+
+    the legacy `corpus_status` field is preserved for backwards
+    compatibility. it is derived from the two axes.
     """
     date: str
     source: str
@@ -67,7 +96,10 @@ class CrossValidationOutcome:
     rule_id: str
     notes: str
     corpus_basename: str = ""
-    corpus_status: str = "UNVERIFIED"
+    corpus_verification_status: str = VerificationStatus.UNVERIFIED.value
+    corpus_reference_eligibility: str = ReferenceEligibility.INELIGIBLE.value
+    corpus_authority_basis: str = AuthorityBasis.UNKNOWN.value
+    corpus_status: str = "UNVERIFIED"  # legacy single-axis
     corpus_may_satisfy_validation_gate: bool = False
 
 
@@ -78,9 +110,14 @@ def _carrying_dict(d: dict[str, Any], key: str) -> dict | object:
 def cross_validate_one(expected_gregorian: str, expected: dict, source: str, page: int | None, rule_id: str, corpus_basename: str = "") -> CrossValidationOutcome:
     """compare one expected vector to what the engine produces.
 
-    `corpus_basename` is used to look up the corpus's authority
-    status in phase-1/conformance/STATUS.json. if not provided,
-    the status defaults to UNVERIFIED (fail-closed).
+    `corpus_basename` is used to look up the corpus's two-axis
+    evidence status in phase-1/conformance/STATUS.json. if not
+    provided, the status defaults to UNVERIFIED + INELIGIBLE + unknown
+    (fail-closed).
+
+    the gate predicate is computed from the two axes:
+        VERIFIED + ELIGIBLE -> may_satisfy_validation_gate=True
+        anything else -> False
     """
     date = _dt.date.fromisoformat(expected_gregorian)
     day = compose_day(date)
@@ -112,10 +149,19 @@ def cross_validate_one(expected_gregorian: str, expected: dict, source: str, pag
         else "engine disagrees with published source — human review required"
     )
 
-    cstatus = corpus_status_for(corpus_basename) if corpus_basename else None
-    from .corpus_status import CorpusStatus  # noqa: PLC0415 - lazy
-    corpus_status_str = cstatus.value if cstatus is not None else CorpusStatus.UNVERIFIED.value
-    may_gate = can_satisfy_validation_gate(corpus_status_str)
+    record = corpus_record_for(corpus_basename) if corpus_basename else None
+    if record is None:
+        v_str = VerificationStatus.UNVERIFIED.value
+        r_str = ReferenceEligibility.INELIGIBLE.value
+        a_str = AuthorityBasis.UNKNOWN.value
+        legacy = "UNVERIFIED"
+        may_gate = False
+    else:
+        v_str = record.verification_status.value
+        r_str = record.reference_eligibility.value
+        a_str = record.authority_basis.value
+        legacy = record.legacy_status.value
+        may_gate = can_satisfy_validation_gate(record)
 
     return CrossValidationOutcome(
         date=expected_gregorian,
@@ -128,7 +174,10 @@ def cross_validate_one(expected_gregorian: str, expected: dict, source: str, pag
         rule_id=rule_id,
         notes=notes,
         corpus_basename=corpus_basename,
-        corpus_status=corpus_status_str,
+        corpus_verification_status=v_str,
+        corpus_reference_eligibility=r_str,
+        corpus_authority_basis=a_str,
+        corpus_status=legacy,
         corpus_may_satisfy_validation_gate=may_gate,
     )
 
@@ -136,13 +185,13 @@ def cross_validate_one(expected_gregorian: str, expected: dict, source: str, pag
 def cross_validate_all() -> list[CrossValidationOutcome]:
     """cross-validate every published corpus against the engine.
 
-    returns outcomes annotated with each corpus's authority status.
-    the function does NOT raise if a corpus is UNVERIFIED or
-    NON_AUTHORITATIVE — it loads and compares anyway, and records
-    the status on each outcome. callers that need to gate behavior
-    on corpus authority should check
+    returns outcomes annotated with each corpus's two-axis evidence
+    status. the function does NOT raise if a corpus is UNVERIFIED or
+    INELIGIBLE — it loads and compares anyway, and records the status
+    on each outcome. callers that need to gate behavior on corpus
+    authority should check
     `outcome.corpus_may_satisfy_validation_gate` (or call
-    `can_satisfy_validation_gate(outcome.corpus_status)` directly).
+    `can_satisfy_validation_gate(record)` directly with a CorpusRecord).
     """
     out: list[CrossValidationOutcome] = []
     out.extend(_run_corpus_file("cunningham_1994"))
@@ -153,10 +202,10 @@ def cross_validate_all() -> list[CrossValidationOutcome]:
 def _run_corpus_file(name: str) -> list[CrossValidationOutcome]:
     """load json corpus `name.json` and run cross-validation for each row.
 
-    each row's outcome carries the corpus's authority status. the
-    corpus's `may_satisfy_validation_gate` field is propagated per
+    each row's outcome carries the corpus's two-axis evidence status.
+    the corpus's `may_satisfy_validation_gate` field is propagated per
     outcome so downstream consumers cannot accidentally treat an
-    UNVERIFIED corpus's values as authoritative.
+    UNVERIFIED / INELIGIBLE corpus's values as authoritative.
     """
     path = CORPUS_DIR / f"{name}.json"
     if not path.exists():
@@ -180,16 +229,22 @@ def _run_corpus_file(name: str) -> list[CrossValidationOutcome]:
 def format_outcome(o: CrossValidationOutcome) -> str:
     """render an outcome as a multi-line text block (indonesian-friendly).
 
-    includes the corpus's authority status. outcomes with status
-    UNVERIFIED / NON_AUTHORITATIVE are explicitly labeled as such so
-    readers do not mistake diagnostic output for ground truth.
+    includes the corpus's two-axis evidence status and the gate
+    result. outcomes that do not pass the gate are explicitly labeled
+    as NON-AUTHORITATIVE so readers do not mistake diagnostic output
+    for ground truth.
     """
     ok = lambda b: "OK" if b else "DRIFT"
     fields = " ".join(f"{k.replace('_', ' ')}={ok(v)}" for k, v in o.fields_ok.items())
     gate_marker = (
         "AUTHORITATIVE"
         if o.corpus_may_satisfy_validation_gate
-        else f"NON-AUTHORITATIVE ({o.corpus_status})"
+        else (
+            f"NON-AUTHORITATIVE "
+            f"[{o.corpus_verification_status} + "
+            f"{o.corpus_reference_eligibility} + "
+            f"{o.corpus_authority_basis}]"
+        )
     )
     return (
         f"date        : {o.date}\n"
@@ -203,8 +258,3 @@ def format_outcome(o: CrossValidationOutcome) -> str:
         f"detail      : {fields}\n"
         f"catatan     : {o.notes}"
     )
-
-
-def to_dict(o: CrossValidationOutcome) -> dict[str, Any]:
-    """serialize an outcome to a JSON-safe dict."""
-    return asdict(o)
