@@ -428,6 +428,10 @@
       "corrected_finding": "CALENDRICA Pancawara matches cultural references on all 7 dates under correct mapping B (1=Umanis, 2=Paing, 3=Pon, 4=Wage, 5=Kliwon). The previous report's claim was based on using mapping A (1=Paing). Under corrected mapping, CAL=KB.org.",
       "pancawara_convention_shift": "DEW's PANCAWARA_NAMES_BALINESE in wewaran.py uses mapping A (1=Paing); cultural convention is mapping B (1=Umanis). This is a naming convention shift, not a formula defect.",
       "future_repair_direction_unchanged": "implementation correction if a single epoch constant adjustment suffices (mapping_phase); semantic/ruleset change if a different cycle anchor is chosen; still unresolved until customary/scholarly authority validates."
+    },
+    "dasawara_count_correction_2026-09-15": {
+      "trigger": "audit",
+      "correction": "verified"
     }
   },
   {
@@ -573,19 +577,27 @@
     "date_filed": "2026-09-15",
     "filed_by": "audit (corrective evidence/provenance pass after Pancawara mapping bug discovered in commit 9516b01)",
     "component": "wewaran.pancawara.names",
-    "class": "naming_only",
+    "class": "indexing_representation",
     "blocking": false,
     "severity": "non-blocking",
     "source": "Dewata wewaran.py PANCAWARA_NAMES_BALINESE = ('Paing', 'Pon', 'Wage', 'Keliwon', 'Umanis') (mapping A: 1=Paing)",
     "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
     "classification": "naming_convention_shift",
     "resolution": "pending",
-    "notes": "Dewata's PANCAWARA_NAMES_BALINESE uses mapping A (1=Paing); the cultural convention is mapping B (1=Umanis). Three independent lineages confirm mapping B: (L1) kb.org page titles show Umanis-Paing-Pon-Wage-Kliwon for 7 dates; (L3) BASAbali Pancawara page formula yields 1=Umanis; (L5) Suparta Ardhana Pokok-Pokok Wariga (2006) lists Anggara Wage for Pahang, consistent with mapping B. Dewata's underlying urip_sum arithmetic is CORRECT; only the name list order is off. This is a representation/indexing issue, NOT a formula defect. If the governance owner chooses to align Dewata with cultural convention, this is an implementation correction to a single constant in wewaran.py.",
+    "notes": "Dewata's PANCAWARA_NAMES_BALINESE uses mapping A (1=Paing); the cultural convention is mapping B (1=Umanis). Three independent lineages confirm mapping B: (L1) kb.org page titles show Umanis-Paing-Pon-Wage-Kliwon for 7 dates; (L3) BASAbali Pancawara page formula yields 1=Umanis; (L5) Suparta Ardhana Pokok-Pokok Wariga (2006) lists Anggara Wage for Pahang, consistent with mapping B. Dewata's underlying urip_sum arithmetic is CORRECT; only the name list order is off. This is a representation/indexing issue, NOT a formula defect. If the governance owner chooses to align Dewata with cultural convention, this is an implementation correction to a single constant in wewaran.py. CORRECTION 2026-09-15: This dispute is now classified as indexing_representation (not naming_only). The distinction: spelling variants (Kliwon/Keliwon) are naming_only because they are interchangeable. But numeric position 1 mapping to Paing (Dewata) vs Umanis (CAL/cultural) is a different name for the SAME numeric value, which is indexing_representation. Dewata's underlying urip_sum formula produces correct numeric values that match CALENDRICA 210/210. The fix would be to reorder PANCAWARA_NAMES_BALINESE to Umanis-Paing-Pon-Wage-Kliwon (mapping B convention). Whether this is implementation correction or representation change is governance-decision-dependent.",
     "evidence": [
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/cycle-comparison/adapter-audit.md",
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/cycle-comparison/adapter-audit.json",
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/cycle-comparison/corrected-seven-date-comparison.csv"
     ],
-    "recorded_at": "2026-09-15T23:30:00Z"
+    "recorded_at": "2026-09-15T23:30:00Z",
+    "reclassification_2026-09-15": {
+      "previous_class": "naming_only",
+      "new_class": "indexing_representation",
+      "rationale": "The evidence shows: (a) Dewata's Pancawara numeric arithmetic (urip_sum formula) MATCHES CALENDRICA 210/210 at the numeric domain level. (b) Dewata maps numeric position 1 to Paing; CALENDRICA/cultural maps numeric position 1 to Umanis. This is not a naming-only issue (which would apply to spelling variants like Kliwon/Keliwon that are interchangeable). It is a representation/indexing issue: the SAME numeric value is assigned a DIFFERENT name by the two systems. Until/unless Dewata's numeric value is purely internal and never represents a calendrical position externally, the disagreement is indexing_representation, not naming_only. Dewata's PANCAWARA_NAMES_BALINESE list is the name mapping that produces the external representation; if a user reads 'pan=1' as 'Paing' but the calendar community expects 'Umanis', the indexing is wrong.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "Acceptance of d5c0a51 as baseline, subject to audit corrections",
+      "preserves": "formula has no defect demonstrated; index-to-name mapping is the actual issue"
+    }
   }
 ]
