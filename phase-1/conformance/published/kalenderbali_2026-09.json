@@ -1,0 +1,262 @@
+{
+  "source": "kalenderbali.info",
+  "source_attribution": "I Ketut Suwintana (named on every page footer), site (c) 2013",
+  "note": "Practitioner / popular reference, Indonesian-language, Wariga framework with Metode Mamdani fuzzy-logic for dewasa ayu. Not peer-reviewed academic. Page header claims Saka 1 begins on Gregorian 79-03-22 (differs from engine epoch 1979-03-29 by 7 days). Page header for September 2026 reads \"September 2026 Katiga/Kapat 1948\".",
+  "vectors": [
+    {
+      "gregorian": "2026-09-01",
+      "saptawara": "Anggara",
+      "sasih": "Kapat",
+      "pang_day": 27,
+      "triwara": "Beteng",
+      "pancawara": "Paing",
+      "expected": {
+        "saptawara": "Anggara",
+        "sasih_idx": 4,
+        "pang_day": 27,
+        "triwara_idx": 2,
+        "pancawara_idx": 2
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-02",
+      "saptawara": "Buda",
+      "sasih": "Kapat",
+      "pang_day": 13,
+      "triwara": "Kajeng",
+      "pancawara": "Pon",
+      "expected": {
+        "saptawara": "Buda",
+        "sasih_idx": 4,
+        "pang_day": 13,
+        "triwara_idx": 3,
+        "pancawara_idx": 3
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-03",
+      "saptawara": "Wraspati",
+      "sasih": "Kapat",
+      "pang_day": 14,
+      "triwara": "Pasah",
+      "pancawara": "Wage",
+      "expected": {
+        "saptawara": "Wraspati",
+        "sasih_idx": 4,
+        "pang_day": 14,
+        "triwara_idx": 1,
+        "pancawara_idx": 4
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-04",
+      "saptawara": "Sukra",
+      "sasih": "Kapat",
+      "pang_day": 30,
+      "triwara": "Beteng",
+      "pancawara": "Kliwon",
+      "expected": {
+        "saptawara": "Sukra",
+        "sasih_idx": 4,
+        "pang_day": 30,
+        "triwara_idx": 2,
+        "pancawara_idx": 5
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-05",
+      "saptawara": "Saniscara",
+      "sasih": "Katiga",
+      "pang_day": 1,
+      "triwara": "Kajeng",
+      "pancawara": "Umanis",
+      "expected": {
+        "saptawara": "Saniscara",
+        "sasih_idx": null,
+        "pang_day": 1,
+        "triwara_idx": 3,
+        "pancawara_idx": 1
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-06",
+      "saptawara": "Redite",
+      "sasih": "Katiga",
+      "pang_day": 2,
+      "triwara": "Pasah",
+      "pancawara": "Paing",
+      "expected": {
+        "saptawara": "Redite",
+        "sasih_idx": null,
+        "pang_day": 2,
+        "triwara_idx": 1,
+        "pancawara_idx": 2
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-07",
+      "saptawara": "Coma",
+      "sasih": "Katiga",
+      "pang_day": 3,
+      "triwara": "Beteng",
+      "pancawara": "Pon",
+      "expected": {
+        "saptawara": "Coma",
+        "sasih_idx": null,
+        "pang_day": 3,
+        "triwara_idx": 2,
+        "pancawara_idx": 3
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-08",
+      "saptawara": "Anggara",
+      "sasih": "Katiga",
+      "pang_day": 4,
+      "triwara": "Kajeng",
+      "pancawara": "Wage",
+      "expected": {
+        "saptawara": "Anggara",
+        "sasih_idx": null,
+        "pang_day": 4,
+        "triwara_idx": 3,
+        "pancawara_idx": 4
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-09",
+      "saptawara": "Buda",
+      "sasih": "Kapat",
+      "pang_day": 20,
+      "triwara": "Pasah",
+      "pancawara": "Kliwon",
+      "expected": {
+        "saptawara": "Buda",
+        "sasih_idx": 4,
+        "pang_day": 20,
+        "triwara_idx": 1,
+        "pancawara_idx": 5
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-10",
+      "saptawara": "Wraspati",
+      "sasih": "Katiga",
+      "pang_day": 6,
+      "triwara": "Beteng",
+      "pancawara": "Umanis",
+      "expected": {
+        "saptawara": "Wraspati",
+        "sasih_idx": null,
+        "pang_day": 6,
+        "triwara_idx": 2,
+        "pancawara_idx": 1
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-11",
+      "saptawara": "Sukra",
+      "sasih": "Katiga",
+      "pang_day": 7,
+      "triwara": "Kajeng",
+      "pancawara": "Paing",
+      "expected": {
+        "saptawara": "Sukra",
+        "sasih_idx": null,
+        "pang_day": 7,
+        "triwara_idx": 3,
+        "pancawara_idx": 2
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-12",
+      "saptawara": "Saniscara",
+      "sasih": "Katiga",
+      "pang_day": 8,
+      "triwara": "Pasah",
+      "pancawara": "Pon",
+      "expected": {
+        "saptawara": "Saniscara",
+        "sasih_idx": null,
+        "pang_day": 8,
+        "triwara_idx": 1,
+        "pancawara_idx": 3
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-13",
+      "saptawara": "Redite",
+      "sasih": "Katiga",
+      "pang_day": 9,
+      "triwara": "Beteng",
+      "pancawara": "Wage",
+      "expected": {
+        "saptawara": "Redite",
+        "sasih_idx": null,
+        "pang_day": 9,
+        "triwara_idx": 2,
+        "pancawara_idx": 4
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-14",
+      "saptawara": "Coma",
+      "sasih": "Katiga",
+      "pang_day": 10,
+      "triwara": "Kajeng",
+      "pancawara": "Kliwon",
+      "expected": {
+        "saptawara": "Coma",
+        "sasih_idx": null,
+        "pang_day": 10,
+        "triwara_idx": 3,
+        "pancawara_idx": 5
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    },
+    {
+      "gregorian": "2026-09-15",
+      "saptawara": "Anggara",
+      "sasih": "Katiga",
+      "pang_day": 11,
+      "triwara": "Pasah",
+      "pancawara": "Umanis",
+      "expected": {
+        "saptawara": "Anggara",
+        "sasih_idx": null,
+        "pang_day": 11,
+        "triwara_idx": 1,
+        "pancawara_idx": 1
+      },
+      "source_url": "https://kalenderbali.info (home page, September 2026 grid)",
+      "fetched_at": "2026-09-15"
+    }
+  ]
+}
