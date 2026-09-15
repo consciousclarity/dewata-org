@@ -1,0 +1,8 @@
+date|cal_sapt_num|cal_sapt_name|cal_panc_num|cal_panc_name|cal_wku_num|cal_wku_name|dew_sapt_num|dew_sapt_name|dew_panc_num|dew_panc_name|dew_wku_num|dew_wku_name|ref_sapt|ref_panc|ref_wku|source|cal_sapt_match|cal_panc_match|cal_wku_match|cal_all_match|dew_sapt_match|dew_panc_match|dew_wku_match|dew_all_match
+2026-09-01|3|Anggara|1|Umanis|22|Uye|3|Anggara|1|Paing|10|Sungsang|Anggara|Umanis|Uye|kb.org page title|OK|OK|OK|OK|OK|NO|NO|MIX
+2026-09-05|7|Saniscara|5|Kliwon|22|Uye|7|Saniscara|5|Umanis|10|Sungsang|Saniscara|Keliwon|Uye|liputan6.com + kb.org|OK|NO|OK|MIX|OK|NO|NO|MIX
+2026-09-09|4|Buda|4|Wage|23|Menail|4|Buda|4|Keliwon|11|Dungulan|Buda|Wage|Menail|kb.org + liputan6 + detik + pelajahin|OK|OK|OK|OK|OK|NO|NO|MIX
+2026-09-15|3|Anggara|5|Kliwon|24|Prangbakat|3|Anggara|5|Umanis|12|Kuningan|Anggara|Kliwon|Prangbakat|kb.org + liputan6|OK|OK|OK|OK|OK|NO|NO|MIX
+2026-09-17|5|Wraspati|2|Paing|24|Prangbakat|5|Wraspati|2|Pon|12|Kuningan|Wraspati|Paing|Prangbakat|kb.org page title|OK|OK|OK|OK|OK|NO|NO|MIX
+2026-09-26|7|Saniscara|1|Umanis|25|Bala|7|Saniscara|1|Paing|13|Langkir|Saniscara|Umanis|Bala|kb.org + liputan6|OK|OK|OK|OK|OK|NO|NO|MIX
+2026-09-30|4|Buda|5|Kliwon|26|Ugu|4|Buda|5|Umanis|14|Medangsia|Buda|Keliwon|Ugu|kb.org + detik|OK|NO|OK|MIX|OK|NO|NO|MIX
