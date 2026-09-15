@@ -2,7 +2,7 @@
 
 this test asserts:
 - reingold_dershowitz_2018_pawukon_chapter: VERIFIED + INELIGIBLE
-- reingold_dershowitz_2018_calendrica_4_0: VERIFIED + ELIGIBLE (claim-scoped)
+- reingold_dershowitz_2018_calendrica_4_0_firstparty: VERIFIED + ELIGIBLE (claim-scoped)
 - the second entry has the right axis values but unresolved disputes block ruleset promotion
 - the prose chapter entry cannot satisfy a validation gate for any algorithmic claim
 """
@@ -29,7 +29,7 @@ def test_prose_chapter_entry_exists():
 
 def test_calendrica_entry_exists():
     status = _load_status()
-    assert "reingold_dershowitz_2018_calendrica_4_0" in status["corpora"]
+    assert "reingold_dershowitz_2018_calendrica_4_0_firstparty" in status["corpora"]
 
 
 def test_prose_chapter_axes():
@@ -42,7 +42,7 @@ def test_prose_chapter_axes():
 
 def test_calendrica_axes():
     status = _load_status()
-    entry = status["corpora"]["reingold_dershowitz_2018_calendrica_4_0"]
+    entry = status["corpora"]["reingold_dershowitz_2018_calendrica_4_0_firstparty"]
     assert entry["verification_status"] == "VERIFIED"
     assert entry["reference_eligibility"] == "ELIGIBLE"
     assert entry["authority_basis"] == "software_reference"
@@ -62,7 +62,7 @@ def test_calendrica_gate_open():
     import sys
     sys.path.insert(0, "/opt/dw-phase2/phase-1/src")
     from dewatacalendar.corpus_status import corpus_record_for, can_satisfy_validation_gate
-    rec = corpus_record_for("reingold_dershowitz_2018_calendrica_4_0")
+    rec = corpus_record_for("reingold_dershowitz_2018_calendrica_4_0_firstparty")
     assert can_satisfy_validation_gate(rec) is True
 
 
@@ -70,7 +70,7 @@ def test_calendrica_blocks_ruleset_promotion():
     """Even though the corpus-level gate is True, unresolved blocking disputes
     must prevent any ruleset promotion using this corpus."""
     status = _load_status()
-    entry = status["corpora"]["reingold_dershowitz_2018_calendrica_4_0"]
+    entry = status["corpora"]["reingold_dershowitz_2018_calendrica_4_0_firstparty"]
     assert entry["may_justify_ruleset_promotion"] is False
     blocking = entry.get("blocking_disputes_pending", [])
     assert len(blocking) >= 1, "expected at least one blocking dispute"

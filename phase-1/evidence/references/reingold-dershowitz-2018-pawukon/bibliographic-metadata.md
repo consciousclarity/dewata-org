@@ -124,65 +124,115 @@ independently quoted or paraphrased against the chapter.
 
 ---
 
-## first-party CALENDRICA 4.0 source — supplementary evidence
+## first-party CALENDRICA 4.0 source — primary implementation evidence
 
 In addition to the scholarly chapter metadata, this evidence package archives
 **first-party algorithm implementation evidence** retrieved from the authors'
-Common Lisp source CALENDRICA 4.0.
+canonical GitHub repository.
+
+### primary: EdReingold/calendar-code2 (first-party)
 
 | field | value |
 |---|---|
-| source file | `calendrica-4.0.cl` (Common Lisp, 258050 bytes) |
-| source SHA-256 | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
-| retrieved from | `https://github.com/rengel-de/calixir/blob/master/assets/calendrica-4.0.cl` |
-| repo commit SHA | `0f3368339c6318f6751579cf506320b13ce17e2c` |
-| repo commit date | 2020-07-18T08:13:30Z |
+| repository | `https://github.com/EdReingold/calendar-code2` |
+| repo owner | EdReingold (= Edward M. Reingold, the listed owner) |
+| commit SHA | `9afc1f3277b839db1a70c2350d6c708ac83df78f` |
+| commit date | 2022-02-04T19:38:16Z |
+| commit message | "Merge pull request #1 from Manishearth/header — Harmonize license header with license file" |
+| source file | `calendar.l` (Common Lisp, 254735 bytes) |
+| source SHA-256 | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
+| source git blob SHA-1 | `2e4ad0f58ac52cb5fd497aa97b2b9ffe57ec623d` (verified against GitHub API) |
 | retrieval date | 2026-09-15 |
-| license | custom personal-use + non-commercial/non-profit reuse (NOT Apache) |
-| license SHA-256 | `d34115459b34df91fdd60134384e2f427d29e483a6991b11c2cea42df237412c` |
-| license file | `calendrica-source/COPYRIGHT_DERSHOWITZ_RHEINGOLD.txt` |
-| redistribution | NOT REDISTRIBUTED — license clause 1 prohibits making the source "accessible, used, or available to others" |
-| sample data | `calendrica-source/dates4.csv` (4114 bytes, SHA-256 `49ba8658fe1208e67589a1b4e61b70cddbd42b134c37272bccddd06cc32602ff`) |
-| sample data reference | "Sample values for the functions (useful for debugging) are given in Appendix C of the book" — LICENSE file last paragraph |
-| runtime verification | SBCL 2.2.9 on Linux 6.8.0-139-generic; CALENDRICA loaded and 10 sample rows verified against dates4.csv |
+| license | **Apache License 2.0** (verbatim) |
+| license SHA-256 | `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4` |
+| license git blob SHA-1 | `261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64` |
+| in-file header | Apache 2.0 (12 lines, lines 8-19) |
+| sample data source | `dates.l` (Common Lisp script that calls compute-dates; SHA-256 `d81cdfc1a3777b5dbf64473af3f5d272a73afda0fa5f2e97ec2ab299421a863e`) |
+| runtime verification | SBCL 2.2.9 on Linux 6.8.0-139-generic; calendar.l loaded; bali-epoch = -1721279 verified; full 210-day cycle generated and compared to Dewata |
 | authority_basis | `software_reference` |
+| authority hierarchy | PRIMARY (this source) |
 
-### license clarification (chat-vs-evidence correction)
+### secondary: rengel-de/calixir assets/ (preserved historical)
 
-The user-supplied instruction stated: "Because the implementation is
+| field | value |
+|---|---|
+| repository | `https://github.com/rengel-de/calixir` |
+| commit SHA | `0f3368339c6318f6751579cf506320b13ce17e2c` |
+| commit date | 2020-07-18T08:13:30Z |
+| source file | `assets/calendrica-4.0.cl` (Common Lisp, 258050 bytes) |
+| source SHA-256 | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| in-file header | Custom personal-use + non-commercial/non-profit (NOT first-party Apache) — older pre-relicensing header |
+| license file (preserved) | `COPYRIGHT_DERSHOWITZ_RHEINGOLD.txt` (SHA-256 `d34115459b34df91fdd60134384e2f427d29e483a6991b11c2cea42df237412c`) |
+| sample data (preserved) | `dates4.csv` (4114 bytes, SHA-256 `49ba8658fe1208e67589a1b4e61b70cddbd42b134c37272bccddd06cc32602ff`) |
+| authority hierarchy | SECONDARY (preserved historical evidence) |
+| algorithmic equivalence to first-party | byte-identical (7344 lines; line-by-line `diff` produces 0 lines) |
+
+### license clarification (corrected by first-party evidence)
+
+The user-supplied instruction (commit 4d37765) stated: "Because the implementation is
 Apache-licensed, preserve its license metadata with the evidence package."
 
-**This is incorrect.** The CALENDRICA 4.0 license is **NOT Apache**. It is a
-custom license that grants:
+**Initial analysis (commit 4d37765) was based on the SECONDARY (Calixir) copy** and
+incorrectly concluded that the license was a custom non-commercial restriction.
+That analysis was correct for the Calixir copy at that point in time, but
+incorrect for the first-party source.
 
-- Personal use (copy + backup)
-- Non-commercial, non-profit re-use with prominent credit
+**Corrected analysis (this commit):** the first-party source (`EdReingold/calendar-code2`)
+IS Apache License 2.0. The first-party repository was last modified by commit
+9afc1f3 ("Harmonize license header with license file", 2022-02-04) which
+explicitly aligns the in-file header with the LICENSE file. The LICENSE file is
+the verbatim Apache 2.0 text (11357 bytes).
 
-And **prohibits**: "any other uses, including without limitation, allowing the
-code or its output to be accessed, used, or available to others."
+The Calixir copy (commit 2020-07-18) predates the first-party Apache relicense
+and therefore carries the older restrictive header. The Calixir header is NOT
+representative of the current first-party license.
 
-The authors' public-service intent is described in the LICENSE file as "more
-liberal than suggested by the License below, as are their licensing policies
-for otherwise nonallowed uses such as ... commercial, web-site, and
-large-scale academic contexts. Please see the web-site
-http://www.calendarists.com for all uses not authorized below; in case there
-is cause for doubt about whether a use you contemplate is authorized, please
-contact the Authors (e-mail: reingold@iit.edu)."
+**Provenance hierarchy:** first-party (EdReingold/calendar-code2, Apache 2.0) >
+secondary (rengel-de/calixir assets/, older restrictive header). The first-party
+source is the authoritative license reference.
 
-This license does **not** permit redistribution of the full source code to a
-public repository, so the source file itself is **NOT committed** to the
-Dewata git repository. Instead:
+### copyright handling
 
-- The source's SHA-256 is recorded
-- The retrieval URL is recorded
-- The license file IS committed (it is the author's license grant, explicitly
-  intended to be redistributed with the code, and is necessary to communicate
-  the licensing terms)
-- The sample data file (`dates4.csv`) IS committed because the LICENSE itself
-  directs users to the sample values in Appendix C of the book — the CSV file
-  is the canonical digital form of those Appendix C values
+Under Apache 2.0 terms, the source file itself MAY be redistributed in the
+Dewata public repository, subject to the standard Apache 2.0 conditions
+(copyright notice preserved, LICENSE file included, state-changes marked).
+The first-party `calendar.l` source file IS committed in this commit, under
+the Apache 2.0 license terms: copyright notice preserved in the in-file
+header, LICENSE file included in the same directory, state-changes
+recorded in the git history. The LICENSE file (Apache 2.0, 11357 bytes,
+SHA-256 `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4`)
+is included unmodified.
 
-This license clarification is recorded in the dispute ledger under
-`DISPUTE-reference-reingold-dershowitz-2018-license-classification` because
-the original chat-described license (Apache) is incompatible with the actual
-license (custom personal-use + non-commercial/non-profit).
+### license dispute ledger
+
+The original license dispute (`DISPUTE-reference-reingold-dershowitz-2018-license-classification-2026-09-15`)
+is now `resolution='superseded'`, preserved append-only, with `superseded_by`
+pointing to the resolution record. The resolution record is
+`DISPUTE-reference-reingold-dershowitz-2018-license-firstparty-resolution-2026-09-15`,
+which contains the first-party evidence chain.
+
+### algorithmic equivalence (Calixir vs first-party)
+
+The two source files differ ONLY in the license header comment block. After
+stripping the headers, the algorithm bodies are byte-identical:
+- first-party calendar.l code body: 7344 lines
+- Calixir calendrica-4.0.cl code body: 7344 lines
+- diff line count: 0
+- line-count delta: 0
+
+Therefore the comparison results from commit 4d37765 (which used the Calixir copy)
+are equivalent to a comparison against the first-party source. This commit
+re-states the comparison with first-party provenance and re-runs the full
+210-day cycle against the first-party source for explicit verification (see
+`dewata-vs-firstparty-calendrica-comparison.md`).
+
+### epoch anchor (algorithmic vs mathematical vs cultural)
+
+The CALENDRICA source defines `bali-epoch = fixed-from-jd 146 = -1721279 (Rata Die)`.
+This is an **algorithmic anchor** within the implementation. The corresponding
+**mathematical Gregorian conversion** is proleptic Gregorian -4712-04-18 (4714 BCE).
+The Pawukon has no canonical epoch (per Wikipedia); **no cultural or historical
+source on this host identifies JD 146 / proleptic Gregorian -4712-04-18 as "the
+start of a Balinese Pawukon cycle."** Therefore the JD-146 anchor has no
+cultural/historical meaning beyond being the first-party implementation's
+algorithmic choice. This separation is recorded per PROTOCOL v1.0 §2.4.

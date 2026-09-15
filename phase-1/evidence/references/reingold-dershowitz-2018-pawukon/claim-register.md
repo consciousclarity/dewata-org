@@ -250,13 +250,22 @@ the Pawukon/Wewaran formulas extracted from CALENDRICA 4.0 Common Lisp
 source. Authority basis: `software_reference`. This is separate
 evidence from the Cambridge prose chapter.
 
-**Source attribution:**
-- file: `calendrica-4.0.cl`
-- SHA-256: `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb`
+**Source attribution — primary (first-party):**
+- repository: `https://github.com/EdReingold/calendar-code2`
+- commit SHA: `9afc1f3277b839db1a70c2350d6c708ac83df78f` (main, 2022-02-04)
+- file: `calendar.l`
+- SHA-256: `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484`
+- git blob sha-1: `2e4ad0f58ac52cb5fd497aa97b2b9ffe57ec623d`
+- license: Apache License 2.0 (LICENSE file SHA-256 `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4`, blob sha-1 `261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64`)
 - retrieval date: 2026-09-15
-- retrieval URL: `https://github.com/rengel-de/calixir/blob/master/assets/calendrica-4.0.cl`
-- repo commit SHA: `0f3368339c6318f6751579cf506320b13ce17e2c`
-- runtime: SBCL 2.2.9 on Linux 6.8.0-139-generic
+
+**Source attribution — secondary (preserved historical):**
+- repository: `https://github.com/rengel-de/calixir`
+- commit SHA: `0f3368339c6318f6751579cf506320b13ce17e2c` (master, 2020-07-18)
+- file: `assets/calendrica-4.0.cl`
+- SHA-256: `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484`
+- license header: custom personal-use + non-commercial/non-profit (NOT first-party)
+- status: secondary evidence only; algorithmic content byte-identical to first-party; preserved for provenance
 
 ## claim table
 
@@ -272,7 +281,7 @@ The line ranges below are from the retrieved source file.
 | source function | `bali-epoch` (defconstant) |
 | source lines | in `calendrica-4.0.cl` (search for `defconstant bali-epoch`) |
 | supporting code | `(fixed-from-jd 146)` where `fixed-from-jd(jd) = floor(moment-from-jd(jd)) = floor(jd + (-1721424.5)) = floor(jd - 1721424.5)` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` (source file SHA-256) |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` (source file SHA-256) |
 | affected Dewata component | `pawukon.epoch` |
 | Dewata engine value | `EPOCH = date(1981, 8, 23)` (Gregorian) |
 | agreement/disagreement | **DISAGREES** — Dewata's epoch is 1981-08-23 Gregorian; CALENDRICA's epoch is JD 146 (= proleptic Gregorian 4714-07-02 ≈ year 4714 BCE). The two engines differ by 84 cycle-positions (mod 210) for the same Gregorian dates. |
@@ -287,7 +296,7 @@ The line ranges below are from the retrieved source file.
 | source function | `bali-day-from-fixed` |
 | source lines | (in `calendrica-4.0.cl` search for `defun bali-day-from-fixed`) |
 | supporting code | `(mod (- date bali-epoch) 210)` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `pawukon.cycle.modular_arithmetic` |
 | Dewata engine value | `cycle_pos_zero_based = offset_days % 210` (in `_position_from_offset`) |
 | agreement/disagreement | **MATCHES in form**. Both engines use mod-210 over the days-offset from epoch. The arithmetic is identical; only the epoch constant differs (see CALC-001). |
@@ -302,7 +311,7 @@ The line ranges below are from the retrieved source file.
 | source function | `bali-week-from-fixed` |
 | source lines | (in `calendrica-4.0.cl`) |
 | supporting code | `(1+ (quotient (bali-day-from-fixed date) 7))` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `pawukon.wuku.week_number` |
 | Dewata engine value | `wuku_idx = ((cycle_pos - 1) // 7) + 1` |
 | agreement/disagreement | **MATCHES in form**. Both compute `floor(day/7) + 1`. |
@@ -317,7 +326,7 @@ The line ranges below are from the retrieved source file.
 | source function | `bali-saptawara-from-fixed` |
 | source lines | (in `calendrica-4.0.cl`) |
 | supporting code | `(1+ (mod (bali-day-from-fixed date) 7))` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `wewaran.saptawara` |
 | Dewata engine value | `saptawara_idx = ((position - 1) % 7) + 1` |
 | agreement/disagreement | **MATCHES** — both produce the same value when cycle-position is matched (Dewata position + CALENDRICA shifted position agree on all 14 test dates) |
@@ -332,7 +341,7 @@ The line ranges below are from the retrieved source file.
 | source function | `bali-pancawara-from-fixed` |
 | source lines | (in `calendrica-4.0.cl`) |
 | supporting code | `(amod (+ (bali-day-from-fixed date) 2) 5)` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `wewaran.pancawara` |
 | Dewata engine value | `pancawara_idx = ((position - 1) % 5) + 1` |
 | agreement/disagreement | **MATCHES** — when cycle-positions are aligned, Pancawara values agree on all 14 test dates. Note: the `+2` in CALENDRICA accounts for the 1-indexed cycle position (because bali-day-from-fixed is 0-indexed) and the +1 in Dewata's formula is the 1-indexing conversion from 0-indexed mod. Both end up at the same value. |
@@ -347,7 +356,7 @@ The line ranges below are from the retrieved source file.
 | source function | `bali-triwara-from-fixed` |
 | source lines | (in `calendrica-4.0.cl`) |
 | supporting code | `(1+ (mod (bali-day-from-fixed date) 3))` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `wewaran.triwara` |
 | Dewata engine value | `triwara_idx = ((position - 1) % 3) + 1` |
 | agreement/disagreement | **MATCHES** |
@@ -362,7 +371,7 @@ The line ranges below are from the retrieved source file.
 | source function | `bali-sadwara-from-fixed` |
 | source lines | (in `calendrica-4.0.cl`) |
 | supporting code | `(1+ (mod (bali-day-from-fixed date) 6))` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `wewaran.sadwara` |
 | Dewata engine value | `sadwara_idx = ((position - 1) % 6) + 1` |
 | agreement/disagreement | **MATCHES** |
@@ -377,7 +386,7 @@ The line ranges below are from the retrieved source file.
 | source function | `bali-asatawara-from-fixed` |
 | source lines | (in `calendrica-4.0.cl`) |
 | supporting code | `(let* ((day (bali-day-from-fixed date))) (1+ (mod (max 6 (+ 4 (mod (- day 70) 210))) 8)))` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `wewaran.astawara` |
 | Dewata engine value | `astawara_idx = ((p-1) % 8) + 1` with special case `p==72 → 7, p==73 → 8` |
 | agreement/disagreement | **DISAGREES** — the two formulas are different. CALENDRICA uses `max(6, 4 + mod(day-70, 210))` to introduce a "skip" around day 70-78 area, while Dewata uses a hardcoded day-72/73 special case |
@@ -392,7 +401,7 @@ The line ranges below are from the retrieved source file.
 | source function | `bali-caturwara-from-fixed` |
 | source lines | (in `calendrica-4.0.cl`) |
 | supporting code | `(amod (bali-asatawara-from-fixed date) 4)` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `wewaran.caturwara` |
 | Dewata engine value | `caturwara_idx = ((p-1) % 4) + 1` with special case `p==72 → 3, p==73 → 4` |
 | agreement/disagreement | **DISAGREES (transitively)** — Caturwara derives from Asatawara in CALENDRICA; Dewata computes Caturwara independently with its own special-case rule |
@@ -407,7 +416,7 @@ The line ranges below are from the retrieved source file.
 | source function | `bali-sangawara-from-fixed` |
 | source lines | (in `calendrica-4.0.cl`) |
 | supporting code | `(1+ (mod (max 0 (- (bali-day-from-fixed date) 3)) 9))` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `wewaran.sangawara` |
 | Dewata engine value | `sangawara_idx = ((p-1) % 9) + 1` with special case `p in {1,2,3} → 1` |
 | agreement/disagreement | **DISAGREES** — CALENDRICA's `max(0, day-3)` produces different values than Dewata's "first three days all Dangu" rule for early positions |
@@ -422,7 +431,7 @@ The line ranges below are from the retrieved source file.
 | source function | `bali-dasawara-from-fixed` |
 | source lines | (in `calendrica-4.0.cl`) |
 | supporting code | `(mod (+ 1 (nth i (list 5 9 7 4 8)) (nth j (list 5 4 3 7 8 6 9))) 10)` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `wewaran.dasawara.urip_table` |
 | Dewata engine value | `urip_5 = (9, 7, 4, 8, 5)` for Pancawara positions (Paing..Umanis); `urip_7 = (5, 4, 3, 7, 8, 6, 9)` (same as CALENDRICA) |
 | agreement/disagreement | **DISAGREES on urip_5** — Dewata's `(9, 7, 4, 8, 5)` is a cyclic shift of CALENDRICA's `(5, 9, 7, 4, 8)`. urip_7 matches. |
@@ -437,7 +446,7 @@ The line ranges below are from the retrieved source file.
 | source function | `kajeng-keliwon` |
 | source lines | (in `calendrica-4.0.cl`) |
 | supporting code | `(positions-in-range 8 15 cap-Delta year)` |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `rahinan.kajeng_keliwon` |
 | Dewata engine value | (not yet compared — Dewata may or may not implement this) |
 | agreement/disagreement | **NOT YET COMPARED** |
@@ -452,7 +461,7 @@ The line ranges below are from the retrieved source file.
 | source function | `tumpek` |
 | source lines | (in `calendrica-4.0.cl`) |
 | supporting code | (definition truncated in our extraction; partial visibility) |
-| evidence artifact SHA | `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb` |
+| evidence artifact SHA | `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484` |
 | affected Dewata component | `rahinan.tumpek` |
 | Dewata engine value | (not yet compared) |
 | agreement/disagreement | **NOT YET COMPARED** |

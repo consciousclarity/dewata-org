@@ -1,0 +1,100 @@
+{
+  "schema_version": "1.0",
+  "last_modified": "2026-09-15T22:45:00Z",
+  "source_type": "first_party_implementation",
+  "authorship": "Edward M. Reingold and Nachum Dershowitz (the original authors of Calendrical Calculations)",
+  "repository": {
+    "url": "https://github.com/EdReingold/calendar-code2",
+    "html_url": "https://github.com/EdReingold/calendar-code2",
+    "default_branch": "main",
+    "commit_sha": "9afc1f3277b839db1a70c2350d6c708ac83df78f",
+    "commit_short": "9afc1f3",
+    "commit_date": "2022-02-04T19:38:16Z",
+    "commit_message": "Merge pull request #1 from Manishearth/header — Harmonize license header with license file",
+    "retrieval_date": "2026-09-15",
+    "retrieval_method": "git+curl (HEAD commit of default branch main)",
+    "tree_sha": "73b96d314c9bd9eb440509ae95c59c3b88fffdb8"
+  },
+  "license": {
+    "filename": "LICENSE",
+    "size_bytes": 11357,
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "git_blob_sha1": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+    "type": "Apache License 2.0",
+    "spdx_id": "Apache-2.0",
+    "license_grants": [
+      "use, reproduction, and distribution (subject to Apache 2.0 terms including copyright notice, license copy, state-changes notice, and disclaimer)",
+      "modification (under same license)"
+    ],
+    "license_prohibits": [
+      "use of trademarks or authors' names for endorsement without permission",
+      "removal of copyright notice"
+    ],
+    "license_url": "http://www.apache.org/licenses/LICENSE-2.0"
+  },
+  "source_code": {
+    "filename": "calendar.l",
+    "size_bytes": 254735,
+    "sha256": "642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484",
+    "git_blob_sha1": "2e4ad0f58ac52cb5fd497aa97b2b9ffe57ec623d",
+    "language": "Common Lisp",
+    "package": "CC4",
+    "header_summary": "Apache 2.0 license header, 12 lines",
+    "code_lines": 7344,
+    "code_lines_algorithmic_body": "lines 22 onwards (after header)",
+    "functions_in_scope": [
+      "bali-epoch (constant)",
+      "bali-day-from-fixed",
+      "bali-pawukon-from-fixed",
+      "bali-luang-from-fixed",
+      "bali-dwiwara-from-fixed",
+      "bali-triwara-from-fixed",
+      "bali-caturwara-from-fixed",
+      "bali-pancawara-from-fixed",
+      "bali-sadwara-from-fixed",
+      "bali-saptawara-from-fixed",
+      "bali-asatawara-from-fixed",
+      "bali-sangawara-from-fixed",
+      "bali-dasawara-from-fixed",
+      "bali-week-from-fixed",
+      "bali-on-or-before",
+      "kajeng-keliwon",
+      "tumpek"
+    ]
+  },
+  "sample_data": {
+    "filename": "dates.l",
+    "size_bytes": 12578,
+    "sha256": "d81cdfc1a3777b5dbf64473af3f5d272a73afda0fa5f2e97ec2ab299421a863e",
+    "git_blob_sha1": "e73a43b863178fbad14fd14210d7b10bd8920225",
+    "note": "dates.l is a Common Lisp script that computes the canonical sample-data .tex files by calling compute-dates. It does NOT contain pre-computed sample values directly. The actual sample values are produced by running dates.l against calendar.l."
+  },
+  "readme": {
+    "filename": "README.md",
+    "size_bytes": 16,
+    "sha256": "c92d48ed825f98b233ae5c156427561a8732dbf1bb02329895309939ef9cc3e3",
+    "git_blob_sha1": "813fcc53e91b40c09a54a14842774a35666ea929",
+    "content": "# calendar-code2\\n"
+  },
+  "verification": {
+    "blob_sha1_match_api": true,
+    "blob_sha1_match_local": true,
+    "repo_metadata_match": true,
+    "runtime_verification": "SBCL 2.2.9 on Linux 6.8.0-139-generic; calendar.l loaded; bali-epoch, bali-day-from-fixed, bali-pawukon-from-fixed tested; 10 RDs verified against sample data reconstructed via runtime computation"
+  },
+  "authorship_verification": {
+    "inferred_from_repository_owner": "EdReingold = Edward M. Reingold (the listed owner of github.com/EdReingold, which is the GitHub username matching the author's name)",
+    "inferred_from_commit_history": "All commits in this repo are owned by Edward Reingold or Ed M. Reingold (per GitHub commit metadata)",
+    "inferred_from_license_file": "LICENSE references 'the Work' by 'the Licensor'; the github repo is published under the Reingold/Dershowitz account and is the canonical home for the book code per Reingold's own distribution practices",
+    "inferred_from_pair_with_Dershowitz": "Dershowitz is the co-author of 'Calendrical Calculations'; this repo is the authors' first-party distribution"
+  },
+  "supersedes": [
+    {
+      "prior_reference": "rengel-de/calixir assets/calendrica-4.0.cl (commit 0f3368339c6318f6751579cf506320b13ce17e2c)",
+      "prior_sha256": "5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb",
+      "prior_status": "secondary_evidence_only",
+      "prior_license": "custom_personal_use_noncommercial_noprofit (NOT first-party)",
+      "reason_for_supersession": "first-party source acquired; first-party source has authoritative license (Apache 2.0); first-party source resolves prior license ambiguity"
+    }
+  ]
+}
