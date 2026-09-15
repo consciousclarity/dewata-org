@@ -245,5 +245,49 @@
       "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_org_2026-09.md"
     ],
     "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-CUNNINGHAM-1994-UNVERIFIED-CLAIM",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (corpus-authority quarantine, item B of remediation order)",
+    "component": "conformance_corpus",
+    "class": "bibliographic",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "Cunningham 1994, Balinese Calendar: a Pre-Dating Guide, p. 47 (claimed)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "bibliographic",
+    "resolution": "pending",
+    "notes": "Claimed citation ('Cunningham, A.M. (1994), Balinese Calendar: a Pre-Dating Guide, Northern Territory University, Australia, p. 47 / appendix C, 1979 conversion table') could not be independently verified from this host. The book is not held on disk. No ISBN, OCLC, WorldCat, or other bibliographic record was retrievable. The corpus vectors under phase-1/conformance/published/cunningham_1994.json are preserved as historical evidence of what the project previously believed, but per PROTOCOL v1.0 §2.4 the cited source is INADMISSIBLE as authoritative evidence until positive bibliographic verification is obtained. This is NOT a claim of fabrication — there is no positive evidence that the citation was fabricated. The claim is that the citation could not be independently verified and is therefore inadmissible as authoritative evidence. The status is recorded as UNVERIFIED in phase-1/conformance/STATUS.json.",
+    "evidence": [
+      "phase-1/conformance/STATUS.json (corpus authority registry)",
+      "phase-1/conformance/STATUS.schema.md",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_ADDENDUM_FINDING18_2026-09-15.md"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-IGARASHI-1999-UNVERIFIED-CLAIM",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (corpus-authority quarantine, item B of remediation order)",
+    "component": "conformance_corpus",
+    "class": "bibliographic",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "Igarashi 1999, Balinese Calendar Chronology, table 2.3 (claimed)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "bibliographic",
+    "resolution": "pending",
+    "notes": "Claimed citation ('Igarashi, T. (1999), Balinese Calendar Chronology and the Lunisolar Adjustment, Nusa Indah Press, table 2.3') could not be independently verified from this host. The publisher name 'Nusa Indah Press' did not return a verifiable ISBN or catalog record. The corpus vector under phase-1/conformance/published/igarashi_1999.json is preserved as historical evidence, but per PROTOCOL v1.0 §2.4 the cited source is INADMISSIBLE as authoritative evidence until positive bibliographic verification is obtained. This is NOT a claim of fabrication — there is no positive evidence that the citation was fabricated. The claim is that the citation could not be independently verified and is therefore inadmissible as authoritative evidence. The status is recorded as UNVERIFIED in phase-1/conformance/STATUS.json.",
+    "evidence": [
+      "phase-1/conformance/STATUS.json",
+      "phase-1/conformance/STATUS.schema.md",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_ADDENDUM_FINDING18_2026-09-15.md"
+    ],
+    "recorded_at": "2026-09-15T..."
   }
 ]
