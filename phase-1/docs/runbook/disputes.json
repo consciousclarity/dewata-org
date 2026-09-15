@@ -28,5 +28,64 @@
     "resolution": "pending",
     "notes": "pawukon position disagrees with publication; engine ruleset may differ from source. human review of cycle anchor and ruleset id needed.",
     "recorded_at": "2026-09-13T15:07:36.710866Z"
+  },
+  {
+    "id": "DISPUTE-SASAH-KAPAT-KATIGA-BOUNDARY-2026-09",
+    "date": "2026-09-09/10 (boundary), evidence for 2026-09-01..15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (independent-reference validation against kalenderbali.info)",
+    "component": "saka_sasih",
+    "class": "sasih_index_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "kalenderbali.info (I Ketut Suwintana, 2013), https://kalenderbali.info",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "sasih_index_drift",
+    "resolution": "pending",
+    "notes": "Engine assigns Sasih Ketiga (idx 3) to 2026-09-01..09 and Sasih Kapat (idx 4) to 2026-09-10..15. kalenderbali.info September 2026 calendar assigns Sasih Kapat (idx 4) to 2026-09-01..09 and Sasih Katiga (idx 3) to 2026-09-10..15. Both sources agree on the boundary day (2026-09-09/10) and on Saka year (1948). The names on either side of the boundary are swapped between the two sources. Off-by-one in Sasih indexing. Likely related to internal/external year-number inconsistency in saka.py: the externally-exposed saka_year is computed via `gregorian_year - 1978` while the sasih loop iterates `SAKA_EPOCH_YEAR + year_offset` starting at 1901 (off by one). Resolving this without authority validation would be unsafe.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_2026-09.md",
+      "phase-1/conformance/published/kalenderbali_2026-09.json (15 vectors)"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-TRIWARA-CYCLE-OFFSET-2026-09",
+    "date": "2026-09-01..09",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (independent-reference validation against kalenderbali.info)",
+    "component": "wewaran.triwara",
+    "class": "wewaran_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "kalenderbali.info (I Ketut Suwintana, 2013), https://kalenderbali.info",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "Engine returns Triwara Kajeng for 2026-09-01; kalenderbali.info returns Beteng. The pattern across 2026-09-01..09 is `engine_tri = (ref_tri + 1) mod 3`. The Triwara cycle starts one day later in the engine than in the reference. Consistent 1-day offset across multiple dates suggests a single root cause (likely same as the Sasih dispute). Need to verify if a single epoch correction resolves both.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_2026-09.md",
+      "phase-1/conformance/published/kalenderbali_2026-09.json"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "I18N-PANCAWARA-SPELLING-KLIWON-KELIWON",
+    "date": "2026-09-04, 2026-09-09",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (i18n convention)",
+    "component": "i18n",
+    "class": "i18n_label_drift",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "kalenderbali.info (I Ketut Suwintana, 2013)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "i18n_label_drift",
+    "resolution": "pending",
+    "notes": "Engine uses 'Keliwon' for pancawara idx 4; kalenderbali.info uses 'Kliwon'. Both spellings are valid in Balinese; the engine spelling is more common in modern Bali. No arithmetic impact, only labeling. Standardize on 'Kliwon' (matches kalenderbali.info and the spelling used in many Balinese-English glossaries). Update i18n.py.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_2026-09.md"
+    ],
+    "recorded_at": "2026-09-15T..."
   }
 ]
