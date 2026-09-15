@@ -406,7 +406,22 @@
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md",
       "phase-1/docs/runbook/disputes.json DISPUTE-ENGINE-PAWUKON-EPOCH-OFFSET-84-DAYS (related, informational-only)"
     ],
-    "recorded_at": "2026-09-15T22:30:00Z"
+    "recorded_at": "2026-09-15T22:30:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "mapping_phase",
+      "rationale": "Two-axis analysis: raw mismatch + normalized match on cycle_position/Wuku. Constant +84 offset indicates mapping/phase problem, NOT formula problem. CALENDRICA's fixed-from-jd 146 is a computational origin for the repeating 210-day cycle, not a historical Balinese epoch. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    },
+    "narrative_update": {
+      "date": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)",
+      "previous_framing": "epoch anchor choice / epoch_convention_difference (implicit historical Balinese epoch framing)",
+      "new_framing": "phase/mapping offset; bali-epoch = fixed-from-jd 146 is a computational origin for the repeating 210-day cycle, not a historical/cultural epoch. The Pawukon cycles are unnumbered, so the computational epoch itself may be chosen for convenience. The important question is whether Dewata assigns the same Pawukon/Wuku/Wewaran values to the same Gregorian dates, NOT whether Dewata uses the same absolute epoch constant as CALENDRICA.",
+      "observed_offset": "exactly +84 cycle positions (mod 210) on every Gregorian date in the 210-day test interval",
+      "future_repair_direction": "implementation correction if a single epoch constant adjustment suffices; semantic/ruleset change if a different cycle anchor is chosen; still unresolved until customary or scholarly authority validates the choice."
+    }
   },
   {
     "id": "DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15",
@@ -426,7 +441,14 @@
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-008, CALC-009)",
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
     ],
-    "recorded_at": "2026-09-15T22:30:00Z"
+    "recorded_at": "2026-09-15T22:30:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "formula_semantics",
+      "rationale": "Two-axis analysis: raw mismatch + normalized mismatch on Asatawara (198/210 disagreements). The disagreement persists after phase alignment, indicating formula problem not mapping. Furthermore the special-case structure itself is independently disputed: BASAbali (basaibubali.org) gives simple modular arithmetic without special case. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    }
   },
   {
     "id": "DISPUTE-wewaran-sangawara-special-case-formula-2026-09-15",
@@ -446,7 +468,14 @@
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-010)",
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
     ],
-    "recorded_at": "2026-09-15T22:30:00Z"
+    "recorded_at": "2026-09-15T22:30:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "formula_semantics",
+      "rationale": "Two-axis analysis: raw mismatch + normalized mismatch on Sangawara (85/210 disagreements). The disagreement persists after phase alignment. BASAbali gives (uku × 7 + Saptawara) / 9 as the rule, which differs from CALENDRICA's max(0, day-3) and from Dewata's days-1-3-Dangu. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    }
   },
   {
     "id": "DISPUTE-wewaran-dasawara-urip-5-table-2026-09-15",
@@ -466,7 +495,14 @@
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-011)",
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
     ],
-    "recorded_at": "2026-09-15T22:30:00Z"
+    "recorded_at": "2026-09-15T22:30:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "formula_semantics",
+      "rationale": "Two-axis analysis: raw mismatch + normalized mismatch on Dasawara (198/210 disagreements). Dewata's urip_5 = (9,7,4,8,5) is a cyclic rotation of CALENDRICA's urip_5 = (5,9,7,4,8). urip_7 matches. Independent sources (BASAbali) give Dasawara derivation with different remainder mapping. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    }
   },
   {
     "id": "DISPUTE-wewaran-dwiwara-parity-basis-2026-09-15",
@@ -486,7 +522,14 @@
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (related to CALC-011)",
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
     ],
-    "recorded_at": "2026-09-15T22:30:00Z"
+    "recorded_at": "2026-09-15T22:30:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "indexing_representation",
+      "rationale": "Two-axis analysis: raw mismatch + normalized mismatch on Dwiwara (84/210 disagreements). The disagreement is over what input to parity-check: CALENDRICA uses dasawara index parity; Dewata uses urip_sum parity. The two parities differ because the urip value is not always equal to the index. BASAbali agrees with the parity-on-sum approach. The choice is representational (what does dwiwara mean), not a formula error per se. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    }
   },
   {
     "id": "DISPUTE-wewaran-caturwara-transitive-dependency-on-asatawara-2026-09-15",
@@ -508,6 +551,13 @@
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-009)",
       "phase-1/docs/runbook/disputes.json DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15"
     ],
-    "recorded_at": "2026-09-15T23:00:00Z"
+    "recorded_at": "2026-09-15T23:00:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "formula_semantics",
+      "rationale": "Transitive on asatawara dispute (CALENDRICA derives caturwara = amod(asatawara, 4)). Two-axis analysis: raw mismatch + normalized mismatch. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    }
   }
 ]
