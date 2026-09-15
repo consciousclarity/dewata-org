@@ -1,15 +1,22 @@
 # Production deployment manifest -- v0.1.0 pre1
 # =============================================================================
 # This is the literal set of values the operator passes to the install script.
-# Generated:       2026-09-15T03:41:50Z
+# Generated:       2026-09-15T03:56:01Z
 # branch:          warden/phase2-foundation-20260914
-# HEAD:            7eaea55a7a82525e687ef81056fc51b58e79937b
-# commit subject:  chore(apex): refresh production-deploy-manifest with HEAD badc617
+#
+# COMMITTED CODE BASELINE (the reviewer's reference):
+#   HEAD:            7eaea55a7a82525e687ef81056fc51b58e79937b
+#   commit subject:  chore(apex): update manifest generated timestamp
+#
+# This manifest describes files whose bytes are bound to the committed
+# code baseline above.  The per-file sha256 values below are computed
+# from those files AT the committed code baseline -- the bundle's
+# archive-wide MANIFEST.txt and the bundle's tarball sha256 are the
+# authoritative identifiers for the sealed artifact.
 #
 # Per-file sha256 of every reviewed deploy/ + tests/ artifact (verified
 # against `sha256sum` of the same files in the worktree at the time of
-# this regeneration).  The wrapper sha256 below MUST match the wrapper
-# sha256 inside the bundle's MANIFEST.txt.
+# this regeneration).
 #
 # reviewed scripts
 #   apex-deploy.sh (wrapper):                                  18848e06fb22964cb0ac3227d23620cdcfc5d9bdd46bcabbb02588cee6161373
