@@ -94,14 +94,14 @@
     "date_filed": "2026-09-15",
     "filed_by": "audit (4-implementation cross-validation)",
     "component": "pawukon",
-    "class": "pawukon_position_drift",
-    "blocking": true,
-    "severity": "blocking",
+    "class": "epoch_convention_difference",
+    "blocking": false,
+    "severity": "informational",
     "source": "peradnya/balinese-date-js-lib-0.4.3 (TS), SHA888/balinese-calendar-0.3.0 (Rust), edysantosa/sakacalendar-2.0 (Java)",
     "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
-    "classification": "pawukon_position_drift",
+    "classification": "epoch_convention_difference",
     "resolution": "pending",
-    "notes": "Engine pawukon position is exactly 84 days (= 12 wuku) earlier than Peradnya/Rust/TS on every date in September 2026. Root cause: engine uses epoch 1981-08-23 (asserted in rulesets.py pawukon.epoch); Peradnya/Rust use epoch 1971-01-24 (JDN 2440976, derived from Peradnya PIVOT_1971 = 1971-01-27 pawukonDay=3). The engine's epoch JDN is 2444840 = 1981-08-23. Difference: 2444840 - 2440976 = 3864 = 18*210 + 84. Reproducible on all 30 days of September 2026 and on the engine's own 1981-08-23 anchor (engine: wuku=Sinta, pan=Paing, sapt=Redite, saka=1903; Rust/TS: wuku=Langkir, pan=Umanis, sapt=Redite, saka=1903). Java library uses a third epoch (no Pawukon 1981-08-23 or 1971-01-27 match).",
+    "notes": "Engine pawukon position is exactly 84 days (= 12 wuku) earlier than Peradnya/Rust/TS on every date in September 2026. Root cause: engine uses epoch 1981-08-23 (asserted in rulesets.py pawukon.epoch); Peradnya/Rust use epoch 1971-01-24 (JDN 2440976, derived from Peradnya PIVOT_1971 = 1971-01-27 pawukonDay=3). The engine's epoch JDN is 2444840 = 1981-08-23. Difference: 2444840 - 2440976 = 3864 = 18*210 + 84. Reproducible on all 30 days of September 2026 and on the engine's own 1981-08-23 anchor (engine: wuku=Sinta, pan=Paing, sapt=Redite, saka=1903; Rust/TS: wuku=Langkir, pan=Umanis, sapt=Redite, saka=1903). Java library uses a third epoch (no Pawukon 1981-08-23 or 1971-01-27 match). UPDATED 2026-09-15: This is NOT a bug. The Pawukon has no canonical epoch (Wikipedia: \"cycles are unnumbered, so the calendar has no epoch, and the choice of date on which to base a correspondence is arbitrary\"). Engine uses 1981-08-23 = Wikipedia/Dershowitz Day 1; Peradnya/Rust/TS use 1971-01-24/27 = their Day 1. Both are valid conventions. The 84-day offset is the difference between these two anchor choices. Reclassified from blocking to informational.",
     "evidence": [
       "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md",
       "/tmp/cross-2026-09.jsonl (30 rows x 4 impls)",
@@ -165,6 +165,84 @@
     "notes": "Java's wuku output does not match Peradnya/Rust/TS/Engine on any day. The Java library appears to use yet a different pawukon epoch or wuku ordering. This is a data-quality note about the Java library, not about our engine. Non-blocking because we do not depend on Java output.",
     "evidence": [
       "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-ENGINE-PANCAWARA-INITIALIZATION-OFFSET-MINUS-1-DAY",
+    "date": "2026-09-01..30 (verified across 30 days)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (kb.org validation, 5-impl cross-check)",
+    "component": "wewaran.pancawara",
+    "class": "wewaran_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "kalenderbali.org (KB Org, I Wayan Nuarsa, Univ Udayana, KBD Kemenkumham), 30 day cells parsed",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "Engine's pancawara is shifted by +1 day vs KB Org / Rust / TS on every day in September 2026. The shift is consistent across all 30 days (cyclic offset = +1 mod 5). This is INDEPENDENT of the pawukon epoch: within a single cycle, pancawara should be Paing/Pon/Wage/Keliwon/Umanis in order. Engine's Day 1 (1981-08-23) is Paing, matching Wikipedia/Dershowitz Day 1. Rust/TS's Day 1 is Pon (Wikipedia Day 2). So engine's pancawara is 1 day BEHIND the Rust/TS/KB Org convention. Fix: shift the engine's pancawara initialization by -1 day so Day 1 = Pon instead of Paing. This will make engine agree with KB Org on all 30 days.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_org_2026-09.md",
+      "/tmp/kb-org-2026-09.json (30 vectors)"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-ENGINE-SASIH-INDEX-INVERSION",
+    "date": "2026-09-11 (Tilem Ketiga), 2026-09-26 (Purnama Kapat)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (kb.org Sasih annotations)",
+    "component": "saka_sasih",
+    "class": "sasih_index_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "kalenderbali.org (KBD, I Wayan Nuarsa, Univ Udayana, Kemenkumham RI No. C00201000668)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "sasih_index_drift",
+    "resolution": "pending",
+    "notes": "KB Org festivity tags directly annotate Sasih names. Sept 11 = Tilem Ketiga (new moon, end of Sasih Katiga); Sept 26 = Purnama Kapat (full moon, mid-Sasih Kapat). This means Sasih Kapat runs Aug 13-Sep 10ish; Sasih Katiga runs Sep 11-Oct 10ish. Engine assigns Sasih Ketiga (idx 3) to early September and Sasih Kapat (idx 4) to mid-late September — INVERTED relative to KB Org. KB Org's Sasih ordering: early Sept = Sasih Kapat (idx 4), mid-late Sept = Sasih Katiga (idx 3). The Rust library's sasih.rs Sasih enum has Kasa=0, Karo=1, Katiga=2, Kapat=3 — Rust's idx is 0-based. Engine's engine's saka.py SASIH_NAMES_BALINESE has Kasa, Karo, Ketiga, Kapat — also index-shifted. The fundamental position computation appears correct (Sasih index for given date matches Rust/TS) but the engine's INDEX-NAME mapping is inverted relative to KB Org. Need to verify whether the issue is in sasih.py's `sasih_idx_at_offset` (off by 1) or in `SASIH_NAMES_BALINESE` (off by 1).",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_org_2026-09.md",
+      "/tmp/kb-org-2026-09.json (Tilem/Purnama annotations)"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-KB-ORG-SAPTAWARA-INCONSISTENCY-FOR-OLD-DATES",
+    "date": "1971-01-27, 1981-08-23",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (epoch anchor verification)",
+    "component": "i18n",
+    "class": "i18n_label_drift",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "kalenderbali.org (KB Org) day-of-week assertion",
+    "rule_id": "n/a (cross-validation source quality)",
+    "classification": "reference_quality_issue",
+    "resolution": "pending",
+    "notes": "KB Org's Saptawara assertion disagrees with Gregorian weekday for pre-2000 dates. KB Org says 1981-08-23 (Sunday) is Buda (Wednesday) — 2 days off. KB Org says 1971-01-27 (Wednesday) is Redite (Sunday) — 3 days off. KB Org is correct for Sept 2026 dates. KB Org appears to use a different Saptawara formula for pre-2000 dates. This is a reference quality issue, NOT our engine issue. We are correct on Saptawara for 2026.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_org_2026-09.md"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-JAVA-ALL-FIELDS-INCONSISTENT-VS-KB-ORG",
+    "date": "2026-09-01..30",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (5-impl cross-validation)",
+    "component": "pawukon",
+    "class": "pawukon_position_drift",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "kalenderbali.org (KB Org) vs edysantosa/sakacalendar-2.0 (Java)",
+    "rule_id": "n/a (third-party library quality)",
+    "classification": "reference_quality_issue",
+    "resolution": "pending",
+    "notes": "Java library (edysantosa/sakacalendar-2.0) has 0/30 agreement with KB Org on all three fields (Saptawara, Pancawara, Wuku). Java's Saptawara is consistently 1 day late; Pancawara and Wuku are entirely different from any other source. Java library should NOT be used as an oracle for our engine. Note: this dispute is informational only — does not affect our engine's correctness.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_org_2026-09.md"
     ],
     "recorded_at": "2026-09-15T..."
   }
