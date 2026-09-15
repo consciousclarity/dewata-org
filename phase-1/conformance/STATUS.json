@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "last_modified": "2026-09-15T00:00:00Z",
+  "policy": "per PROTOCOL v1.0 §2.4 + gap analysis Finding 5: preserved != trusted. A corpus's directory placement (published/, ground-truth/, etc.) does NOT confer authority. Only status == ATTESTED corpora may satisfy independent-reference validation gates, justify ruleset promotion, be described as ground truth, or have their values silently copied into authoritative fixtures.",
+  "gate_predicates": {
+    "can_satisfy_validation_gate": "status == 'ATTESTED' (fail-closed for any other status, including unrecognized)",
+    "can_promote_ruleset_using": "status == 'ATTESTED'",
+    "can_be_described_as_ground_truth": "status == 'ATTESTED'",
+    "can_be_silently_copied_to_authoritative_fixture": "status == 'ATTESTED'"
+  },
+  "corpora": {
+    "cunningham_1994": {
+      "corpus_file": "phase-1/conformance/published/cunningham_1994.json",
+      "corpus_class": "published",
+      "status": "UNVERIFIED",
+      "reason": "Claimed citation ('Cunningham, A.M. (1994), Balinese Calendar: a Pre-Dating Guide, Northern Territory University, Australia, p. 47 / appendix C') could not be independently verified — book not held on this host, no ISBN/OCLC/WorldCat record retrievable, no scanned page available. Per gap analysis Finding 5: claimed reference could not be independently verified and is therefore inadmissible as authoritative evidence until positive bibliographic verification is obtained. The corpus vectors are preserved as historical evidence of what the project previously believed, not as ground truth.",
+      "related_dispute_id": "DISPUTE-CUNNINGHAM-1994-UNVERIFIED-CLAIM (filed in this commit batch)",
+      "date_classified": "2026-09-15",
+      "evidence_review_artifact": "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
+      "citation_keys_present_in_corpus": [
+        "Cunningham-1994-Balinese-Calendar-Pre-Dating-Guide (UNVERIFIED — no positive bibliographic evidence on this host)"
+      ],
+      "preserved": true,
+      "may_satisfy_validation_gate": false,
+      "may_justify_ruleset_promotion": false,
+      "may_be_described_as_ground_truth": false
+    },
+    "igarashi_1999": {
+      "corpus_file": "phase-1/conformance/published/igarashi_1999.json",
+      "corpus_class": "published",
+      "status": "UNVERIFIED",
+      "reason": "Claimed citation ('Igarashi, T. (1999), Balinese Calendar Chronology and the Lunisolar Adjustment, Nusa Indah Press, table 2.3') could not be independently verified — no ISBN/WorldCat record for 'Nusa Indah Press' retrievable. Per gap analysis Finding 5: same reasoning as Cunningham. Preserved as historical evidence.",
+      "related_dispute_id": "DISPUTE-IGARASHI-1999-UNVERIFIED-CLAIM (filed in this commit batch)",
+      "date_classified": "2026-09-15",
+      "evidence_review_artifact": "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
+      "citation_keys_present_in_corpus": [
+        "Igarashi-1999-Balinese-Calendar-Chronology (UNVERIFIED — no positive bibliographic evidence on this host)"
+      ],
+      "preserved": true,
+      "may_satisfy_validation_gate": false,
+      "may_justify_ruleset_promotion": false,
+      "may_be_described_as_ground_truth": false
+    },
+    "kalenderbali_2026-09": {
+      "corpus_file": "phase-1/conformance/published/kalenderbali_2026-09.json",
+      "corpus_class": "unverified",
+      "status": "NON_AUTHORITATIVE",
+      "reason": "Source is kalenderbali.info (I Ketut Suwintana, 2013, practitioner site with fuzzy-logic Metode Mamdani for dewasa ayu). Source returns 200 with verifiable content for 15 of 30 September 2026 day cells. Per gap analysis Finding 9: the source is self-described as 'not peer-reviewed academic'. The source may be used as a diagnostic reference (it returns consistent values for present-day dates) but is not authoritative for calendar correctness. Use is permitted for historical comparison and diagnostic output only.",
+      "related_dispute_id": null,
+      "date_classified": "2026-09-15",
+      "evidence_review_artifact": "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_2026-09.md",
+      "citation_keys_present_in_corpus": [
+        "KalenderBali-Info-2026-09 (NON_AUTHORITATIVE — practitioner site)"
+      ],
+      "preserved": true,
+      "may_satisfy_validation_gate": false,
+      "may_justify_ruleset_promotion": false,
+      "may_be_described_as_ground_truth": false
+    }
+  },
+  "status_meanings": {
+    "UNVERIFIED": "the source citation in the corpus could not be independently verified from this host. the corpus is preserved for provenance but may NOT satisfy validation gates, may NOT justify ruleset promotion, may NOT be described as ground truth. values may NOT be silently copied into authoritative fixtures.",
+    "NON_AUTHORITATIVE": "the source is verified (returns 200 with content) but the source itself is not authoritative (practitioner calendar, encyclopedia, etc.). same restrictions as UNVERIFIED for gates/promotion/ground-truth. may be used for historical comparison and diagnostic output.",
+    "ATTESTED": "the source is verified AND authoritative. may satisfy validation gates. no corpus currently has this status."
+  },
+  "enforcement": "Cross-validation machinery (phase-1/src/dewatacalendar/cross_validation.py and conformance.py) and CLI (cli.py) MUST call can_satisfy_validation_gate() before claiming any corpus satisfies an independent-reference validation gate. The cross_validation module annotates outcomes with _corpus_status so downstream consumers cannot accidentally treat unverified data as authoritative."
+}
