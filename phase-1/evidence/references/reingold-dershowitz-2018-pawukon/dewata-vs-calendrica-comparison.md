@@ -1,4 +1,9 @@
-# Dewata vs CALENDRICA 4.0 comparison
+# Dewata vs CALENDRICA 4.0 comparison (SECONDARY / Calixir copy)
+
+> **STATUS: SUPERSEDED by `firstparty-EdReingold-calendar-code2/dewata-vs-firstparty-calendrica-comparison.md`.**
+> This document is the original comparison against the Calixir (rengel-de/calixir) copy of CALENDRICA 4.0. After acquiring the first-party source from `EdReingold/calendar-code2`, a new comparison was generated with first-party provenance (same algorithm, different source). The new comparison is the authoritative artifact going forward; this document is preserved for provenance under PROTOCOL v1.0 §3 (append-only).
+>
+> **Algorithmic equivalence verified:** the Calixir copy (`calendrica-4.0.cl`, SHA-256 `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb`) and the first-party copy (`calendar.l`, SHA-256 `642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484`) differ ONLY in the license header comment block. The 7344-line algorithm bodies are byte-identical (`diff` produces 0 lines). Therefore all numerical findings in this document also apply to the first-party source. The full 210-day cycle counts are recorded in `firstparty-EdReingold-calendar-code2/dewata-vs-firstparty-calendrica-comparison.md`.
 
 **Comparison type:** read-only, evidence-only. No engine edits were made.
 **Comparison date:** 2026-09-15

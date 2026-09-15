@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "last_modified": "2026-09-15T22:30:00Z",
+  "last_modified": "2026-09-15T23:00:00Z",
   "policy": "per PROTOCOL v1.0 §2.4 + gap analysis Finding 5: preserved != trusted. A corpus's directory placement (published/, ground-truth/, etc.) does NOT confer authority. Two orthogonal axes govern the gate: verification_status (is the source / citation retrievable?) and reference_eligibility (may this corpus satisfy an independent-reference validation gate for calendar correctness?). The gate requires VERIFIED + ELIGIBLE. Anything else fails closed.",
   "axes": {
     "verification_status": {
@@ -100,29 +100,50 @@
       "may_justify_ruleset_promotion": false,
       "may_be_described_as_ground_truth": false
     },
-    "reingold_dershowitz_2018_calendrica_4_0": {
-      "corpus_file": null,
-      "corpus_class": "first_party_implementation",
+    "reingold_dershowitz_2018_calendrica_4_0_firstparty": {
+      "corpus_file": "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/calendar.l",
+      "corpus_class": "first_party_implementation_primary",
       "verification_status": "VERIFIED",
       "reference_eligibility": "ELIGIBLE",
       "authority_basis": "software_reference",
-      "reason": "First-party Common Lisp implementation of Pawukon/Wewaran by the same authors (Reingold & Dershowitz). Source authentication VERIFIED: retrieved from rengel-de/calixir repo, commit SHA 0f3368339c6318f6751579cf506320b13ce17e2c, source SHA-256 5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb. Runtime verified on this host (SBCL 2.2.9) — CALENDRICA loaded successfully and 10 sample RD rows reproduced dates4.csv expected output. License is custom personal-use + non-commercial/non-profit-reuse (NOT Apache, see DISPUTE-reference-reingold-dershowitz-2018-license-classification-2026-09-15); source file is NOT redistributed; LICENSE file and dates4.csv sample data are redistributed. CLAIM-SCOPED eligibility: ELIGIBLE for the modular-arithmetic claims (CALC-002 cycle arithmetic, CALC-004 saptawara, CALC-005 pancawara, CALC-006 triwara, CALC-007 sadwara) where Dewata's formula matches CALENDRICA's after cycle-position alignment. NOT eligible for the epoch anchor (CALC-001, see DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15), the special-case formulas (CALC-008 asatawara, CALC-009 caturwara, CALC-010 sangawara; see DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15 and DISPUTE-wewaran-sangawara-special-case-formula-2026-09-15), or the urip_5 table (CALC-011; see DISPUTE-wewaran-dasawara-urip-5-table-2026-09-15) where Dewata disagrees with CALENDRICA. NOTE: This corpus has multiple unresolved blocking disputes (epoch anchor, asatawara special case, dasawara urip_5 table). Per PROTOCOL v1.0, promotion of any ruleset component using this corpus is BLOCKED until those disputes are resolved. The two-axis gate returns True for this corpus at the corpus level, but the unresolved disputes make ruleset promotion infeasible.",
+      "reason": "FIRST-PARTY source — EdReingold/calendar-code2 commit 9afc1f3277b839db1a70c2350d6c708ac83df78f (main, 2022-02-04, 'Harmonize license header with license file'). Repository is the authors' canonical GitHub home for CALENDRICA 4.0; EdReingold = Edward M. Reingold, the listed owner. Source file calendar.l (254735 bytes) SHA-256 642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484, git blob sha-1 2e4ad0f58ac52cb5fd497aa97b2b9ffe57ec623d (verified against GitHub API). LICENSE file is Apache License 2.0 verbatim (11357 bytes, SHA-256 c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4, blob sha-1 261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64). In-file header in calendar.l is Apache 2.0 (12 lines, lines 8-19). Runtime verified on this host: SBCL 2.2.9 loaded calendar.l; bali-epoch = -1721279, bali-day-from-fixed(723415) = 84, bali-pawukon-from-fixed(723415) = (NIL 1 1 3 1 1 1 3 1 1). Full 210-day cycle comparison against Dewata: Pancawara 210/210 match, Saptawara 210/210, Triwara 210/210, Sadwara 210/210; Caturwara 12/210, Astawara 12/210, Sangawara 125/210, Dasawara 12/210, Dwiwara 126/210. CLAIM-SCOPED eligibility: ELIGIBLE for the 4 modular-arithmetic claims (CALC-002 cycle arithmetic, CALC-004 saptawara, CALC-005 pancawara, CALC-006 triwara, CALC-007 sadwara). NOT eligible for the 5 disputed claims (CALC-001 epoch anchor, CALC-008/009 asatawara/caturwara special cases, CALC-010 sangawara special case, CALC-011 dasawara urip_5 table). NOTE: 4 blocking disputes pending (epoch, asatawara, sangawara, dasawara urip_5) + 1 transitive blocking (caturwara) + 1 non-blocking (dwiwara parity). Per PROTOCOL v1.0, promotion of any ruleset component using this corpus is BLOCKED until those disputes are resolved.",
       "related_dispute_id": "DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15",
       "date_classified": "2026-09-15",
-      "evidence_review_artifact": "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md, phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md, phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/METADATA.json",
+      "evidence_review_artifact": "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/METADATA.json, phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md, phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/dewata-vs-firstparty-calendrica-comparison.md",
       "citation_keys_present_in_corpus": [
-        "reingold-dershowitz-2018-calendrica-4.0 (first-party Common Lisp implementation; claim-scoped eligibility)"
+        "reingold-dershowitz-2018-calendrica-4.0-firstparty (EdReingold/calendar-code2 commit 9afc1f3, Apache 2.0)"
       ],
       "preserved": true,
       "may_satisfy_validation_gate": true,
       "may_justify_ruleset_promotion": false,
       "may_be_described_as_ground_truth": false,
+      "supersedes": "reingold_dershowitz_2018_calendrica_4_0 (Calixir secondary copy)",
       "blocking_disputes_pending": [
         "DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15",
         "DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15",
+        "DISPUTE-wewaran-caturwara-transitive-dependency-on-asatawara-2026-09-15",
         "DISPUTE-wewaran-sangawara-special-case-formula-2026-09-15",
         "DISPUTE-wewaran-dasawara-urip-5-table-2026-09-15"
       ]
+    },
+    "reingold_dershowitz_2018_calendrica_4_0_calixir": {
+      "corpus_file": "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/calendrica-4.0.cl",
+      "corpus_class": "first_party_implementation_secondary_preserved",
+      "verification_status": "VERIFIED",
+      "reference_eligibility": "INELIGIBLE",
+      "authority_basis": "software_reference",
+      "reason": "SECONDARY preservation copy of CALENDRICA 4.0 from rengel-de/calixir (commit 0f3368339c6318f6751579cf506320b13ce17e2c, 2020-07-18). SHA-256 5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb. Algorithmic content is byte-identical (7344 lines, line-by-line) to first-party EdReingold/calendar-code2 calendar.l; only the license header differs (older restrictive header vs first-party Apache 2.0). PRESERVED FOR PROVENANCE: the source file itself is NOT redistributed per the older restrictive header; the LICENSE file (SHA-256 d34115459b34df91fdd60134384e2f427d29e483a6991b11c2cea42df237412c) and the sample data file (dates4.csv, SHA-256 49ba8658fe1208e67589a1b4e61b70cddbd42b134c37272bccddd06cc32602ff) are preserved. Authority basis is INELIGIBLE because: (a) the first-party source has been acquired and is preferred; (b) the secondary copy's older restrictive license header is not the current license. This corpus entry is preserved for evidence-chain completeness, not for authoritative validation. All authoritative Pawukon claims now point to reingold_dershowitz_2018_calendrica_4_0_firstparty.",
+      "related_dispute_id": "DISPUTE-reference-reingold-dershowitz-2018-license-firstparty-resolution-2026-09-15",
+      "date_classified": "2026-09-15",
+      "evidence_review_artifact": "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/calixir-vs-firstparty-diff.md",
+      "citation_keys_present_in_corpus": [
+        "reingold-dershowitz-2018-calendrica-4.0-calixir (rengel-de/calixir assets, secondary)"
+      ],
+      "preserved": true,
+      "may_satisfy_validation_gate": false,
+      "may_justify_ruleset_promotion": false,
+      "may_be_described_as_ground_truth": false,
+      "superseded_by": "reingold_dershowitz_2018_calendrica_4_0_firstparty"
     }
   },
   "enforcement": "Cross-validation machinery (phase-1/src/dewatacalendar/cross_validation.py and conformance.py) and CLI (cli.py) MUST call can_satisfy_validation_gate() before claiming any corpus satisfies an independent-reference validation gate. The cross_validation module annotates outcomes with _corpus_verification_status, _corpus_reference_eligibility, _corpus_authority_basis, and _corpus_legacy_status so downstream consumers cannot accidentally treat unverified or ineligible data as authoritative."

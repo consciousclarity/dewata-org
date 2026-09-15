@@ -349,17 +349,42 @@
     "class": "bibliographic",
     "blocking": false,
     "severity": "non-blocking",
-    "source": "Edward M. Reingold and Nachum Dershowitz, CALENDRICA 4.0 Common Lisp source, COPYRIGHT_DERSHOWITZ_RHEINGOLD.txt",
+    "source": "Edward M. Reingold and Nachum Dershowitz, CALENDRICA 4.0 Common Lisp source, COPYRIGHT_DERSHOWITZ_RHEINGOLD.txt (as distributed via rengel-de/calixir)",
     "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
     "classification": "bibliographic",
-    "resolution": "pending",
-    "notes": "The user-supplied instruction stated that CALENDRICA 4.0 is 'Apache-licensed'. This is INCORRECT. The actual LICENSE file (retrieved from the authors' canonical distribution) is a custom personal-use + non-commercial/non-profit-reuse license. License clause 1 explicitly prohibits 'allowing the code or its output to be accessed, used, or available to others.' License clause 1 also states that 'The Authors' public service intent is more liberal than suggested by the License below, as are their licensing policies for otherwise nonallowed uses such as ... commercial, web-site, and large-scale academic contexts. Please see the web-site http://www.calendarists.com for all uses not authorized below.' This means: (a) the source file itself cannot be redistributed in the Dewata public repository; (b) the LICENSE file can be redistributed (it is the author's license grant); (c) the sample data file (dates4.csv) CAN be committed because the LICENSE explicitly directs users to the sample values in Appendix C of the book; (d) any other re-use requires contacting the Authors (reingold@iit.edu) and/or visiting http://www.calendarists.com. This is a chat-vs-evidence correction per PROTOCOL v1.0 §2.4 ('Chat is not evidence'). Non-blocking because the work-around (redact full source, commit metadata + LICENSE + sample data) preserves evidence-chain integrity.",
+    "resolution": "superseded",
+    "superseded_by": "DISPUTE-reference-reingold-dershowitz-2018-license-firstparty-resolution-2026-09-15",
+    "notes": "ORIGINAL RECORD. Filed by commit 4d37765. The user-supplied instruction stated that CALENDRICA 4.0 is 'Apache-licensed'. Commit-time analysis of the Calixir copy of the source (rengel-de/calixir, commit 0f3368339c6318f6751579cf506320b13ce17e2c, file sha-256 5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb) showed an in-file license header that is custom personal-use + non-commercial/non-profit. This original dispute recorded that the Calixir copy's header disagrees with the user's description. SUPERSEDED on 2026-09-15 by first-party evidence (EdReingold/calendar-code2) showing the current first-party source IS Apache 2.0. The original record is preserved here per PROTOCOL v1.0 §3 (append-only). See DISPUTE-reference-reingold-dershowitz-2018-license-firstparty-resolution-2026-09-15 for the resolution.",
     "evidence": [
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/METADATA.json",
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/COPYRIGHT_DERSHOWITZ_RHEINGOLD.txt (SHA-256 d34115459b34df91fdd60134384e2f427d29e483a6991b11c2cea42df237412c)",
-      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/bibliographic-metadata.md (§license clarification)"
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/bibliographic-metadata.md (§license clarification)",
+      "supersedes: phase-1/docs/runbook/disputes.json entry DISPUTE-reference-reingold-dershowitz-2018-license-classification-2026-09-15 (resolution now 'superseded')"
     ],
     "recorded_at": "2026-09-15T22:30:00Z"
+  },
+  {
+    "id": "DISPUTE-reference-reingold-dershowitz-2018-license-firstparty-resolution-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (corrective evidence/provenance pass after first-party source acquisition)",
+    "component": "reference_chain",
+    "class": "bibliographic",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "Edward M. Reingold and Nachum Dershowitz, EdReingold/calendar-code2 commit 9afc1f3277b839db1a70c2350d6c708ac83df78f, LICENSE file (SHA-256 c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4, git blob sha-1 261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "bibliographic",
+    "resolution": "resolved",
+    "supersedes": "DISPUTE-reference-reingold-dershowitz-2018-license-classification-2026-09-15",
+    "notes": "RESOLUTION. The first-party source (EdReingold/calendar-code2, the authors' canonical GitHub repository for CALENDRICA 4.0) was retrieved and authenticated on 2026-09-15. The first-party LICENSE file is the verbatim Apache License 2.0 text (11357 bytes, SHA-256 c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4). The in-file license header in first-party calendar.l is Apache 2.0 (12 lines). This is the LICENSE currently distributed by the authors. The earlier commit 4d37765 had observed that the Calixir copy of the source contained a more restrictive custom license header; that observation remains correct, but it was based on a SECONDARY distribution, not the first-party source. The first-party source IS Apache 2.0, which means: (a) the source file itself CAN be redistributed in the Dewata public repository under Apache 2.0 terms; (b) the LICENSE file remains mandatory and must be preserved with any redistribution; (c) copyright notice must be preserved; (d) state-changes must be marked. The Calixir copy's older restrictive header is preserved as historical evidence but does NOT represent the current first-party license. PROVENANCE HIERARCHY: first-party (EdReingold/calendar-code2, Apache 2.0) > secondary (rengel-de/calixir assets/, older restrictive header).",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/METADATA.json",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/LICENSE (SHA-256 c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/calendrica-source/LICENSE (first-party calendar.l in-file header is Apache 2.0)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/calixir-vs-firstparty-diff.md"
+    ],
+    "recorded_at": "2026-09-15T23:00:00Z"
   },
   {
     "id": "DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15",
@@ -462,5 +487,27 @@
       "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
     ],
     "recorded_at": "2026-09-15T22:30:00Z"
+  },
+  {
+    "id": "DISPUTE-wewaran-caturwara-transitive-dependency-on-asatawara-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (corrective evidence/provenance pass — making transitive dependency explicit after dispute reconciliation request)",
+    "component": "wewaran.caturwara",
+    "class": "calendar_semantics",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "First-party CALENDRICA 4.0 (bali-caturwara-from-fixed = amod(bali-asatawara-from-fixed(date), 4)) vs Dewata (caturwara_idx = ((p-1) % 4) + 1 with special case p==72 → 3, p==73 → 4)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "depends_on": "DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15",
+    "notes": "Filed explicitly per dispute reconciliation request (2026-09-15). CALC-009 was originally listed as a transitive dependency on CALC-008 asatawara inside the asatawara dispute's notes, but not given its own dispute record. This dispute makes the dependency explicit. CALENDRICA's caturwara is derived from asatawara via amod(asatawara, 4); Dewata's caturwara is computed independently with its own special-case rule. The 198/210 disagreement count for caturwara matches the asatawara disagreement count (since caturwara = asatawara mod 4 makes them correlated), confirming the transitive dependency. Resolution requires resolution of the asatawara dispute first, plus authority attestation for the caturwara-arithmetic form.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/dewata-vs-firstparty-calendrica-comparison.md",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-009)",
+      "phase-1/docs/runbook/disputes.json DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15"
+    ],
+    "recorded_at": "2026-09-15T23:00:00Z"
   }
 ]
