@@ -14,9 +14,10 @@ from pathlib import Path
 
 import pytest
 
-PHASE_ROOT = Path(__file__).resolve().parents[1]
-STATUS_PATH = PHASE_ROOT / "conformance/STATUS.json"
-DISPUTES_PATH = PHASE_ROOT / "docs/runbook/disputes.json"
+ROOT = Path(__file__).resolve().parents[1]
+SRC_DIR = str(ROOT / "src")
+
+STATUS_PATH = ROOT / "conformance" / "STATUS.json"
 
 
 def _load_status() -> dict:
@@ -53,7 +54,7 @@ def test_calendrica_axes():
 def test_prose_chapter_gate_closed():
     """prose chapter has VERIFIED + INELIGIBLE → gate MUST be False."""
     import sys
-    sys.path.insert(0, str(PHASE_ROOT / "src"))
+    sys.path.insert(0, SRC_DIR)
     from dewatacalendar.corpus_status import corpus_record_for, can_satisfy_validation_gate
     rec = corpus_record_for("reingold_dershowitz_2018_pawukon_chapter")
     assert can_satisfy_validation_gate(rec) is False
@@ -72,7 +73,7 @@ def test_calendrica_gate_requires_claim_scope():
     in that corpus (per PROTOCOL v1.0 / user instruction 2026-09-16
     audit remediation)."""
     import sys
-    sys.path.insert(0, str(PHASE_ROOT / "src"))
+    sys.path.insert(0, SRC_DIR)
     from dewatacalendar.corpus_status import corpus_record_for, can_satisfy_validation_gate
     rec = corpus_record_for("reingold_dershowitz_2018_calendrica_4_0_firstparty")
     assert rec is not None
@@ -108,7 +109,8 @@ def test_calendrica_blocks_ruleset_promotion():
 
 def test_calendrica_license_dispute_filed():
     """the Apache-vs-custom-license dispute must exist."""
-    with open(DISPUTES_PATH) as f:
+    status_path = ROOT / "docs" / "runbook" / "disputes.json"
+    with open(status_path) as f:
         disputes = json.load(f)
     ids = [d.get("id") for d in disputes if d.get("id")]
     assert "DISPUTE-reference-reingold-dershowitz-2018-license-classification-2026-09-15" in ids
@@ -116,7 +118,8 @@ def test_calendrica_license_dispute_filed():
 
 def test_epoch_anchor_dispute_filed():
     """epoch-anchor dispute between CALENDRICA and Dewata must exist."""
-    with open(DISPUTES_PATH) as f:
+    status_path = ROOT / "docs" / "runbook" / "disputes.json"
+    with open(status_path) as f:
         disputes = json.load(f)
     ids = [d.get("id") for d in disputes if d.get("id")]
     assert "DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15" in ids
@@ -124,7 +127,8 @@ def test_epoch_anchor_dispute_filed():
 
 def test_special_case_disputes_filed():
     """special-case disputes (asatawara, sangawara, urip_5) must exist."""
-    with open(DISPUTES_PATH) as f:
+    status_path = ROOT / "docs" / "runbook" / "disputes.json"
+    with open(status_path) as f:
         disputes = json.load(f)
     ids = [d.get("id") for d in disputes if d.get("id")]
     for expected in [

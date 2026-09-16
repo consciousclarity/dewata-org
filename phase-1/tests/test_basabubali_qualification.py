@@ -8,8 +8,9 @@ from pathlib import Path
 import pytest
 
 
-PHASE_ROOT = Path(__file__).resolve().parents[1]
-EV_DIR = PHASE_ROOT / "evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2"
+ROOT = Path(__file__).resolve().parents[1]
+
+EV_DIR = ROOT / "evidence" / "references" / "reingold-dershowitz-2018-pawukon" / "firstparty-EdReingold-calendar-code2"
 ADAPTER_JSON = EV_DIR / "cycle-comparison/adapter-audit.json"
 QUALIFICATION = EV_DIR / "cycle-comparison/basabubali-evidence-qualification.md"
 

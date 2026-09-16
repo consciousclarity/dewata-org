@@ -1,22 +1,18 @@
-"""verify the CALENDRICA 4.0 first-party implementation runs and reproduces
-sample values from dates4.csv.
+"""Verify the in-repo CALENDRICA first-party source against Pawukon samples.
 
-this test is OPTIONAL — it requires sbcl to be installed. if sbcl is not
-available, the test is SKIPPED. this is appropriate because:
+The Lisp source and Apache-2.0 license are the recorded first-party artifacts
+under ``phase-1/evidence/references/reingold-dershowitz-2018-pawukon/``.  The
+sample values are recorded in ``calendrica-source/dates4.csv``.  How the book's
+original ``.tex`` material was converted to that CSV remains a tracked,
+out-of-scope evidence gap; this test checks the recorded values, not that
+conversion process.
 
-  - the CALENDRICA source file is NOT redistributed (license clause 1)
-  - this test only verifies that the runtime reproduces the sample data
-    WHEN the source is locally available at /tmp/refs/calendrica-4.0.cl
-  - the test is part of the evidence-package integrity chain
-
-the test loads the source, runs a few wewaran functions, and compares to
-the dates4.csv sample values for the first 10 RDs.
+Runtime checks are optional and skip when SBCL is unavailable.  Integrity
+checks for the in-repo source and license always run.
 """
 
 from __future__ import annotations
 
-import csv
-import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -25,12 +21,17 @@ import pytest
 
 
 SBCL_PATH = shutil.which("sbcl")
-CAL_SOURCE = Path("/tmp/refs/calendrica-4.0.cl")
-CAL_LICENSE = Path("/tmp/refs/COPYRIGHT_DERSHOWITZ_RHEINGOLD.txt")
-CAL_SAMPLE = Path("/tmp/refs/dates4.csv")
+REFERENCE_ROOT = (
+    Path(__file__).resolve().parents[1]
+    / "evidence"
+    / "references"
+    / "reingold-dershowitz-2018-pawukon"
+)
+CAL_SOURCE = REFERENCE_ROOT / "firstparty-EdReingold-calendar-code2" / "calendar.l"
+CAL_LICENSE = REFERENCE_ROOT / "firstparty-EdReingold-calendar-code2" / "LICENSE"
 
 # expected SHA-256 of the source file
-EXPECTED_SOURCE_SHA = "5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb"
+EXPECTED_SOURCE_SHA = "642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484"
 
 # first 10 sample rows from dates4.csv (RD, Luang, Dwiwara, Triwara, Caturwara,
 # Pancawara, Sadwara, Saptawara, Asatawara, Sangawara, Dasawara)
@@ -61,8 +62,6 @@ def _run_calendrica_script(script: str) -> str:
     """Load CALENDRICA + run script via sbcl, return stdout."""
     if not SBCL_PATH:
         pytest.skip("sbcl not installed; CALENDRICA runtime test skipped")
-    if not CAL_SOURCE.exists():
-        pytest.skip(f"CALENDRICA source not present at {CAL_SOURCE}")
     # write script to a temp file
     script_path = Path("/tmp/calendrica-test-script.lisp")
     script_path.write_text(script)
@@ -76,8 +75,6 @@ def _run_calendrica_script(script: str) -> str:
     return r.stdout
 
 
-@pytest.mark.skipif(SBCL_PATH is None, reason="sbcl not installed")
-@pytest.mark.skipif(not CAL_SOURCE.exists(), reason="CALENDRICA source not present")
 def test_calendrica_source_sha256_matches_record():
     """the locally-cached source file must match the recorded sha-256."""
     actual = _sha256_of(CAL_SOURCE)
@@ -87,16 +84,14 @@ def test_calendrica_source_sha256_matches_record():
 
 
 @pytest.mark.skipif(SBCL_PATH is None, reason="sbcl not installed")
-@pytest.mark.skipif(not CAL_SOURCE.exists(), reason="CALENDRICA source not present")
-@pytest.mark.skipif(not CAL_SAMPLE.exists(), reason="CALENDRICA dates4.csv not present")
 def test_calendrica_runtime_matches_sample_data():
     """CALENDRICA runtime must reproduce the sample-data Pawukon fields
     for the first 10 RDs in dates4.csv."""
     # build a script that loads CALENDRICA + returns the Pawukon fields
     rd_list = [str(rd) for rd, *_ in EXPECTED_SAMPLES]
-    script = """
+    script = f"""
 (defpackage :cc4 (:use :cl))
-(load "/tmp/refs/calendrica-4.0.cl")
+(load "{CAL_SOURCE}")
 (in-package :cc4)
 (let ((rds '(""" + " ".join(rd_list) + """)))
   (dolist (rd rds)
@@ -131,12 +126,11 @@ def test_calendrica_runtime_matches_sample_data():
 
 
 @pytest.mark.skipif(SBCL_PATH is None, reason="sbcl not installed")
-@pytest.mark.skipif(not CAL_SOURCE.exists(), reason="CALENDRICA source not present")
 def test_calendrica_bali_epoch_constant():
     """bali-epoch must equal -1721279 (Rata Die) per the source code."""
-    script = """
+    script = f"""
 (defpackage :cc4 (:use :cl))
-(load "/tmp/refs/calendrica-4.0.cl")
+(load "{CAL_SOURCE}")
 (in-package :cc4)
 (format t "bali-epoch=~a~%" bali-epoch)
 (format t "bali-day-from-fixed(723415)=~a~%" (bali-day-from-fixed 723415))
@@ -149,9 +143,8 @@ def test_calendrica_bali_epoch_constant():
     )
 
 
-@pytest.mark.skipif(not CAL_LICENSE.exists(), reason="CALENDRICA LICENSE not present")
 def test_calendrica_license_recorded_sha():
     """the license file SHA-256 in the recorded metadata must match the actual file."""
     actual = _sha256_of(CAL_LICENSE)
-    expected = "d34115459b34df91fdd60134384e2f427d29e483a6991b11c2cea42df237412c"
+    expected = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
     assert actual == expected, f"license SHA mismatch: actual={actual} expected={expected}"

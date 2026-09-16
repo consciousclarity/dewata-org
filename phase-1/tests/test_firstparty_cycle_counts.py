@@ -17,8 +17,9 @@ from pathlib import Path
 import pytest
 
 
-PHASE_ROOT = Path(__file__).resolve().parents[1]
-EV_DIR = PHASE_ROOT / "evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2"
+ROOT = Path(__file__).resolve().parents[1]
+
+EV_DIR = ROOT / "evidence" / "references" / "reingold-dershowitz-2018-pawukon" / "firstparty-EdReingold-calendar-code2"
 FP_CSV = EV_DIR / "cycle-comparison/firstparty-cycle-210.csv"
 DEW_CSV = EV_DIR / "cycle-comparison/dewata-cycle-210.csv"
 
