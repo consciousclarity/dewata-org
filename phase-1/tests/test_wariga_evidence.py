@@ -72,9 +72,16 @@ def test_manifest_md_exists():
 
 
 def test_kemendikbud_pages_extracted():
-    """Kemendikbud textbook pages 37-40 must be extracted."""
-    path = os.path.join(EVIDENCE_DIR, "kemendikbud-hindu-bs-kls-ix", "pages-37-40-extracted.txt")
-    assert os.path.exists(path)
+    """Kemendikbud textbook minimum-evidence-quotes must include
+    the Pawukon exceptions content needed for the claim register."""
+    path = os.path.join(
+        EVIDENCE_DIR,
+        "kemendikbud-hindu-bs-kls-ix",
+        "minimum-evidence-quotes.md",
+    )
+    assert os.path.exists(path), (
+        f"missing minimum-evidence-quotes file: {path}"
+    )
     content = open(path).read()
     # Must contain key terms from Pawukon exceptions
     assert "Caturwara" in content
@@ -88,16 +95,39 @@ def test_kemendikbud_pages_extracted():
 
 
 def test_kemendikbud_confirms_mapping_b():
-    """Kemendikbud textbook page 37 must confirm Pancawara mapping B."""
-    path = os.path.join(EVIDENCE_DIR, "kemendikbud-hindu-bs-kls-ix", "pages-37-40-extracted.txt")
+    """Kemendikbud textbook confirms Pancawara mapping B (1=Umanis)."""
+    path = os.path.join(
+        EVIDENCE_DIR,
+        "kemendikbud-hindu-bs-kls-ix",
+        "minimum-evidence-quotes.md",
+    )
     content = open(path).read()
-    # The textbook should list Pancawara mapping 1=Umanis, 2=Pahing, 3=Pon, 4=Wage, 5=Kliwon
-    # This is mapping B
+    # Quote 1 must contain the Pancawara mapping names
     assert "Umanis" in content
     assert "Pahing" in content
     assert "Pon" in content
     assert "Wage" in content
     assert "Kliwon" in content
+    # Quote 1 must explicitly assign 1=Umanis (mapping B)
+    assert "(1) Umanis" in content or "1=Umanis" in content or "(1) Umanis" in content
+
+
+def test_kemendikbud_license_uncertainty_recorded():
+    """the Kemendikbud extraction must explicitly note the license
+    status (government copyright, not Creative Commons) and explain
+    why only the minimum-evidence quote was retained."""
+    path = os.path.join(
+        EVIDENCE_DIR,
+        "kemendikbud-hindu-bs-kls-ix",
+        "minimum-evidence-quotes.md",
+    )
+    content = open(path).read()
+    # must mention Hak Cipta (Indonesian copyright assertion)
+    assert "Hak Cipta" in content
+    # must explicitly state redistribution rights are not granted
+    assert "redistribution" in content.lower()
+    # must reference the SHA-256 fingerprint
+    assert "0ac38bf5e59c3ef755d3296894a3d865da43c0945c92b3ed4d1e19457b9fe429" in content
 
 
 def test_java_functions_extracted():
@@ -150,19 +180,36 @@ def test_wariga_suparta_ardhana_metadata_only():
 
 
 def test_sakacalendar_java_sha256_matches_recorded():
-    """The recorded Java SHA-256 must match what we have on disk."""
+    """the Java source file is held at /tmp/refs/sakacalendar.java (a
+    working copy outside the public repo for copyright reasons — the
+    full file is Apache-2.0 / LGPL but we keep the working copy out
+    of git). the recorded SHA-256 must match the file's actual hash.
+
+    this test is gated on the canonical evidence artifact path: the
+    test fails if the file is missing. we do NOT silently skip on
+    missing artifacts — a missing required artifact is a test
+    failure, not a vacuous pass."""
     expected = "dda574c4d0434c9fcc35fa60fa700e1ae1f8e7b5eafc88d20346ed93d5687579"
-    # the file is at /tmp/refs/sakacalendar.java
     java_path = "/tmp/refs/sakacalendar.java"
-    if os.path.exists(java_path):
-        actual = hashlib.sha256(open(java_path, 'rb').read()).hexdigest()
-        assert actual == expected, f"Java SHA mismatch: {actual} != {expected}"
+    assert os.path.exists(java_path), (
+        f"required evidence artifact missing at {java_path}; "
+        "the Java working copy must be present at this canonical path "
+        "for this test to run. missing artifacts fail, not vacuously pass."
+    )
+    actual = hashlib.sha256(open(java_path, 'rb').read()).hexdigest()
+    assert actual == expected, f"Java SHA mismatch: {actual} != {expected}"
 
 
 def test_pancawara_convention_multi_lineage_agreement():
-    """Multiple independent lineages must agree on Pancawara mapping B convention."""
+    """Multiple independent lineages must agree on Pancawara mapping B
+    convention. the Kemendikbud textbook (S4), the Java implementation
+    (S3), and CALENDRICA all use 1=Umanis convention."""
     # The Kemendikbud textbook (S4) explicitly assigns 1=Umanis
-    path = os.path.join(EVIDENCE_DIR, "kemendikbud-hindu-bs-kls-ix", "pages-37-40-extracted.txt")
+    path = os.path.join(
+        EVIDENCE_DIR,
+        "kemendikbud-hindu-bs-kls-ix",
+        "minimum-evidence-quotes.md",
+    )
     content = open(path).read()
     # The textbook should list the 5 Pancawara names
     assert "Umanis" in content

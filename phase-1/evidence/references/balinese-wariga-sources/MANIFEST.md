@@ -13,7 +13,8 @@ Each row records file SHA-256, size, and retrieval date.
 | `claim-register.md` | Claim-by-claim matrix | — | (markdown, no hash) | 2026-09-15 |
 | `source-provenance-graph.md` | Lineage graph | — | (markdown, no hash) | 2026-09-15 |
 | `source-access-notes.md` | Retrieval methodology | — | (markdown, no hash) | 2026-09-15 |
-| `kemendikbud-hindu-bs-kls-ix/pages-37-40-extracted.txt` | Kemendikbud textbook pages 37-40 | 6508 | (no hash on extracted text) | 2026-09-15 |
+| `kemendikbud-hindu-bs-kls-ix/pages-37-40-extracted.txt` (stub) | Superseded stub — see `minimum-evidence-quotes.md` | historical |
+| `kemendikbud-hindu-bs-kls-ix/minimum-evidence-quotes.md` | Kemendikbud textbook minimum-evidence quotes + license status | 3867 | (no hash on markdown) | 2026-09-16 |
 | `edysantosa-sakacalendar/extracted-functions.txt` | Java Pawukon/Wewaran functions + Jaya Tiga docs | 5940 | (no hash on extracted text) | 2026-09-15 |
 
 ## Original source artifacts (NOT included in git)

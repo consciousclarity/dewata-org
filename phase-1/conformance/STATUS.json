@@ -1,5 +1,5 @@
 {
-  "schema_version": "2.0",
+  "schema_version": "3.0",
   "last_modified": "2026-09-15T23:30:00Z",
   "policy": "per PROTOCOL v1.0 §2.4 + gap analysis Finding 5: preserved != trusted. A corpus's directory placement (published/, ground-truth/, etc.) does NOT confer authority. Two orthogonal axes govern the gate: verification_status (is the source / citation retrievable?) and reference_eligibility (may this corpus satisfy an independent-reference validation gate for calendar correctness?). The gate requires VERIFIED + ELIGIBLE. Anything else fails closed.",
   "axes": {
@@ -182,12 +182,12 @@
       "may_be_described_as_ground_truth": false
     },
     "wariga_kemendikbud_hindu_bs_kls_ix_2022": {
-      "corpus_file": "phase-1/evidence/references/balinese-wariga-sources/kemendikbud-hindu-bs-kls-ix/pages-37-40-extracted.txt",
+      "corpus_file": "phase-1/evidence/references/balinese-wariga-sources/kemendikbud-hindu-bs-kls-ix/minimum-evidence-quotes.md",
       "corpus_class": "institutional_textbook",
       "verification_status": "VERIFIED",
       "reference_eligibility": "ELIGIBLE",
       "authority_basis": "institutional",
-      "reason": "Indonesian Ministry of Education (Kemendikbud) + Ministry of Religious Affairs textbook 'Hindu-BS-KLS-IX' (Hindu Religion Book, Grade 9, Kurikulum 21/Merdeka, 2022). PDF SHA-256 0ac38bf5e59c3ef755d3296894a3d865da43c0945c92b3ed4d1e19457b9fe429, 20157376 bytes. Pages 37-40 contain Wewaran tables (Pancawara, Saptawara, Caturwara, Astawara, Sangawara, Dasawara, Triwara, Sadwara) and explicit Pawukon exceptions ('Namun yang perlu dipahami ada beberapa pengecualian yaitu'). Documented verbatim: Caturwara 3 consecutive Jaya at Wuku Dungulan starting from Redite; Astawara 3 consecutive Kala at Wuku Dungulan starting from Redite; Sangawara 4 consecutive Dangu at Wuku Sinta starting from Redite. Pancawara mapping explicit on page 37: '(1) Umanis, (2) Pahing, (3) Pon, (4) Wage, (5) Kliwon' — confirms Mapping B. License: Indonesian government open-content (free for educational use). Authority basis: institutional (state curriculum textbook). ELIGIBLE for substantive claims about Wewaran/Pawukon special-case structure, but only within scope of pages 37-40 (no Wuku/Gregorian examples). Multiple-tradition preserved per PROTOCOL v1.0.",
+      "reason": "Indonesian Ministry of Education (Kemendikbud) + Ministry of Religious Affairs textbook 'Hindu-BS-KLS-IX' (Hindu Religion Book, Grade 9, Kurikulum 21/Merdeka, 2022). PDF SHA-256 0ac38bf5e59c3ef755d3296894a3d865da43c0945c92b3ed4d1e19457b9fe429, 20157376 bytes. License (verified 2026-09-16 from page 2): standard Indonesian government copyright assertion ('Hak Cipta pada Kementerian Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia. Dilindungi Undang-Undang.') — NOT Creative Commons. Redistribution rights are NOT explicitly granted. Per user instruction 2026-09-16, only the minimum-evidence quotes are retained in this package (see minimum-evidence-quotes.md): Quote 1 (Pancawara mapping page 39), Quote 2 (Pawukon exceptions paragraph page 40), and the License status quote (page 2). The full PDF is held at /tmp/refs/hindu-bs-kls-ix.pdf for verification only and is NOT redistributed in this public repo. Documented verbatim: Caturwara 3 consecutive Jaya at Wuku Dungulan starting from Redite; Astawara 3 consecutive Kala at Wuku Dungulan starting from Redite; Sangawara 4 consecutive Dangu at Wuku Sinta starting from Redite. Pancawara mapping explicit on page 39: '(1) Umanis, (2) Pahing, (3) Pon, (4) Wage, (5) Kliwon' — confirms Mapping B. Authority basis: institutional (state curriculum textbook). ELIGIBLE for substantive claims about Wewaran/Pawukon special-case structure, but only within scope of the minimum-evidence quotes. No Wuku/Gregorian examples. Multiple-tradition preserved per PROTOCOL v1.0.",
       "related_dispute_id": null,
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/evidence/references/balinese-wariga-sources/bibliographic-records.md, phase-1/evidence/references/balinese-wariga-sources/claim-register.md",
