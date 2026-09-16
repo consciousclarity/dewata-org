@@ -5,9 +5,11 @@ the sidecar manifest that records the **bibliographic / evidence-
 chain status** of every conformance corpus file under
 `phase-1/conformance/`.
 
-schema version: **2.0** (introduced when the single-axis `CorpusStatus`
-enum was split into two orthogonal axes per PROTOCOL v1.0 §2.4
-evidence model).
+schema version: **3.0** (introduced when the two-axis model was
+extended with structured claim/scope and blocking-dispute fields,
+and the gate hierarchy was re-architected into four layered gates
+in the post-remediation pass of 2026-09-16; v2.0 was the prior
+two-axis split introduced by the original v1.0 remediation).
 
 ## why a sidecar exists
 
@@ -221,3 +223,66 @@ this sidecar is the implementation of the gap analysis Finding 5
 remediation (corpus authority quarantine). It is part of the v1.0
 PROTOCOL's evidence model (§2.4 artifact evidence standard, §2.7
 canonical evidence root, §3 dispute classes including `bibliographic`).
+
+## structured scope and dispute fields (schema v3.0)
+
+v3.0 adds two STRUCTURED fields per entry that the gate machinery
+reads directly. Free-text `scope_limitations` and the manually-entered
+boolean `may_justify_ruleset_promotion` are documentation only and
+are NOT consulted by any gate function.
+
+### `eligible_claim_ids` (structured claim scope)
+
+A tuple of claim IDs the corpus is explicitly scoped to support
+(e.g. `["CALC-005"]`). An empty tuple means "no explicit scope"
+and fails closed on claim-scoped gates.
+
+For every claim in `RulesetPromotionContext.claim_ids`, the corpus
+record's `eligible_claim_ids` must contain the same claim ID. This is
+enforced by `can_satisfy_validation_gate(record, claim_id=...)`.
+
+### `blocking_disputes_pending` (structured dispute enumeration)
+
+A tuple of dispute IDs that are blocking and pending resolution.
+Read by `can_promote_ruleset_using(record, context)` to verify that
+the caller's `context.blocking_dispute_ids` enumerates every
+blocking dispute. Un-enumerated blocking disputes fail closed.
+
+## gate hierarchy (v3.0)
+
+There are four layered gates in `phase-1/src/dewatacalendar/corpus_status.py`:
+
+1. **`can_satisfy_validation_gate(record, *, claim_id=None)`** — reference-level.
+   Returns True iff the corpus is `VERIFIED + ELIGIBLE` and the
+   `claim_id` (if provided) is in `eligible_claim_ids`. A True result
+   means the source MAY PARTICIPATE in independent-reference
+   validation for the specific claim. It does NOT authorize promotion.
+
+2. **`can_promote_ruleset_using(record, context)`** — promotion-level.
+   Returns True iff the record satisfies the reference gate for every
+   claim_id in the context AND `RulesetPromotionContext.is_complete()`
+   is True AND `scope_match` AND `conformance_passed` AND
+   `governance_authorization_artifact` is set AND every record
+   blocking dispute is enumerated in `context.blocking_dispute_ids`.
+
+3. **`can_be_described_as_ground_truth(record)`** — fail closed.
+   Returns False unconditionally. Ground-truth designation requires an
+   explicit accepted-rule mechanism with appropriate human/governance
+   authority that this module does not yet implement.
+
+4. **`can_be_silently_copied_to_authoritative_fixture(record)`** — fail closed.
+   Returns False unconditionally. There is no condition under which
+   evidence may be silently promoted into an authoritative fixture.
+
+## legacy CorpusStatus (v2.0 deprecated)
+
+the legacy single-axis `CorpusStatus` enum (`UNVERIFIED`,
+`NON_AUTHORITATIVE`, `ATTESTED`) is retained for deserialization /
+backward compatibility BUT:
+
+- it MUST NOT satisfy `can_satisfy_validation_gate` on its own
+- it MUST NOT satisfy `can_promote_ruleset_using`
+- it MUST NOT satisfy `can_be_described_as_ground_truth`
+- it MUST NOT satisfy `can_be_silently_copied_to_authoritative_fixture`
+
+modern callers must supply the explicit two-axis `CorpusRecord`.

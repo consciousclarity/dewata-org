@@ -57,13 +57,39 @@ def test_prose_chapter_gate_closed():
     assert can_satisfy_validation_gate(rec) is False
 
 
-def test_calendrica_gate_open():
-    """CALENDRICA has VERIFIED + ELIGIBLE → gate returns True at the corpus level."""
+def test_calendrica_gate_requires_claim_scope():
+    """CALENDRICA has VERIFIED + ELIGIBLE → the corpus record exists
+    and is structurally eligible at the corpus level. however, per
+    the post-remediation v3.0 schema, the reference gate requires
+    non-empty eligible_claim_ids. the CALENDRICA STATUS entry has
+    eligible_claim_ids=() (no explicit scope declared), so the gate
+    fails closed at the corpus level. callers must provide a
+    specific claim_id that is in the corpus's eligible_claim_ids
+    for the gate to return True. this enforces that an ELIGIBLE
+    flag does NOT automatically grant eligibility for every claim
+    in that corpus (per PROTOCOL v1.0 / user instruction 2026-09-16
+    audit remediation)."""
     import sys
     sys.path.insert(0, "/opt/dw-phase2/phase-1/src")
     from dewatacalendar.corpus_status import corpus_record_for, can_satisfy_validation_gate
     rec = corpus_record_for("reingold_dershowitz_2018_calendrica_4_0_firstparty")
-    assert can_satisfy_validation_gate(rec) is True
+    assert rec is not None
+    # axes pass but no claim scope declared
+    assert rec.verification_status.value == "VERIFIED"
+    assert rec.reference_eligibility.value == "ELIGIBLE"
+    assert rec.eligible_claim_ids == ()  # no scope declared
+    # unscoped gate: False (no claim scope means no claim)
+    assert can_satisfy_validation_gate(rec) is False
+    # any claim_id fails closed because the corpus declares no scope
+    assert can_satisfy_validation_gate(rec, claim_id="CALC-005") is False
+    assert can_satisfy_validation_gate(rec, claim_id="ANY") is False
+    # promotion also fails closed (would require a context, but no
+    # claim scope means no claim to promote)
+    from dewatacalendar.corpus_status import can_promote_ruleset_using
+    assert can_promote_ruleset_using(rec) is False
+    # ground truth always fails closed
+    from dewatacalendar.corpus_status import can_be_described_as_ground_truth
+    assert can_be_described_as_ground_truth(rec) is False
 
 
 def test_calendrica_blocks_ruleset_promotion():

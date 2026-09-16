@@ -63,17 +63,39 @@ How each source was retrieved, when, and what evidence was extracted.
 **Access method:**
 - Direct PDF: https://static-sc.cloudapp.web.id/content/pdf/bukuteks/kurikulum21/Hindu-BS-KLS-IX.pdf
 
-**Retrieval date:** 2026-09-15
+**Retrieval date:** 2026-09-15 (license clarification: 2026-09-16)
 
 **File SHA-256:** `0ac38bf5e59c3ef755d3296894a3d865da43c0945c92b3ed4d1e19457b9fe429`
 
-**What was retrieved:** pages 37-40 (Wewaran tables + Pawukon exceptions)
+**What was retrieved (2026-09-16 update):** minimum-evidence quotes only.
+The prior broader pages-37-40 extraction (6508 bytes) has been
+replaced by `minimum-evidence-quotes.md` (3867 bytes including
+license documentation) containing only:
+- Quote 1: Pancawara mapping convention (page 39)
+- Quote 2: Pawukon exceptions paragraph (page 40)
+- License status quote (page 2)
 
 **What was NOT retrieved:** the underlying Wariga sources cited by the textbook (if any)
 
-**License:** Indonesian government open-content (free for educational use)
+**License (verified 2026-09-16 from page 2):**
+Verbatim statement on page 2: "Hak Cipta pada Kementerian Pendidikan,
+Kebudayaan, Riset, dan Teknologi Republik Indonesia. Dilindungi
+Undang-Undang."
 
-**Verdict:** bibliographic existence **VERIFIED**; substantive Wewaran claims **VERIFIED** for pages 37-40.
+This is **standard Indonesian government copyright assertion** — NOT
+a Creative Commons license. The book is held by the Indonesian
+Ministry of Education, Culture, Research, and Technology. The
+Disclaimer on page 2 explains the book is "prepared by the Government
+in fulfillment of quality, affordable, equitable educational book
+needs" per UU No. 3 Tahun 2017.
+
+**Redistribution rights are NOT explicitly granted.** Per user
+instruction 2026-09-16: "If redistribution rights are unclear, keep
+metadata/SHA-256/page references/only the minimum quotation necessary
+for the evidentiary claim, rather than broad extracted text."
+
+**Verdict:** bibliographic existence **VERIFIED**; substantive Wewaran
+claims **VERIFIED** for the minimum-evidence quotes only.
 
 ---
 
