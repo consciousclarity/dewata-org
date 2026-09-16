@@ -1,0 +1,192 @@
+{
+  "constant_offsets": {
+    "pancawara_dewata_minus_reference_days_mod_5": 1,
+    "pawukon_reference_minus_dewata_days_mod_210": 84,
+    "wuku_reference_minus_dewata_mod_30": 12
+  },
+  "counts": {
+    "dewata_vs_peradnya": {
+      "phase_normalized": {
+        "pancawara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "pawukon_position": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "sadwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "saptawara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "triwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "wuku": {
+          "disagreements": 0,
+          "matches": 73049
+        }
+      },
+      "raw": {
+        "pancawara": {
+          "disagreements": 73049,
+          "matches": 0
+        },
+        "pawukon_position": {
+          "disagreements": 73049,
+          "matches": 0
+        },
+        "sadwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "saptawara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "triwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "wuku": {
+          "disagreements": 73049,
+          "matches": 0
+        }
+      }
+    },
+    "dewata_vs_rust": {
+      "phase_normalized": {
+        "pancawara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "pawukon_position": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "sadwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "saptawara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "triwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "wuku": {
+          "disagreements": 0,
+          "matches": 73049
+        }
+      },
+      "raw": {
+        "pancawara": {
+          "disagreements": 73049,
+          "matches": 0
+        },
+        "pawukon_position": {
+          "disagreements": 73049,
+          "matches": 0
+        },
+        "sadwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "saptawara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "triwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "wuku": {
+          "disagreements": 73049,
+          "matches": 0
+        }
+      }
+    },
+    "peradnya_vs_rust": {
+      "phase_normalized": {
+        "pancawara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "pawukon_position": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "sadwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "saptawara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "triwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "wuku": {
+          "disagreements": 0,
+          "matches": 73049
+        }
+      },
+      "raw": {
+        "pancawara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "pawukon_position": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "sadwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "saptawara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "triwara": {
+          "disagreements": 0,
+          "matches": 73049
+        },
+        "wuku": {
+          "disagreements": 0,
+          "matches": 73049
+        }
+      }
+    }
+  },
+  "generated_at": "2026-09-16",
+  "implementations": {
+    "dewata": {
+      "repository_commit": "25ad44dc8c7f492efb942a8810fdb6efabdfdd18"
+    },
+    "peradnya": {
+      "commit": "da4193c26cc73c67a3dd82bb3281b27cc4f20dc4",
+      "release": "0.4.3"
+    },
+    "rust": {
+      "commit": "bbc82ff0dc73768a854b2e2183300e7a6c42f259",
+      "release": "0.3.0"
+    }
+  },
+  "interpretation_limit": "Implementation agreement establishes reproducibility only; it does not establish cultural or customary authority and does not resolve any dispute.",
+  "range": {
+    "end": "2099-12-31",
+    "inclusive_days": 73049,
+    "start": "1900-01-01"
+  },
+  "schema_version": "1.0"
+}
