@@ -1,0 +1,30 @@
+{
+  "by_category": {
+    "calendar": 54,
+    "evidence": 38,
+    "governance": 26,
+    "platform": 48,
+    "rahinan": 35
+  },
+  "by_language": {
+    "ban": 101,
+    "en": 101,
+    "id": 100
+  },
+  "by_status": {
+    "implementation_definition": 107,
+    "informational": 16,
+    "verified_source": 78
+  },
+  "by_translation_review_status": {
+    "ban/pending_customary_review": 201,
+    "en/needs_review": 201,
+    "id/needs_review": 201
+  },
+  "disputed_pages": [],
+  "page_count": 302,
+  "pages_without_source_citation": [],
+  "pending_customary_review_stubs_by_language": {
+    "ban": 101
+  }
+}
