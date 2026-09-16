@@ -118,7 +118,7 @@
       ]
     },
     "reingold_dershowitz_2018_calendrica_4_0_calixir": {
-      "corpus_file": "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/calendrica-4.0.cl",
+      "corpus_file": null,
       "corpus_class": "first_party_implementation_secondary_preserved",
       "verification_status": "VERIFIED",
       "reference_eligibility": "INELIGIBLE",
@@ -132,7 +132,10 @@
       ],
       "preserved": true,
       "may_justify_ruleset_promotion": false,
-      "superseded_by": "reingold_dershowitz_2018_calendrica_4_0_firstparty"
+      "superseded_by": "reingold_dershowitz_2018_calendrica_4_0_firstparty",
+      "scope_limitations": [
+        "Calixr secondary copy of CALENDRICA 4.0 intentionally NOT in this public repo per the older restrictive license header on the Calixir-bundled source. Metadata + SHA-256 fingerprint recorded in calendrica-source/METADATA.json. corpus_file=null. The first-party EdReingold/calendar-code2 copy (Apache 2.0) is the authoritative source and IS in this repo."
+      ]
     },
     "wariga_suparta_ardhana_2006": {
       "corpus_file": null,
@@ -188,7 +191,7 @@
       ]
     },
     "wariga_babadbali_com": {
-      "corpus_file": "phase-1/evidence/references/balinese-wariga-sources/babadbali-pancawara-extracted.txt",
+      "corpus_file": null,
       "corpus_class": "balinese_cultural_reference_site",
       "verification_status": "VERIFIED",
       "reference_eligibility": "ELIGIBLE",
@@ -205,7 +208,8 @@
       "scope_limitations": [
         "no special-case structure documented for Caturwara/Astawara/Sangawara on these pages",
         "no Gregorian/Wuku mapping examples",
-        "practitioner source \u2014 customary attestation requires separate authority"
+        "practitioner source \u2014 customary attestation requires separate authority",
+        "babadbali.com pages held at /tmp/refs/babadbali-pancawara.html and /tmp/refs/babadbali-wuku.html for verification only \u2014 NOT in this public repo (external source). corpus_file=null. SHA-256 fingerprints recorded in reason field."
       ]
     },
     "wariga_edysantosa_sakacalendar_java": {
