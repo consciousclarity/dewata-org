@@ -27,14 +27,14 @@ from pathlib import Path
 import pytest
 
 
-CONFORMANCE = Path("/opt/dw-phase2/phase-1/conformance")
+ROOT = Path(__file__).resolve().parents[1]
+
+CONFORMANCE = ROOT / "conformance"
 STATUS_JSON = CONFORMANCE / "STATUS.json"
 STATUS_SCHEMA = CONFORMANCE / "STATUS.schema.md"
 
-EVIDENCE_README = Path("/opt/dw-phase2/phase-1/evidence/README.md")
-WARIGA_DIR = Path(
-    "/opt/dw-phase2/phase-1/evidence/references/balinese-wariga-sources"
-)
+EVIDENCE_README = ROOT / "evidence" / "README.md"
+WARIGA_DIR = ROOT / "evidence" / "references" / "balinese-wariga-sources"
 WARIGA_MANIFEST = WARIGA_DIR / "MANIFEST.md"
 
 
@@ -205,19 +205,19 @@ def test_no_persistent_tmp_refs_assertions_in_permanent_artifacts():
     mentions are flagged.
     """
     permanent_paths = [
-        "/opt/dw-phase2/phase-1/conformance/STATUS.json",
-        "/opt/dw-phase2/phase-1/conformance/STATUS.schema.md",
-        "/opt/dw-phase2/phase-1/evidence/README.md",
-        "/opt/dw-phase2/phase-1/evidence/references/"
-        "balinese-wariga-sources/MANIFEST.md",
-        "/opt/dw-phase2/phase-1/docs/audit/"
-        "INTEGRATION_GOVERNANCE_EVIDENCE_2026-09-16.md",
-        "/opt/dw-phase2/phase-1/evidence/references/"
-        "balinese-wariga-sources/kemendikbud-hindu-bs-kls-ix/"
-        "minimum-evidence-quotes.md",
-        "/opt/dw-phase2/phase-1/evidence/references/"
-        "balinese-wariga-sources/kemendikbud-hindu-bs-kls-ix/"
-        "pages-37-40-extracted.txt",
+        str(ROOT / "conformance" / "STATUS.json"),
+        str(ROOT / "conformance" / "STATUS.schema.md"),
+        str(ROOT / "evidence" / "README.md"),
+        str(ROOT / "evidence" / "references" /
+            "balinese-wariga-sources" / "MANIFEST.md"),
+        str(ROOT / "docs" / "audit" /
+            "INTEGRATION_GOVERNANCE_EVIDENCE_2026-09-16.md"),
+        str(ROOT / "evidence" / "references" /
+            "balinese-wariga-sources" / "kemendikbud-hindu-bs-kls-ix" /
+            "minimum-evidence-quotes.md"),
+        str(ROOT / "evidence" / "references" /
+            "balinese-wariga-sources" / "kemendikbud-hindu-bs-kls-ix" /
+            "pages-37-40-extracted.txt"),
     ]
     transient_phrases = [
         "scratch space",

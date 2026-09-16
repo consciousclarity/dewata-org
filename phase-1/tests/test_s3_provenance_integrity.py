@@ -21,10 +21,10 @@ from pathlib import Path
 import pytest
 
 
-WARIGA = Path(
-    "/opt/dw-phase2/phase-1/evidence/references/balinese-wariga-sources"
-)
-STATUS = Path("/opt/dw-phase2/phase-1/conformance/STATUS.json")
+ROOT = Path(__file__).resolve().parents[1]
+
+WARIGA = ROOT / "evidence" / "references" / "balinese-wariga-sources"
+STATUS = ROOT / "conformance" / "STATUS.json"
 
 S3_PINNED_COMMIT = "21ff347c0431cb12e02296f76077aa40525da9e0"
 S3_FULL_SOURCE_SHA256 = (

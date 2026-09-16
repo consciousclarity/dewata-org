@@ -20,13 +20,15 @@ from pathlib import Path
 import pytest
 
 
-EV_DIR = Path("/opt/dw-phase2/phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2")
+ROOT = Path(__file__).resolve().parents[1]
+
+EV_DIR = ROOT / "evidence" / "references" / "reingold-dershowitz-2018-pawukon" / "firstparty-EdReingold-calendar-code2"
 RAW_CAL = EV_DIR / "cycle-comparison/raw-cal-210.csv"
 RAW_DEW = EV_DIR / "cycle-comparison/raw-dewata-210.csv"
 INDEP = EV_DIR / "cycle-comparison/independent-references.csv"
 BASA = EV_DIR / "cycle-comparison/basaibubali-formulas.json"
 
-DISPUTES = Path("/opt/dw-phase2/phase-1/docs/runbook/disputes.json")
+DISPUTES = ROOT / "docs" / "runbook" / "disputes.json"
 
 
 def _read_pipe(path: Path):
