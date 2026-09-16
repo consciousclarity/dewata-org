@@ -1,0 +1,364 @@
+site_name: dewata.org wiki (knowledge base)
+site_description: Multilingual knowledge base for dewata.org. The wiki explains terms
+  and how the engine/proof/evidence workflow works; it is not a source of calendar
+  authority.
+site_url: https://wiki.dewata.org/
+repo_url: https://github.com/consciousclarity/dewata-org/
+repo_name: consciousclarity/dewata-org
+docs_dir: docs
+site_dir: site
+use_directory_urls: true
+strict: true
+validation:
+  absolute_links: ignore
+  links:
+    not_found: ignore
+theme:
+  name: material
+  palette:
+  - media: '(prefers-color-scheme: light)'
+    scheme: default
+    primary: indigo
+    accent: indigo
+  - media: '(prefers-color-scheme: dark)'
+    scheme: slate
+    primary: indigo
+    accent: indigo
+  features:
+  - navigation.instant
+  - navigation.tracking
+  - navigation.tabs
+  - navigation.sections
+  - navigation.top
+  - toc.follow
+  - content.code.copy
+plugins:
+- search
+markdown_extensions:
+- admonition
+- attr_list
+- md_in_html
+- tables
+- toc:
+    permalink: false
+nav:
+- Home:
+  - index.md
+- About this wiki:
+  - about.md
+  - contributing.md
+- Bahasa Indonesia (`/id/`):
+  - about.md
+  - contributing.md
+  - id/index.md
+  - Calendar foundations:
+    - id/calendar/index.md
+    - id/calendar/210-day-cycle.md
+    - id/calendar/calendar-conversion.md
+    - id/calendar/calendar-engine.md
+    - id/calendar/epoch-anchor.md
+    - id/calendar/gregorian-date.md
+    - id/calendar/inclusive-date-range.md
+    - id/calendar/nampih-sasih.md
+    - id/calendar/pangunalatri.md
+    - id/calendar/pawukon.md
+    - id/calendar/phase-offset.md
+    - id/calendar/ruleset.md
+    - id/calendar/saka.md
+    - id/calendar/sasih.md
+    - id/calendar/wewaran.md
+    - id/calendar/wuku.md
+  - Rahinan and observances:
+    - id/rahinan/index.md
+    - id/rahinan/anggara-kasih.md
+    - id/rahinan/anggara-kliwon.md
+    - id/rahinan/buda-cemeng.md
+    - id/rahinan/buda-kliwon.md
+    - id/rahinan/buda-wage.md
+    - id/rahinan/galungan.md
+    - id/rahinan/id-mapping.md
+    - id/rahinan/kajeng-kliwon.md
+    - id/rahinan/kuningan.md
+    - id/rahinan/nyepi.md
+    - id/rahinan/purnama.md
+    - id/rahinan/rahinan.md
+    - id/rahinan/redite-paing.md
+    - id/rahinan/saniscara-umanis.md
+    - id/rahinan/saraswati.md
+    - id/rahinan/tilem.md
+    - id/rahinan/tumpek-landep.md
+    - id/rahinan/tumpek.md
+  - Customary and institutional terms:
+    - id/governance/index.md
+    - id/governance/adat.md
+    - id/governance/attestation.md
+    - id/governance/banjar.md
+    - id/governance/bendesa.md
+    - id/governance/customary-authority.md
+    - id/governance/customary-sign-off.md
+    - id/governance/desa-adat.md
+    - id/governance/desa-dinas.md
+    - id/governance/jurisdiction.md
+    - id/governance/klian-adat.md
+    - id/governance/pecalang.md
+    - id/governance/pemangku.md
+    - id/governance/pura.md
+  - Evidence and governance:
+    - id/evidence/index.md
+    - id/evidence/accepted-rule.md
+    - id/evidence/bibliographic-review.md
+    - id/evidence/blocking-dispute.md
+    - id/evidence/candidate-ruleset.md
+    - id/evidence/conformance-corpus.md
+    - id/evidence/corpus.md
+    - id/evidence/cultural-review.md
+    - id/evidence/dispute.md
+    - id/evidence/eligible-claim.md
+    - id/evidence/evidence.md
+    - id/evidence/implementation-observation.md
+    - id/evidence/normalised-comparison.md
+    - id/evidence/phase-normalisation.md
+    - id/evidence/provenance.md
+    - id/evidence/raw-comparison.md
+    - id/evidence/reference-eligibility.md
+    - id/evidence/resolution.md
+    - id/evidence/ruleset-promotion.md
+    - id/evidence/verification-status.md
+  - Dewata platform:
+    - id/platform/index.md
+    - id/platform/api-endpoint.md
+    - id/platform/banjar-visibility.md
+    - id/platform/candidate-release.md
+    - id/platform/checksum-sha256.md
+    - id/platform/computed.md
+    - id/platform/desa-adat-visibility.md
+    - id/platform/dewata.md
+    - id/platform/dsp.md
+    - id/platform/immutable-artifact.md
+    - id/platform/json.md
+    - id/platform/jsonl.md
+    - id/platform/mirror.md
+    - id/platform/predicted.md
+    - id/platform/private.md
+    - id/platform/production-release.md
+    - id/platform/public-api.md
+    - id/platform/public.md
+    - id/platform/registered.md
+    - id/platform/release-manifest.md
+    - id/platform/restricted.md
+    - id/platform/ruleset-version.md
+    - id/platform/signed-snapshot.md
+    - id/platform/verified.md
+    - id/platform/visibility-tier.md
+  - A-Z index:
+    - id/a-z/index.md
+- English (`/en/`):
+  - about.md
+  - contributing.md
+  - en/index.md
+  - Calendar foundations:
+    - en/calendar/index.md
+    - en/calendar/210-day-cycle.md
+    - en/calendar/calendar-conversion.md
+    - en/calendar/calendar-engine.md
+    - en/calendar/epoch-anchor.md
+    - en/calendar/gregorian-date.md
+    - en/calendar/inclusive-date-range.md
+    - en/calendar/nampih-sasih.md
+    - en/calendar/pangunalatri.md
+    - en/calendar/pawukon.md
+    - en/calendar/phase-offset.md
+    - en/calendar/ruleset.md
+    - en/calendar/saka.md
+    - en/calendar/sasih.md
+    - en/calendar/wewaran.md
+    - en/calendar/wuku.md
+  - Rahinan and observances:
+    - en/rahinan/index.md
+    - en/rahinan/anggara-kasih.md
+    - en/rahinan/anggara-kliwon.md
+    - en/rahinan/buda-cemeng.md
+    - en/rahinan/buda-kliwon.md
+    - en/rahinan/buda-wage.md
+    - en/rahinan/galungan.md
+    - en/rahinan/id-mapping.md
+    - en/rahinan/kajeng-kliwon.md
+    - en/rahinan/kuningan.md
+    - en/rahinan/nyepi.md
+    - en/rahinan/purnama.md
+    - en/rahinan/rahinan.md
+    - en/rahinan/redite-paing.md
+    - en/rahinan/saniscara-umanis.md
+    - en/rahinan/saraswati.md
+    - en/rahinan/tilem.md
+    - en/rahinan/tumpek-landep.md
+    - en/rahinan/tumpek.md
+  - Customary and institutional terms:
+    - en/governance/index.md
+    - en/governance/adat.md
+    - en/governance/attestation.md
+    - en/governance/banjar.md
+    - en/governance/bendesa.md
+    - en/governance/customary-authority.md
+    - en/governance/customary-sign-off.md
+    - en/governance/desa-adat.md
+    - en/governance/desa-dinas.md
+    - en/governance/jurisdiction.md
+    - en/governance/klian-adat.md
+    - en/governance/pecalang.md
+    - en/governance/pemangku.md
+    - en/governance/pura.md
+  - Evidence and governance:
+    - en/evidence/index.md
+    - en/evidence/accepted-rule.md
+    - en/evidence/bibliographic-review.md
+    - en/evidence/blocking-dispute.md
+    - en/evidence/candidate-ruleset.md
+    - en/evidence/conformance-corpus.md
+    - en/evidence/corpus.md
+    - en/evidence/cultural-review.md
+    - en/evidence/dispute.md
+    - en/evidence/eligible-claim.md
+    - en/evidence/evidence.md
+    - en/evidence/implementation-observation.md
+    - en/evidence/normalised-comparison.md
+    - en/evidence/phase-normalisation.md
+    - en/evidence/provenance.md
+    - en/evidence/raw-comparison.md
+    - en/evidence/reference-eligibility.md
+    - en/evidence/resolution.md
+    - en/evidence/ruleset-promotion.md
+    - en/evidence/verification-status.md
+  - Dewata platform:
+    - en/platform/index.md
+    - en/platform/api-endpoint.md
+    - en/platform/banjar-visibility.md
+    - en/platform/candidate-release.md
+    - en/platform/checksum-sha256.md
+    - en/platform/computed.md
+    - en/platform/desa-adat-visibility.md
+    - en/platform/dewata.md
+    - en/platform/dsp.md
+    - en/platform/immutable-artifact.md
+    - en/platform/json.md
+    - en/platform/jsonl.md
+    - en/platform/mirror.md
+    - en/platform/predicted.md
+    - en/platform/private.md
+    - en/platform/production-release.md
+    - en/platform/public-api.md
+    - en/platform/public.md
+    - en/platform/registered.md
+    - en/platform/release-manifest.md
+    - en/platform/restricted.md
+    - en/platform/ruleset-version.md
+    - en/platform/signed-snapshot.md
+    - en/platform/verified.md
+    - en/platform/visibility-tier.md
+  - A-Z index:
+    - en/a-z/index.md
+- 'Basa Bali (status: pending customary review) (`/ban/`)':
+  - about.md
+  - contributing.md
+  - ban/index.md
+  - Calendar foundations:
+    - ban/calendar/index.md
+    - ban/calendar/210-day-cycle.md
+    - ban/calendar/calendar-conversion.md
+    - ban/calendar/calendar-engine.md
+    - ban/calendar/epoch-anchor.md
+    - ban/calendar/gregorian-date.md
+    - ban/calendar/inclusive-date-range.md
+    - ban/calendar/nampih-sasih.md
+    - ban/calendar/pangunalatri.md
+    - ban/calendar/pawukon.md
+    - ban/calendar/phase-offset.md
+    - ban/calendar/ruleset.md
+    - ban/calendar/saka.md
+    - ban/calendar/sasih.md
+    - ban/calendar/wewaran.md
+    - ban/calendar/wuku.md
+  - Rahinan and observances:
+    - ban/rahinan/index.md
+    - ban/rahinan/anggara-kasih.md
+    - ban/rahinan/anggara-kliwon.md
+    - ban/rahinan/buda-cemeng.md
+    - ban/rahinan/buda-kliwon.md
+    - ban/rahinan/buda-wage.md
+    - ban/rahinan/galungan.md
+    - ban/rahinan/id-mapping.md
+    - ban/rahinan/kajeng-kliwon.md
+    - ban/rahinan/kuningan.md
+    - ban/rahinan/nyepi.md
+    - ban/rahinan/purnama.md
+    - ban/rahinan/rahinan.md
+    - ban/rahinan/redite-paing.md
+    - ban/rahinan/saniscara-umanis.md
+    - ban/rahinan/saraswati.md
+    - ban/rahinan/tilem.md
+    - ban/rahinan/tumpek-landep.md
+    - ban/rahinan/tumpek.md
+  - Customary and institutional terms:
+    - ban/governance/index.md
+    - ban/governance/adat.md
+    - ban/governance/attestation.md
+    - ban/governance/banjar.md
+    - ban/governance/bendesa.md
+    - ban/governance/customary-authority.md
+    - ban/governance/customary-sign-off.md
+    - ban/governance/desa-adat.md
+    - ban/governance/desa-dinas.md
+    - ban/governance/jurisdiction.md
+    - ban/governance/klian-adat.md
+    - ban/governance/pecalang.md
+    - ban/governance/pemangku.md
+    - ban/governance/pura.md
+  - Evidence and governance:
+    - ban/evidence/index.md
+    - ban/evidence/accepted-rule.md
+    - ban/evidence/bibliographic-review.md
+    - ban/evidence/blocking-dispute.md
+    - ban/evidence/candidate-ruleset.md
+    - ban/evidence/conformance-corpus.md
+    - ban/evidence/corpus.md
+    - ban/evidence/cultural-review.md
+    - ban/evidence/dispute.md
+    - ban/evidence/eligible-claim.md
+    - ban/evidence/evidence.md
+    - ban/evidence/implementation-observation.md
+    - ban/evidence/normalised-comparison.md
+    - ban/evidence/phase-normalisation.md
+    - ban/evidence/provenance.md
+    - ban/evidence/raw-comparison.md
+    - ban/evidence/reference-eligibility.md
+    - ban/evidence/resolution.md
+    - ban/evidence/ruleset-promotion.md
+    - ban/evidence/verification-status.md
+  - Dewata platform:
+    - ban/platform/index.md
+    - ban/platform/api-endpoint.md
+    - ban/platform/banjar-visibility.md
+    - ban/platform/candidate-release.md
+    - ban/platform/checksum-sha256.md
+    - ban/platform/computed.md
+    - ban/platform/desa-adat-visibility.md
+    - ban/platform/dewata.md
+    - ban/platform/dsp.md
+    - ban/platform/immutable-artifact.md
+    - ban/platform/json.md
+    - ban/platform/jsonl.md
+    - ban/platform/mirror.md
+    - ban/platform/predicted.md
+    - ban/platform/private.md
+    - ban/platform/production-release.md
+    - ban/platform/public-api.md
+    - ban/platform/public.md
+    - ban/platform/registered.md
+    - ban/platform/release-manifest.md
+    - ban/platform/restricted.md
+    - ban/platform/ruleset-version.md
+    - ban/platform/signed-snapshot.md
+    - ban/platform/verified.md
+    - ban/platform/visibility-tier.md
+  - A-Z index:
+    - ban/a-z/index.md

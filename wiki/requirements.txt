@@ -1,0 +1,9 @@
+# Pinned dependencies for the wiki build.
+# Reproducibility: a fresh venv with these exact pins builds the
+# same site byte-for-byte (within MkDocs Material's documented
+# non-determinism surface).
+#
+mkdocs==1.6.1
+mkdocs-material==9.5.49
+pyyaml==6.0.1
+pygments==2.19.2

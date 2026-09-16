@@ -1,0 +1,19 @@
+# build output
+site/
+site-test/
+
+# Python venv artefact
+/tmp/wiki-venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# pytest
+.pytest_cache/
+tests/.pytest_cache/
+
+# mkdocs strict-mode cache
+.cache/
