@@ -99,8 +99,13 @@ def test_calendrica_firstparty_entry_in_status():
     assert entry["verification_status"] == "VERIFIED"
     assert entry["reference_eligibility"] == "ELIGIBLE"
     assert entry["authority_basis"] == "software_reference"
-    assert entry["may_satisfy_validation_gate"] is True
-    # 4 modular-arithmetic claims are ELIGIBLE; 5 disputed claims BLOCK ruleset promotion
+    # may_satisfy_validation_gate was removed in v3.0 (post-stabilization
+    # 2026-09-16): source-level boolean implied corpus-as-a-whole authority
+    # that is forbidden. verification_status+reference_eligibility are
+    # the structured fields; eligible_claim_ids would be required for
+    # claim-scoped validation.
+    assert "may_satisfy_validation_gate" not in entry
+    # may_justify_ruleset_promotion is kept as DOCUMENTATION-ONLY
     assert entry["may_justify_ruleset_promotion"] is False
     # 5 blocking disputes
     blocking = entry["blocking_disputes_pending"]
@@ -114,7 +119,10 @@ def test_calendrica_calixir_entry_in_status():
     entry = status["corpora"]["reingold_dershowitz_2018_calendrica_4_0_calixir"]
     assert entry["verification_status"] == "VERIFIED"
     assert entry["reference_eligibility"] == "INELIGIBLE"
-    assert entry["may_satisfy_validation_gate"] is False
+    # may_satisfy_validation_gate was removed in v3.0 (post-stabilization
+    # 2026-09-16): source-level boolean implied corpus-as-a-whole authority
+    # that is forbidden under the v3.0 claim-scoped model.
+    assert "may_satisfy_validation_gate" not in entry
 
 
 def test_calendrica_firstparty_supersedes_calixir():

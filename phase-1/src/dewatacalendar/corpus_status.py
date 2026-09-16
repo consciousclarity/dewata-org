@@ -96,53 +96,52 @@ which is a separate process.
 There are FOUR gates in this module, each with a distinct and narrow
 meaning. They are layered from permissive (top) to restrictive (bottom).
 
-### 1. can_satisfy_validation_gate(record, *, claim_id=None) — REFERENCE-LEVEL
+### 1. can_satisfy_validation_gate(record, *, claim_id) — REFERENCE-LEVEL
 
-Returns True iff:
+Returns True iff (every condition required):
+  - claim_id is not None  (the caller MUST specify a claim)
   - the record is a CorpusRecord (not a legacy enum or string)
   - verification_status == VERIFIED
   - reference_eligibility == ELIGIBLE
-  - if claim_id is provided: the claim_id must be in
-    `record.eligible_claim_ids`. If `eligible_claim_ids` is empty
-    (default for historical records) this fails closed.
-  - if claim_id is None: the record's `eligible_claim_ids` may be
-    non-empty (i.e. it claims some scope). An empty list fails
-    closed even if the two axes pass.
+  - eligible_claim_ids is non-empty
+  - claim_id is in eligible_claim_ids
 
-This is the reference-level gate. VERIFIED + ELIGIBLE means: this
-source MAY PARTICIPATE in independent-reference validation for the
-specific claim(s) it is scoped to. It does NOT mean the source
-is sufficient to promote a ruleset, becomes ground truth, or may be
-silently copied.
+This is the reference-level gate. It answers ONLY:
+  Can source S support claim C?
+
+It does NOT answer:
+  Is source S generally valid?   (intentionally fail-closed)
+  Is source S eligible to support every claim?   (no — corpus-level
+  boolean impersonation is forbidden; each claim must be matched)
+
+A True return value means the source MAY PARTICIPATE in
+independent-reference validation for the specific claim. It does NOT
+mean the source is sufficient to promote a ruleset, becomes ground
+truth, or may be silently copied.
 
 ### 2. can_promote_ruleset_using(record, context) — RULESET-PROMOTION-LEVEL
 
-A ruleset promotion requires more than reference validation. It
-requires an explicit `RulesetPromotionContext` carrying:
-  - component (e.g. "pawukon.epoch")
-  - claim_ids (list of claim IDs being promoted)
-  - blocking_dispute_ids (list of dispute IDs the caller asserts
-    are blocking; the gate checks STATUS.json's structured
-    `blocking_disputes_pending` against this)
-  - scope_match (bool: every claim_id is in record.eligible_claim_ids)
-  - conformance_passed (bool: required conformance tests have
-    actually run and passed)
-  - governance_authorization_artifact (path or identifier of the
-    explicit governance-owner / authorized-human promotion decision)
+Returns False unconditionally.
 
-The gate returns True iff:
-  - reference validation passes (gate 1) for the same record + context
-  - scope_match is True
-  - blocking_dispute_ids is fully enumerated AND every dispute in
-    `record.blocking_disputes_pending` is in the caller's enumeration
-    AND every dispute in the caller's enumeration that touches the
-    component/claims has resolution != "pending"
-  - conformance_passed is True
-  - governance_authorization_artifact is set and non-empty
-  - all six context fields are set (no missing field)
+Promotion is an authority-bearing action that requires independent
+verification of:
+  - the exact dispute records
+  - each blocking dispute's resolution state (not merely that the
+    caller enumerated them)
+  - resolver authority
+  - resolution evidence artifacts
+  - affected claim/component scope
+  - required conformance-run artifacts (not a boolean)
+  - explicit governance authorization (not a string)
+  - matching ruleset candidate
 
-Any missing or False field fails closed. A source record alone
-never authorizes promotion.
+That executable promotion-authority mechanism does not exist yet.
+Until it does, this gate is fail-closed for every caller — including
+callers that supply a complete `RulesetPromotionContext`.
+
+`RulesetPromotionContext` is retained only as a future-schema
+prototype. It is NOT YET AUTHORIZATION-BEARING. No context can
+currently produce True.
 
 ### 3. can_be_described_as_ground_truth(record) — DEPRECATED, FAIL CLOSED
 
@@ -190,8 +189,9 @@ Each CorpusRecord now carries:
     scoped to support (e.g. "CALC-005"). An empty tuple means
     "no explicit scope" and fails closed on claim-scoped queries.
   - `blocking_disputes_pending`: tuple of dispute IDs that are
-    blocking and pending resolution. These are checked by
-    can_promote_ruleset_using.
+    blocking and pending resolution. These are STRUCTURED fields
+    for the future executable promotion-authority mechanism; the
+    current gate does not consult them for authorization.
 
 These are STRUCTURED fields read from STATUS.json. Free-text
 `scope_limitations` and the manually-entered boolean
@@ -271,28 +271,50 @@ class CorpusStatus(str, Enum):
 
 @dataclass(frozen=True)
 class RulesetPromotionContext:
-    """explicit promotion context.
+    """FUTURE-SCHEMA PROTOTYPE — NOT YET AUTHORIZATION-BEARING.
 
-    every field is required. any missing field fails closed in
-    can_promote_ruleset_using.
+    retained as a forward-looking data shape for a future executable
+    promotion-authority mechanism. do NOT treat the fields of this
+    context as authorization today. `can_promote_ruleset_using`
+    currently returns False for every input regardless of context;
+    nothing here authorizes a promotion.
 
-    fields:
+    a future executable mechanism may use this context (or a
+    successor) after independently verifying, from canonical
+    artifacts, the fields below:
+
       component:                     target component (e.g. "pawukon.epoch")
       claim_ids:                     tuple of claim IDs being promoted
       blocking_dispute_ids:          tuple of dispute IDs the caller
-                                     asserts are blocking (the gate
-                                     checks STATUS.json's structured
-                                     blocking_disputes_pending
-                                     against this enumeration)
+                                     asserts are blocking (the future
+                                     mechanism would independently
+                                     verify each dispute's resolution
+                                     state via disputes.json +
+                                     append-only resolution artifacts)
       scope_match:                   bool: every claim_id is in
-                                     record.eligible_claim_ids
+                                     record.eligible_claim_ids (assertion,
+                                     not evidence; the future mechanism
+                                     would independently verify)
       conformance_passed:            bool: required conformance tests
                                      have actually run and passed
+                                     (assertion; the future mechanism
+                                     would independently verify via a
+                                     stored test-result hash tied to
+                                     the candidate ruleset)
       governance_authorization_artifact:  identifier of the explicit
                                      governance-owner / authorized-human
                                      promotion decision (path, URL,
                                      commit SHA, or signed artifact).
-                                     empty string fails closed.
+                                     empty string fails closed. the
+                                     future mechanism would independently
+                                     verify the file exists, that the
+                                     correct human authored it, that it
+                                     covers the component and candidate,
+                                     that it is current, and that it has
+                                     not been superseded.
+
+    fields:
+      same as above.
     """
     component: str
     claim_ids: tuple[str, ...]
@@ -370,8 +392,16 @@ class CorpusRecord:
 
     @property
     def may_satisfy_validation_gate(self) -> bool:
-        """DEPRECATED convenience property. modern callers should use
-        can_satisfy_validation_gate() directly with claim scope."""
+        """DEPRECATED convenience property.
+
+        modern callers should use `can_satisfy_validation_gate()`
+        directly with an explicit claim_id. this property is
+        retained only for backward compatibility with code that
+        inspected the unscoped gate result; with the post-v3.0
+        claim-scoped semantics, it returns False for every record
+        (because the unscoped gate always fails closed)."""
+        # unscoped call always fails closed in v3.0+; this property
+        # exists only for source-compat with v2.x callers
         return can_satisfy_validation_gate(self)
 
 
@@ -381,35 +411,41 @@ def can_satisfy_validation_gate(
     claim_id: str | None = None,
 ) -> bool:
     """return True iff `record` may satisfy an independent-reference
-    validation gate for `claim_id`.
+    validation gate for the SPECIFIC `claim_id`.
 
-    accepts:
-      - a CorpusRecord (modern)
-      - None (no record — fail closed)
-      - legacy CorpusStatus, VerificationStatus, ReferenceEligibility,
-        or string (deprecated — fail closed; modern callers must use
-        a CorpusRecord with explicit two-axis state and claim scope)
+    a reference may satisfy validation only when the caller asks:
+      Can source S support claim C?
 
-    gate rule (CorpusRecord path):
+    it does NOT answer the unscoped question:
+      Is source S generally valid?
+
+    gate rule (CorpusRecord path), all conditions required:
+      - claim_id is not None  (the caller MUST specify a claim)
+      - record is a CorpusRecord (not legacy enum/string/None)
       - verification_status == VERIFIED
       - reference_eligibility == ELIGIBLE
-      - eligible_claim_ids must be non-empty (a corpus that does not
-        declare ANY scope fails closed — there is no claim it can
-        validate)
-      - if claim_id is provided: claim_id must be in
-        record.eligible_claim_ids (fail closed if not in scope)
+      - eligible_claim_ids is non-empty
+      - claim_id is in eligible_claim_ids
 
-    any other input (legacy enum, string, None) fails closed.
+    any other input (legacy enum, string, None) or any missing
+    condition fails closed.
 
     a True return value is the reference-level gate: this source may
     PARTICIPATE in independent-reference validation for the specific
-    claim (or any of its declared scope). it does NOT authorize
-    ruleset promotion, ground-truth designation, or silent fixture
-    copying.
+    claim. it does NOT authorize ruleset promotion, ground-truth
+    designation, or silent fixture copying.
+
+    NOTE: a future design may need an unscoped query for diagnostic
+    purposes; this function intentionally does NOT provide one. callers
+    must always supply a claim_id. use `CorpusRecord.eligible_claim_ids`
+    directly if an unscoped enumeration is needed.
     """
     if not isinstance(record, CorpusRecord):
-        # legacy enum, string, None, or anything else — fail closed.
-        # modern callers must use CorpusRecord.
+        return False
+
+    if claim_id is None:
+        # unscoped source-level authority is intentionally not exposed
+        # by this gate. callers MUST specify a claim.
         return False
 
     if record.verification_status != VerificationStatus.VERIFIED:
@@ -417,14 +453,9 @@ def can_satisfy_validation_gate(
     if record.reference_eligibility != ReferenceEligibility.ELIGIBLE:
         return False
 
-    # claim-scope enforcement: a corpus that does not declare any
-    # explicit eligible_claim_ids has no scope and cannot satisfy any
-    # gate. a corpus that declares scope satisfies an unscoped gate
-    # (claim_id=None) iff its scope is non-empty; satisfies a claim-
-    # scoped gate iff the specific claim_id is in its declared scope.
     if not record.eligible_claim_ids:
         return False
-    if claim_id is not None and claim_id not in record.eligible_claim_ids:
+    if claim_id not in record.eligible_claim_ids:
         return False
 
     return True
@@ -434,71 +465,43 @@ def can_promote_ruleset_using(
     record: Any,
     context: RulesetPromotionContext | None = None,
 ) -> bool:
-    """return True iff a ruleset promotion may be justified by this
-    corpus + this explicit context.
+    """return False unconditionally.
 
-    ruleset promotion requires authoritative ground truth AND an
-    authorized promotion decision. A source record alone is never
-    sufficient. This gate fails closed unless ALL of the following
-    are True:
+    promotion is an authority-bearing action that requires
+    independent verification of:
+      - the exact dispute records
+      - each blocking dispute's resolution state
+      - resolver authority
+      - resolution evidence artifacts
+      - affected claim/component scope
+      - required conformance-run artifacts
+      - explicit governance authorization
+      - matching ruleset candidate
 
-      - context is a RulesetPromotionContext with every field set
-        (RulesetPromotionContext.is_complete() returns True)
-      - can_satisfy_validation_gate(record, claim_id=...) returns True
-        for the claims in the context (callers must invoke this gate
-        with the appropriate claim_id; this function checks scope_match
-        in the context to enforce it)
-      - scope_match in the context is True
-      - blocking_disputes_pending on the record is fully covered by
-        the caller's blocking_dispute_ids enumeration: every dispute
-        in record.blocking_disputes_pending must be in
-        context.blocking_dispute_ids (the caller is asserting they
-        have considered each blocking dispute)
-      - conformance_passed in the context is True
-      - governance_authorization_artifact in the context is non-empty
+    that executable promotion-authority mechanism does not exist
+    yet. until it does, this gate is fail-closed for every caller —
+    including callers that supply a complete `RulesetPromotionContext`.
 
-    any missing field, any unresolved blocking dispute not in the
-    caller's enumeration, or any False value fails closed.
+    `record` and `context` are accepted as parameters for forward
+    compatibility with a future executable mechanism; they are NOT
+    consulted in any way that could authorize promotion today.
+    callers that currently need to record intent should persist the
+    context as evidence and wait for the future mechanism.
 
-    Until a complete promotion-context mechanism exists across the
-    codebase, this gate returns False unconditionally for every
-    caller — a source record alone must never authorize promotion.
+    do not build authorization on caller-supplied booleans:
+      - scope_match=True is an assertion, not evidence
+      - conformance_passed=True is weaker than a stored test result
+        hash tied to a candidate ruleset
+      - governance_authorization_artifact="/decision.md" does not
+        prove the file exists, that the correct human authored it,
+        that it covers the component or candidate, that it is
+        current, or that it has not been superseded
+      - blocking_dispute_ids supplied by the caller enumerate what
+        the caller knows about; they do not establish that any
+        blocking dispute has been resolved by the authorized
+        resolver
     """
-    # fail closed if no context supplied
-    if context is None:
-        return False
-    if not context.is_complete():
-        return False
-
-    # fail closed if record is not a CorpusRecord
-    if not isinstance(record, CorpusRecord):
-        return False
-
-    # every claim_id in the context must satisfy reference validation
-    for claim_id in context.claim_ids:
-        if not can_satisfy_validation_gate(record, claim_id=claim_id):
-            return False
-
-    # caller must have asserted scope match
-    if not context.scope_match:
-        return False
-
-    # conformance tests must have actually passed
-    if not context.conformance_passed:
-        return False
-
-    # governance authorization must be set
-    if not context.governance_authorization_artifact:
-        return False
-
-    # every blocking dispute in the record must be enumerated in the
-    # caller's context.blocking_dispute_ids
-    record_blocking = set(record.blocking_disputes_pending)
-    context_blocking = set(context.blocking_dispute_ids)
-    if not record_blocking.issubset(context_blocking):
-        return False
-
-    return True
+    return False
 
 
 def can_be_described_as_ground_truth(record: Any) -> bool:

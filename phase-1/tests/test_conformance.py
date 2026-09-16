@@ -274,8 +274,9 @@ def test_gate_verified_eligible_with_claim_scope_returns_true():
     assert can_satisfy_validation_gate(r, claim_id="CALC-005") is True
     # claim_id not in scope: False
     assert can_satisfy_validation_gate(r, claim_id="CALC-099") is False
-    # no claim_id provided but scope is non-empty: True (unscoped gate)
-    assert can_satisfy_validation_gate(r) is True
+    # unscoped query (no claim_id): False (fail closed; no source-level
+    # boolean authority shortcut)
+    assert can_satisfy_validation_gate(r) is False
     # promotion, ground-truth, and fixture-copying all fail closed
     assert can_promote_ruleset_using(r, _make_promotion_context()) is False
     assert can_be_described_as_ground_truth(r) is False
@@ -476,15 +477,33 @@ def test_promotion_requires_conformance_passed():
 
 
 def test_promotion_requires_blocking_disputes_to_be_enumerated():
-    """if the corpus record has blocking_disputes_pending, the caller's
-    context.blocking_dispute_ids must enumerate every blocking dispute.
-    un-enumerated blocking disputes fail closed."""
+    """blocking disputes cannot be neutralized by enumeration.
+
+    this test demonstrates that enumerating a pending dispute in
+    `context.blocking_dispute_ids` does NOT establish that the dispute
+    has been resolved by the authorized resolver. enumeration means
+    the caller knows the dispute exists; it does not establish
+    resolution.
+
+    per PROTOCOL v1.0, a calendar-semantic dispute remains blocking
+    until the authorized resolver records an append-only resolution
+    artifact. the executable promotion-authority mechanism does not
+    exist yet. therefore every input to can_promote_ruleset_using
+    must return False — including:
+
+      - missing dispute enumeration → False
+      - complete enumeration of still-pending disputes → False
+      - even hypothetical resolved enumeration → False today, because
+        the executable authority-verification mechanism is not
+        implemented
+    """
+    # record with blocking disputes pending
     r = _make_record(
         "VERIFIED", "ELIGIBLE", "scholarly",
         eligible_claim_ids=("CALC-005",),
         blocking_disputes_pending=("DISPUTE-A", "DISPUTE-B"),
     )
-    # missing one blocking dispute
+    # missing one blocking dispute in context: still False
     ctx = RulesetPromotionContext(
         component="pawukon.epoch", claim_ids=("CALC-005",),
         blocking_dispute_ids=("DISPUTE-A",),
@@ -492,26 +511,34 @@ def test_promotion_requires_blocking_disputes_to_be_enumerated():
         governance_authorization_artifact="/decision.md",
     )
     assert can_promote_ruleset_using(r, ctx) is False
-    # enumerating both: still fails closed because can_satisfy_validation_gate
-    # is checked for every claim_id, but this corpus has the right claim_id,
-    # so we need to verify scope at the gate level too. see below for the
-    # complete-context success path.
+    # enumerating both pending disputes: still False (no resolution
+    # verification mechanism exists)
     ctx = RulesetPromotionContext(
         component="pawukon.epoch", claim_ids=("CALC-005",),
         blocking_dispute_ids=("DISPUTE-A", "DISPUTE-B"),
         scope_match=True, conformance_passed=True,
         governance_authorization_artifact="/decision.md",
     )
-    # still requires the claim_id to be in eligible_claim_ids (it is)
-    # and the record must satisfy can_satisfy_validation_gate for the claim
-    # (it does). this is the only path that returns True.
-    assert can_promote_ruleset_using(r, ctx) is True
+    assert can_promote_ruleset_using(r, ctx) is False
+    # hypothetical "resolved" enumeration: still False (no mechanism
+    # to verify the resolution)
+    ctx = RulesetPromotionContext(
+        component="pawukon.epoch", claim_ids=("CALC-005",),
+        blocking_dispute_ids=("DISPUTE-A", "DISPUTE-B"),
+        scope_match=True, conformance_passed=True,
+        governance_authorization_artifact="/decision.md",
+        # hypothetical: future mechanism would check each dispute's
+        # resolution state in disputes.json + resolution artifacts.
+        # today no such mechanism exists.
+    )
+    assert can_promote_ruleset_using(r, ctx) is False
 
 
 def test_promotion_no_blocking_disputes_with_full_context():
-    """a corpus with no blocking_disputes_pending and a complete
-    context can return True from the promotion gate. this is the
-    only path that returns True."""
+    """even with no blocking_disputes_pending and a complete
+    `RulesetPromotionContext`, the promotion gate must return False
+    today. the executable authority-verification mechanism does not
+    exist yet; a context is an assertion, not evidence."""
     r = _make_record(
         "VERIFIED", "ELIGIBLE", "scholarly",
         eligible_claim_ids=("CALC-005",),
@@ -523,7 +550,7 @@ def test_promotion_no_blocking_disputes_with_full_context():
         scope_match=True, conformance_passed=True,
         governance_authorization_artifact="/path/to/governance-decision.md",
     )
-    assert can_promote_ruleset_using(r, ctx) is True
+    assert can_promote_ruleset_using(r, ctx) is False
 
 
 def test_ground_truth_always_fails_closed():
@@ -693,8 +720,10 @@ def test_reference_gate_with_claim_id_strict_membership():
     assert can_satisfy_validation_gate(r, claim_id="CALC-002") is True
     # not in scope
     assert can_satisfy_validation_gate(r, claim_id="CALC-999") is False
-    # unscoped
-    assert can_satisfy_validation_gate(r) is True
+    # unscoped: False (no claim_id -> fail closed; per user instruction
+    # 2026-09-16, an unscoped source-level boolean authority
+    # shortcut is forbidden)
+    assert can_satisfy_validation_gate(r) is False
 
 
 def test_legacy_enum_does_not_authorize_promotion_ground_truth_fixture():
@@ -746,7 +775,8 @@ def test_governance_authorization_without_evidence_fails_closed():
 
 def test_multiple_agreeing_eligible_sources_still_cannot_promote():
     """two agreeing eligible sources do not authorize promotion. a
-    source record alone never authorizes promotion."""
+    source record alone never authorizes promotion; multiple
+    agreeing sources also do not authorize promotion today."""
     r1 = _make_record(
         "VERIFIED", "ELIGIBLE", "scholarly",
         eligible_claim_ids=("CALC-005",),
@@ -758,25 +788,39 @@ def test_multiple_agreeing_eligible_sources_still_cannot_promote():
     # neither alone authorizes promotion without a complete context
     assert can_promote_ruleset_using(r1) is False
     assert can_promote_ruleset_using(r2) is False
-    # r1 with a complete context (claim_ids in scope) can (this is
-    # the only path that returns True)
+    # even with a complete context, promotion fails closed today (the
+    # executable authority-verification mechanism does not exist)
     ctx = _make_promotion_context(claim_ids=("CALC-005",))
-    assert can_promote_ruleset_using(r1, ctx) is True
+    assert can_promote_ruleset_using(r1, ctx) is False
     # ground truth still fails closed for both
     assert can_be_described_as_ground_truth(r1) is False
     assert can_be_described_as_ground_truth(r2) is False
 
 
 def test_full_success_path_for_future_promotion():
-    """a future test fixture containing ALL required conditions can
-    return True for can_promote_ruleset_using. this proves the gate
-    is not merely always-False but is conditional on the full
-    structured context."""
-    r = _make_record(
-        "VERIFIED", "ELIGIBLE", "scholarly",
-        eligible_claim_ids=("CALC-FUTURE-001",),
-        blocking_disputes_pending=(),
-    )
+    """FUTURE-DESIGN SCHEMA TEST — does NOT invoke authorization.
+
+    this test verifies that `RulesetPromotionContext` is a usable
+    data shape for a future executable promotion-authority mechanism.
+    it does NOT assert that promotion succeeds today.
+
+    the previous version of this test asserted
+    `can_promote_ruleset_using(...) is True` with a synthetic
+    /decision.md path. that is exactly the impersonation of
+    authorization by an arbitrary string that the corrected gate
+    hierarchy forbids. the test has been rewritten as a schema
+    validation test that does NOT invoke authorization.
+
+    per user instruction 2026-09-16:
+      "Change test_full_success_path_for_future_promotion into one
+       of: a schema-validation test that does NOT invoke
+       authorization, or mark it as a future-design test outside
+       current executable authorization behavior. Do not keep a test
+       demonstrating a synthetic /decision.md can authorize
+       promotion."
+    """
+    # schema validation: RulesetPromotionContext can be constructed
+    # with all fields set
     ctx = RulesetPromotionContext(
         component="pawukon.future",
         claim_ids=("CALC-FUTURE-001",),
@@ -785,10 +829,272 @@ def test_full_success_path_for_future_promotion():
         conformance_passed=True,
         governance_authorization_artifact="/governance/decisions/2026-09-16-pawukon-future.md",
     )
-    assert can_promote_ruleset_using(r, ctx) is True
-    # but ground truth and silent fixture copying still fail closed
+    # is_complete() returns True when all required fields are set
+    assert ctx.is_complete() is True
+    # the context is a usable future-shape data structure
+    assert ctx.component == "pawukon.future"
+    assert ctx.claim_ids == ("CALC-FUTURE-001",)
+    assert ctx.blocking_dispute_ids == ()
+    assert ctx.scope_match is True
+    assert ctx.conformance_passed is True
+    assert ctx.governance_authorization_artifact == (
+        "/governance/decisions/2026-09-16-pawukon-future.md"
+    )
+    # but the gate itself still fails closed today (the executable
+    # authority-verification mechanism does not exist)
+    r = _make_record(
+        "VERIFIED", "ELIGIBLE", "scholarly",
+        eligible_claim_ids=("CALC-FUTURE-001",),
+        blocking_disputes_pending=(),
+    )
+    assert can_promote_ruleset_using(r, ctx) is False
+    # ground truth and silent fixture copying still fail closed
     assert can_be_described_as_ground_truth(r) is False
     assert can_be_silently_copied_to_authoritative_fixture(r) is False
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Section 2.6 — explicit invariant tests (post-stabilization 2026-09-16)
+#
+# Per user instruction 2026-09-16, after the corrective gate-hierarchy
+# pass, the following invariants are tested directly:
+#   - claim_id is mandatory for reference validation
+#   - unscoped reference validation fails closed
+#   - pending disputes cannot be neutralized by enumeration
+#   - complete promotion context still fails closed (no executable
+#     authority-verification mechanism yet)
+#   - arbitrary governance_artifact string cannot authorize promotion
+#   - conformance_passed boolean cannot authorize promotion
+#   - zero current and synthetic records can promote ruleset
+# ──────────────────────────────────────────────────────────────────────
+
+
+def test_reference_validation_requires_explicit_claim_id():
+    """the modern reference gate MUST receive a non-None claim_id.
+    a None claim_id fails closed unconditionally. an unscoped source-
+    level authority shortcut is forbidden."""
+    r = _make_record(
+        "VERIFIED", "ELIGIBLE", "scholarly",
+        eligible_claim_ids=("CALC-005",),
+    )
+    # explicit claim_id in scope: True
+    assert can_satisfy_validation_gate(r, claim_id="CALC-005") is True
+    # None claim_id: False (always)
+    assert can_satisfy_validation_gate(r, claim_id=None) is False
+    # implicit None: False
+    assert can_satisfy_validation_gate(r) is False
+    # missing claim_id kwarg: False
+    assert can_satisfy_validation_gate(r) is False
+
+
+def test_unscoped_reference_validation_fails_closed():
+    """unscoped queries (no claim_id) fail closed for every input.
+    a caller may not ask 'is source S generally valid?' through the
+    reference gate; the gate is claim-scoped only."""
+    # no record
+    assert can_satisfy_validation_gate(None) is False
+    # VERIFIED + ELIGIBLE + scope: still False without claim_id
+    r = _make_record(
+        "VERIFIED", "ELIGIBLE", "scholarly",
+        eligible_claim_ids=("CALC-005",),
+    )
+    assert can_satisfy_validation_gate(r) is False
+    # UNVERIFIED + INELIGIBLE: False (also fail closed at axis level)
+    r = _make_record("UNVERIFIED", "INELIGIBLE")
+    assert can_satisfy_validation_gate(r) is False
+    # legacy enum: False
+    assert can_satisfy_validation_gate(CorpusStatus.ATTESTED) is False
+    # string: False
+    assert can_satisfy_validation_gate("ATTESTED") is False
+
+
+def test_pending_disputes_cannot_be_neutralized_by_enumeration():
+    """enumerating a pending dispute in context.blocking_dispute_ids
+    does NOT establish that the dispute has been resolved. enumeration
+    means the caller knows the dispute exists; resolution requires an
+    append-only artifact from the authorized resolver, which no
+    executable mechanism currently verifies.
+
+    under PROTOCOL v1.0, a calendar-semantic dispute remains
+    blocking until the authorized resolver records an append-only
+    resolution artifact. therefore:
+
+      - missing enumeration → False
+      - complete enumeration of pending disputes → False
+      - even hypothetical resolved enumeration → False today
+    """
+    r = _make_record(
+        "VERIFIED", "ELIGIBLE", "scholarly",
+        eligible_claim_ids=("CALC-005",),
+        blocking_disputes_pending=("DISPUTE-A", "DISPUTE-B"),
+    )
+    # missing enumeration: False
+    ctx_missing = RulesetPromotionContext(
+        component="pawukon.epoch", claim_ids=("CALC-005",),
+        blocking_dispute_ids=(),  # missing DISPUTE-A, DISPUTE-B
+        scope_match=True, conformance_passed=True,
+        governance_authorization_artifact="/decision.md",
+    )
+    assert can_promote_ruleset_using(r, ctx_missing) is False
+    # partial enumeration: False
+    ctx_partial = RulesetPromotionContext(
+        component="pawukon.epoch", claim_ids=("CALC-005",),
+        blocking_dispute_ids=("DISPUTE-A",),
+        scope_match=True, conformance_passed=True,
+        governance_authorization_artifact="/decision.md",
+    )
+    assert can_promote_ruleset_using(r, ctx_partial) is False
+    # complete enumeration of pending disputes: False
+    # (enumeration does not equal resolution)
+    ctx_complete_pending = RulesetPromotionContext(
+        component="pawukon.epoch", claim_ids=("CALC-005",),
+        blocking_dispute_ids=("DISPUTE-A", "DISPUTE-B"),
+        scope_match=True, conformance_passed=True,
+        governance_authorization_artifact="/decision.md",
+    )
+    assert can_promote_ruleset_using(r, ctx_complete_pending) is False
+    # hypothetical resolved enumeration: still False today
+    # (no executable resolution-verification mechanism)
+    ctx_hypothetical = RulesetPromotionContext(
+        component="pawukon.epoch", claim_ids=("CALC-005",),
+        blocking_dispute_ids=("DISPUTE-A", "DISPUTE-B"),
+        scope_match=True, conformance_passed=True,
+        governance_authorization_artifact="/decision.md",
+        # even if a future mechanism added a "resolved_disputes" field,
+        # today it is not consulted.
+    )
+    assert can_promote_ruleset_using(r, ctx_hypothetical) is False
+
+
+def test_complete_promotion_context_still_fails_closed_until_authority_verifier_exists():
+    """a complete RulesetPromotionContext (every field set) still
+    fails closed today. the executable authority-verification
+    mechanism does not exist; no context can produce True until it
+    does."""
+    r = _make_record(
+        "VERIFIED", "ELIGIBLE", "scholarly",
+        eligible_claim_ids=("CALC-005",),
+        blocking_disputes_pending=(),
+    )
+    # every field of RulesetPromotionContext is set:
+    ctx = RulesetPromotionContext(
+        component="pawukon.epoch",
+        claim_ids=("CALC-005",),
+        blocking_dispute_ids=(),
+        scope_match=True,
+        conformance_passed=True,
+        governance_authorization_artifact="/governance/decisions/example.md",
+    )
+    # schema: is_complete returns True
+    assert ctx.is_complete() is True
+    # but the gate: False today
+    assert can_promote_ruleset_using(r, ctx) is False
+
+
+def test_arbitrary_governance_artifact_string_cannot_authorize_promotion():
+    """an arbitrary string passed as governance_authorization_artifact
+    does NOT authorize promotion. the artifact must be verified by a
+    future executable mechanism (existence, authorship, scope, currency,
+    not superseded). today no such mechanism exists."""
+    r = _make_record(
+        "VERIFIED", "ELIGIBLE", "scholarly",
+        eligible_claim_ids=("CALC-005",),
+        blocking_disputes_pending=(),
+    )
+    for path in [
+        "/decision.md",
+        "/etc/passwd",
+        "",
+        "anything",
+        "/root/.ssh/id_ed25519",
+        "/governance/decisions/2026-09-16-fake.md",
+    ]:
+        ctx = RulesetPromotionContext(
+            component="pawukon.epoch", claim_ids=("CALC-005",),
+            blocking_dispute_ids=(), scope_match=True,
+            conformance_passed=True,
+            governance_authorization_artifact=path,
+        )
+        assert can_promote_ruleset_using(r, ctx) is False, (
+            f"arbitrary governance_authorization_artifact={path!r} "
+            f"authorized promotion — this is an authorization-impersonation "
+            f"regression"
+        )
+
+
+def test_conformance_boolean_cannot_authorize_promotion():
+    """conformance_passed=True (a boolean) does NOT authorize
+    promotion. in a future executable mechanism, the equivalent is a
+    stored test-result hash tied to a candidate ruleset — not a
+    caller-supplied boolean."""
+    r = _make_record(
+        "VERIFIED", "ELIGIBLE", "scholarly",
+        eligible_claim_ids=("CALC-005",),
+        blocking_disputes_pending=(),
+    )
+    for passed in (True, False):
+        ctx = RulesetPromotionContext(
+            component="pawukon.epoch", claim_ids=("CALC-005",),
+            blocking_dispute_ids=(), scope_match=True,
+            conformance_passed=passed,
+            governance_authorization_artifact="/decision.md",
+        )
+        assert can_promote_ruleset_using(r, ctx) is False
+
+
+def test_zero_current_and_synthetic_records_can_promote_ruleset():
+    """zero records — neither STATUS entries nor synthetic VERIFIED +
+    ELIGIBLE records — can promote a ruleset today. the executable
+    authority-verification mechanism does not exist.
+
+    this test enumerates:
+      - every STATUS entry currently registered
+      - synthetic records constructed with various axis + scope + dispute
+        configurations
+    and asserts can_promote_ruleset_using returns False for every
+    combination.
+    """
+    manifest = load_status_manifest()
+    corpora = manifest.get("corpora", {})
+    # 1. no current STATUS entry can promote
+    for name in corpora:
+        record = corpus_record_for(name)
+        for ctx_opt in [None, _make_promotion_context(), RulesetPromotionContext(
+            component="x", claim_ids=(), blocking_dispute_ids=(),
+            scope_match=True, conformance_passed=True,
+            governance_authorization_artifact="/x",
+        )]:
+            assert can_promote_ruleset_using(record, ctx_opt) is False, (
+                f"STATUS entry {name!r} promoted a ruleset"
+            )
+    # 2. synthetic records with various configurations cannot promote
+    synthetic_configs = [
+        # axes pass, scope declared, no blocking disputes
+        ("VERIFIED", "ELIGIBLE", ("CALC-001",), ()),
+        # axes pass, scope declared, blocking disputes pending
+        ("VERIFIED", "ELIGIBLE", ("CALC-002",), ("D-1",)),
+        # axes pass, no scope
+        ("VERIFIED", "ELIGIBLE", (), ()),
+        # axes pass, scope, full context
+        ("VERIFIED", "ELIGIBLE", ("CALC-003",), ()),
+        # VERIFIED + INELIGIBLE (axes fail)
+        ("VERIFIED", "INELIGIBLE", ("CALC-004",), ()),
+        # UNVERIFIED + ELIGIBLE (axes fail)
+        ("UNVERIFIED", "ELIGIBLE", ("CALC-005",), ()),
+    ]
+    for vs, re_, scope, blocking in synthetic_configs:
+        r = _make_record(
+            vs, re_, "scholarly",
+            eligible_claim_ids=scope,
+            blocking_disputes_pending=blocking,
+        )
+        ctx = _make_promotion_context(
+            claim_ids=("CALC-X",) if scope else (),
+            blocking_dispute_ids=blocking,
+        )
+        assert can_promote_ruleset_using(r, ctx) is False
+        assert can_promote_ruleset_using(r) is False  # without context too
+        assert can_promote_ruleset_using(r, None) is False
 
 
 # ──────────────────────────────────────────────────────────────────────
