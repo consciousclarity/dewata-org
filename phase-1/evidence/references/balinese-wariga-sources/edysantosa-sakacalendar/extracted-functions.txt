@@ -1,10 +1,33 @@
 /* Balinese Saka Calendar - extracted Pawukon/Wewaran functions */
-/* Source: https://github.com/edysantosa/sakacalendar */
-/* File: src/main/com/edysantosa/sakacalendar/SakaCalendar.java */
-/* License: LGPL-2.1 */
-/* Reference books cited in code: 'Dasar Wariga' + 'Tenung Wariga' by I.B. Putra Manik Aryana; 'Pokok-pokok Wariga' by I.B. Supartha Ardana */
+/* */
+/* Evidence header (canonical provenance, post-stabilization 2026-09-16): */
+/*   original author:          Edy Santosa Putra */
+/*   original repository:      https://github.com/edysantosa/sakacalendar */
+/*   pinned upstream commit:   21ff347c0431cb12e02296f76077aa40525da9e0 */
+/*                            (mutable master URLs are NOT canonical; this */
+/*                            pinned commit is the immutable source identity) */
+/*   original source path:     src/main/com/edysantosa/sakacalendar/SakaCalendar.java */
+/*   full source SHA-256:      dda574c4d0434c9fcc35fa60fa700e1ae1f8e7b5eafc88d20346ed93d5687579 */
+/*   full source size:         119709 bytes */
+/*   excerpt status:           function-level excerpt (5940 bytes / 4.96% of full source); */
+/*                            full source NOT in this public repo */
+/*   upstream license:         GNU LGPL 2.1 */
+/*   license file:             LICENSE.LGPL-2.1 (sibling file in this directory) */
+/*                            SHA-256 9b872a8a070b8ad329c4bd380fb1bf0000f564c75023ec8e1e6803f15364b9e9 */
+/* */
+/* The upstream source explicitly cites Pokok-pokok Wariga by */
+/* I.B. Suparta Ardhana and Tenung Wariga / Dasar Wariga by I.B. Putra */
+/* Manik Aryana as its source of truth. This derivative Java */
+/* implementation is NOT an independent attestation of those books. */
+/* */
+/* This excerpt is committed as an excerpt from the LGPL-2.1-licensed */
+/* upstream source; upstream author attribution and license are retained */
+/* in this evidence package (LICENSE.LGPL-2.1 sibling file). The excerpt */
+/* remains subject to the upstream GNU LGPL 2.1 license and is NOT */
+/* re-licensed under any Dewata project license. */
+/* */
 
-	public int getWuku(int field){
+public int getWuku(int field){
 
 		long bedaHari = getDateDiff(pivot.getTimeInMillis(),this.getTimeInMillis());
 		int angkaWuku;

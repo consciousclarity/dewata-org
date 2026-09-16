@@ -74,9 +74,25 @@ Per PROTOCOL v1.0 and user instruction (verbatim): "If only bibliographic metada
 
 **Repository metadata:**
 - URL: https://github.com/edysantosa/sakacalendar
-- Default branch: master
-- License: **LGPL-2.1** (verified via LICENSE file)
-- Source file: `src/main/com/edysantosa/sakacalendar/SakaCalendar.java`
+- Default branch: master (mutable; NOT used as canonical evidence locator)
+- License: **LGPL-2.1** (verified via LICENSE file retained at
+  `edysantosa-sakacalendar/LICENSE.LGPL-2.1`)
+- Author: Edy Santosa Putra (celak.pande@gmail.com)
+
+**Pinned upstream commit (canonical evidence identity, NOT mutable master):**
+`21ff347c0431cb12e02296f76077aa40525da9e0`
+
+Immutable source identity: `edysantosa/sakacalendar@21ff347c0431cb12e02296f76077aa40525da9e0`
+
+Canonical upstream URL:
+`https://github.com/edysantosa/sakacalendar/tree/21ff347c0431cb12e02296f76077aa40525da9e0`
+
+Source file path at pinned commit:
+`src/main/com/edysantosa/sakacalendar/SakaCalendar.java`
+
+**Upstream license:** GNU LGPL 2.1
+License text retained at `edysantosa-sakacalendar/LICENSE.LGPL-2.1`
+SHA-256 `9b872a8a070b8ad329c4bd380fb1bf0000f564c75023ec8e1e6803f15364b9e9`
 
 **Explicit source attribution in source code:**
 > Reference books cited in code:
@@ -85,11 +101,17 @@ Per PROTOCOL v1.0 and user instruction (verbatim): "If only bibliographic metada
 
 (Note: code spells "Supartha Ardana"; Open Library spells "Suparta Ardhana" — same person, romanization variant.)
 
-**Source file SHA-256:**
+**Source file SHA-256 (verified independently against pinned commit on 2026-09-16):**
 `dda574c4d0434c9fcc35fa60fa700e1ae1f8e7b5eafc88d20346ed93d5687579`
 
 **Authority basis:** Software reference implementation that explicitly cites S1 and S2.
 **Eligibility:** **ELIGIBLE** for algorithmic claims, but only as **derivative of S1/S2** (not independent).
+
+**Provenance rationale:** The excerpt is a function-level excerpt from
+an LGPL-2.1-licensed upstream source; upstream author attribution and
+license are retained in this evidence package. The excerpt remains
+subject to the upstream GNU LGPL 2.1 license (not Dewata's project
+license).
 
 ---
 

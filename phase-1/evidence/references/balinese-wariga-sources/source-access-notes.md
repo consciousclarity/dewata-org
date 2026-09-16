@@ -41,20 +41,51 @@ How each source was retrieved, when, and what evidence was extracted.
 
 ## S3. edysantosa/sakacalendar
 
-**Access method:**
-- GitHub API repo metadata: https://api.github.com/repos/edysantosa/sakacalendar
-- GitHub API tree: https://api.github.com/repos/edysantosa/sakacalendar/git/trees/master?recursive=1
-- Raw source: https://raw.githubusercontent.com/edysantosa/sakacalendar/master/src/main/com/edysantosa/sakacalendar/SakaCalendar.java
+**Author:** Edy Santosa Putra (celak.pande@gmail.com, commit author)
 
-**Retrieval date:** 2026-09-15
+**Upstream commit (pinned, NOT mutable master):**
+`21ff347c0431cb12e02296f76077aa40525da9e0`
+(immutable source identity — `edysantosa/sakacalendar@21ff347c`)
 
-**File SHA-256:** `dda574c4d0434c9fcc35fa60fa700e1ae1f8e7b5eafc88d20346ed93d5687579`
+**Upstream source path:** `src/main/com/edysantosa/sakacalendar/SakaCalendar.java`
 
-**What was retrieved:** full source code (119709 bytes)
+**Upstream license:** GNU LGPL 2.1
+(License text retained in `edysantosa-sakacalendar/LICENSE.LGPL-2.1`
+sibling file; SHA-256 `9b872a8a070b8ad329c4bd380fb1bf0000f564c75023ec8e1e6803f15364b9e9`)
+
+**Access method (2026-09-15 retrieval, verified 2026-09-16):**
+- Canonical upstream URL (pinned):
+  `https://github.com/edysantosa/sakacalendar/tree/21ff347c0431cb12e02296f76077aa40525da9e0`
+- Raw at pinned commit:
+  `https://raw.githubusercontent.com/edysantosa/sakacalendar/21ff347c0431cb12e02296f76077aa40525da9e0/src/main/com/edysantosa/sakacalendar/SakaCalendar.java`
+- (mutable master URLs are NOT the canonical evidence locator; the
+  upstream master HEAD may move; the pinned commit is the stable
+  evidence identity)
+
+**Retrieval date:** 2026-09-15 (originally); verified against the
+pinned commit `21ff347c` on 2026-09-16
+
+**File SHA-256 (full source at pinned commit):**
+`dda574c4d0434c9fcc35fa60fa700e1ae1f8e7b5eafc88d20346ed93d5687579`
+
+**Full source size:** 119709 bytes
+
+**What was retrieved:** full source code (119709 bytes) — verified
+independently against pinned commit `21ff347c`
 
 **What was NOT retrieved:** the S1/S2 source books that S3 cites
 
-**Verdict:** source code **VERIFIED**; substantive Wewaran/Pawukon claims **PARTIALLY VERIFIED** (functions visible in code, but original S1/S2 sources not independently accessible).
+**Excerpt status:** function-level excerpt committed in
+`edysantosa-sakacalendar/extracted-functions.txt` (5940 bytes /
+4.96% of full source). Full source NOT in this public repo.
+
+**Verdict:** source code **VERIFIED**; substantive Wewaran/Pawukon
+claims **PARTIALLY VERIFIED** (functions visible in code, but
+original S1/S2 sources not independently accessible).
+
+This derivative Java implementation explicitly cites Pokok-pokok
+Wariga and Tenung Wariga as its source of truth; it is NOT an
+independent attestation of those books.
 
 ---
 
