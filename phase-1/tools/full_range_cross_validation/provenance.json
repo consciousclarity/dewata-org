@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "retrieved_at": "2026-09-16",
+  "peradnya": {
+    "repository": "https://github.com/peradnya/balinese-date-js-lib",
+    "release": "0.4.3",
+    "tag_object": "47c3383ceb9f6a819599511d636c010c27d7012b",
+    "commit": "da4193c26cc73c67a3dd82bb3281b27cc4f20dc4",
+    "license": "Apache-2.0",
+    "files": {
+      "LICENSE.md": "804b6db4370c22529a5a17a8f81ed40bd1c3147ea51db0260b12e79d5cfd0d67",
+      "package-lock.json": "6032d105608a9b0a331d02ec7d96db99798a546ecdc5fb7ab1c690516d798220",
+      "src/BalineseDate.ts": "7ff9bb7341e5ff1ee1f72e90374ded17ee05384b6f14f6c49bca89157b23d425",
+      "src/internal/Pivot.ts": "ef2839aa8232060b59c3b8ef6123c9ecb5838e1b6158904e61f94851b405457c",
+      "src/Wuku.ts": "5bc417788a29fd68d7242a16a62a49fac0dcdd3bffec442ff01e584d178f565b",
+      "src/PancaWara.ts": "e732366c1c555546dea9c2ab278286e6d1fa3c89763c61d25704b27a4654e069",
+      "src/TriWara.ts": "72e163317a30af7efa810c270c72410119c4dd8e10d0c52a098da285a29df53f",
+      "src/SadWara.ts": "05728f38c20b9be314435f0b4cb8a36edf62150f985cb39bcfb6bcda50281db9",
+      "src/SaptaWara.ts": "d1d44756716518f5b51a11685a3aa3db7c50dbdad2094745ec58024c8bb0d7cc"
+    }
+  },
+  "rust": {
+    "repository": "https://github.com/SHA888/balinese-calendar",
+    "release": "0.3.0",
+    "tag_object": "f687e79507550057b7576f20dde920406989bcea",
+    "commit": "bbc82ff0dc73768a854b2e2183300e7a6c42f259",
+    "license": "Apache-2.0",
+    "reproduction_dependency_lock": {
+      "path": "phase-1/tools/full_range_cross_validation/rust-Cargo.lock",
+      "sha256": "e4ffb5dff826f6e52faf3eed931c85f09448b8cd8b54341813eafa679a76c183"
+    },
+    "files": {
+      "Cargo.toml": "732721fe39e2137d2e44a5f29d56d1e75a5da846f0ba8e5826a97fed7d780715",
+      "LICENSE": "20907370fe777d9bafc919f50b9db7bf45a76f97f17d5969a56ac13a90375d98",
+      "src/utils.rs": "18e5f39dc3b98b33fdd6a055c04bea1d3b3d17769db0db036ccd23feb20c8735",
+      "src/pawukon.rs": "85fa16ddd746898f7b69bda84dca2e4660bb7be48f0224ce61219f045c44618b",
+      "src/wewaran/mod.rs": "dcf1ef0bc407cdca07dcb17af5f89e72b656a28951c6827994f215cb717d6419",
+      "src/balinese_date.rs": "3f91cca34de8f62ea419858b5e88a56b7746a2d67308156a3adf394d9d19dbe3"
+    }
+  }
+}

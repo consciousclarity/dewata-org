@@ -90,7 +90,7 @@
   },
   {
     "id": "DISPUTE-ENGINE-PAWUKON-EPOCH-OFFSET-84-DAYS",
-    "date": "2026-09-01..30 (verified across 30 days)",
+    "date": "1900-01-01..2099-12-31 (verified across 73,049 dates)",
     "date_filed": "2026-09-15",
     "filed_by": "audit (4-implementation cross-validation)",
     "component": "pawukon",
@@ -101,18 +101,21 @@
     "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
     "classification": "epoch_convention_difference",
     "resolution": "pending",
-    "notes": "Engine pawukon position is exactly 84 days (= 12 wuku) earlier than Peradnya/Rust/TS on every date in September 2026. Root cause: engine uses epoch 1981-08-23 (asserted in rulesets.py pawukon.epoch); Peradnya/Rust use epoch 1971-01-24 (JDN 2440976, derived from Peradnya PIVOT_1971 = 1971-01-27 pawukonDay=3). The engine's epoch JDN is 2444840 = 1981-08-23. Difference: 2444840 - 2440976 = 3864 = 18*210 + 84. Reproducible on all 30 days of September 2026 and on the engine's own 1981-08-23 anchor (engine: wuku=Sinta, pan=Paing, sapt=Redite, saka=1903; Rust/TS: wuku=Langkir, pan=Umanis, sapt=Redite, saka=1903). Java library uses a third epoch (no Pawukon 1981-08-23 or 1971-01-27 match). UPDATED 2026-09-15: This is NOT a bug. The Pawukon has no canonical epoch (Wikipedia: \"cycles are unnumbered, so the calendar has no epoch, and the choice of date on which to base a correspondence is arbitrary\"). Engine uses 1981-08-23 = Wikipedia/Dershowitz Day 1; Peradnya/Rust/TS use 1971-01-24/27 = their Day 1. Both are valid conventions. The 84-day offset is the difference between these two anchor choices. Reclassified from blocking to informational.",
+    "notes": "Engine pawukon position is exactly 84 days (= 12 wuku) earlier than Peradnya/Rust/TS on every date in September 2026. Root cause: engine uses epoch 1981-08-23 (asserted in rulesets.py pawukon.epoch); Peradnya/Rust use epoch 1971-01-24 (JDN 2440976, derived from Peradnya PIVOT_1971 = 1971-01-27 pawukonDay=3). The engine's epoch JDN is 2444840 = 1981-08-23. Difference: 2444840 - 2440976 = 3864 = 18*210 + 84. Reproducible on all 30 days of September 2026 and on the engine's own 1981-08-23 anchor (engine: wuku=Sinta, pan=Paing, sapt=Redite, saka=1903; Rust/TS: wuku=Langkir, pan=Umanis, sapt=Redite, saka=1903). Java library uses a third epoch (no Pawukon 1981-08-23 or 1971-01-27 match). UPDATED 2026-09-15: This is NOT a bug. The Pawukon has no canonical epoch (Wikipedia: \"cycles are unnumbered, so the calendar has no epoch, and the choice of date on which to base a correspondence is arbitrary\"). Engine uses 1981-08-23 = Wikipedia/Dershowitz Day 1; Peradnya/Rust/TS use 1971-01-24/27 = their Day 1. Both are valid conventions. The 84-day offset is the difference between these two anchor choices. Reclassified from blocking to informational. UPDATED 2026-09-16: Direct execution of pinned Peradnya and Rust releases confirmed the +84-day / +12-wuku reference-minus-Dewata offset on 73,049/73,049 dates from 1900-01-01 through 2099-12-31. This expands the evidence window only; it does not establish customary authority or resolve the pending convention question.",
     "evidence": [
       "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md",
       "/tmp/cross-2026-09.jsonl (30 rows x 4 impls)",
       "/tmp/repos/balinese-date-js-lib/src/internal/Pivot.ts",
-      "/tmp/repos/balinese-calendar/src/utils.rs (PAWUKON_EPOCH_JDN = 2440976)"
+      "/tmp/repos/balinese-calendar/src/utils.rs (PAWUKON_EPOCH_JDN = 2440976)",
+      "phase-1/docs/audit/CROSS_VALIDATION_full_range_1900_2099_2026-09-16.md",
+      "phase-1/evidence/cross-validation/1900-2099/summary.json",
+      "phase-1/tools/full_range_cross_validation/provenance.json"
     ],
     "recorded_at": "2026-09-15T..."
   },
   {
     "id": "DISPUTE-ENGINE-PANCAWARA-OFFSET-1-DAY",
-    "date": "2026-09-01..30 (verified across 30 days)",
+    "date": "1900-01-01..2099-12-31 (verified across 73,049 dates)",
     "date_filed": "2026-09-15",
     "filed_by": "audit (4-implementation cross-validation)",
     "component": "wewaran.pancawara",
@@ -123,10 +126,13 @@
     "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
     "classification": "wewaran_drift",
     "resolution": "pending",
-    "notes": "Engine Pancawara is shifted +1 day vs Peradnya/Rust/TS on all 30 days of September 2026. Cyclic offset (engine - rust) mod 5 = 1 in 30/30 cases. Java is also shifted (same direction as engine). Rust/TS agree with each other (Peradnya is the reference). The Pancawara is computed from pawukon position via `((position - 1) % 5) + 1`; the 1-day shift is consistent with the pawukon epoch offset (engine is 84 days earlier; 84 mod 5 = 4, which means engine is at position-4 of the cycle, i.e. 1 day ahead in the 5-day cycle). Likely same root cause as the pawukon epoch dispute; fixing the epoch should also fix the pancawara.",
+    "notes": "Engine Pancawara is shifted +1 day vs Peradnya/Rust/TS on all 30 days of September 2026. Cyclic offset (engine - rust) mod 5 = 1 in 30/30 cases. Java is also shifted (same direction as engine). Rust/TS agree with each other (Peradnya is the reference). The Pancawara is computed from pawukon position via `((position - 1) % 5) + 1`; the 1-day shift is consistent with the pawukon epoch offset (engine is 84 days earlier; 84 mod 5 = 4, which means engine is at position-4 of the cycle, i.e. 1 day ahead in the 5-day cycle). Likely same root cause as the pawukon epoch dispute; fixing the epoch should also fix the pancawara. UPDATED 2026-09-16: Direct execution of pinned Peradnya and Rust releases confirmed `(Dewata - reference) mod 5 = 1` on 73,049/73,049 dates from 1900-01-01 through 2099-12-31. Applying only the documented +84-day phase normalization produces 73,049/73,049 matches. This does not adjudicate which convention is culturally authoritative, so resolution remains pending.",
     "evidence": [
       "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md",
-      "/tmp/cross-2026-09.jsonl"
+      "/tmp/cross-2026-09.jsonl",
+      "phase-1/docs/audit/CROSS_VALIDATION_full_range_1900_2099_2026-09-16.md",
+      "phase-1/evidence/cross-validation/1900-2099/summary.json",
+      "phase-1/tools/full_range_cross_validation/provenance.json"
     ],
     "recorded_at": "2026-09-15T..."
   },

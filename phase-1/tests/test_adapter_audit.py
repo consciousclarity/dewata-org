@@ -9,11 +9,12 @@ from pathlib import Path
 import pytest
 
 
-EV_DIR = Path("/opt/dw-phase2/phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2")
+PHASE_ROOT = Path(__file__).resolve().parents[1]
+EV_DIR = PHASE_ROOT / "evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2"
 ADAPTER_JSON = EV_DIR / "cycle-comparison/adapter-audit.json"
 CORRECTED_7 = EV_DIR / "cycle-comparison/corrected-seven-date-comparison.csv"
 CORRECTED_210 = EV_DIR / "cycle-comparison/corrected-210day-counts.csv"
-DISPUTES = Path("/opt/dw-phase2/phase-1/docs/runbook/disputes.json")
+DISPUTES = PHASE_ROOT / "docs/runbook/disputes.json"
 
 
 def _str_keys(d):

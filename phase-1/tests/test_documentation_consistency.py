@@ -27,14 +27,13 @@ from pathlib import Path
 import pytest
 
 
-CONFORMANCE = Path("/opt/dw-phase2/phase-1/conformance")
+PHASE_ROOT = Path(__file__).resolve().parents[1]
+CONFORMANCE = PHASE_ROOT / "conformance"
 STATUS_JSON = CONFORMANCE / "STATUS.json"
 STATUS_SCHEMA = CONFORMANCE / "STATUS.schema.md"
 
-EVIDENCE_README = Path("/opt/dw-phase2/phase-1/evidence/README.md")
-WARIGA_DIR = Path(
-    "/opt/dw-phase2/phase-1/evidence/references/balinese-wariga-sources"
-)
+EVIDENCE_README = PHASE_ROOT / "evidence/README.md"
+WARIGA_DIR = PHASE_ROOT / "evidence/references/balinese-wariga-sources"
 WARIGA_MANIFEST = WARIGA_DIR / "MANIFEST.md"
 
 
@@ -205,19 +204,13 @@ def test_no_persistent_tmp_refs_assertions_in_permanent_artifacts():
     mentions are flagged.
     """
     permanent_paths = [
-        "/opt/dw-phase2/phase-1/conformance/STATUS.json",
-        "/opt/dw-phase2/phase-1/conformance/STATUS.schema.md",
-        "/opt/dw-phase2/phase-1/evidence/README.md",
-        "/opt/dw-phase2/phase-1/evidence/references/"
-        "balinese-wariga-sources/MANIFEST.md",
-        "/opt/dw-phase2/phase-1/docs/audit/"
-        "INTEGRATION_GOVERNANCE_EVIDENCE_2026-09-16.md",
-        "/opt/dw-phase2/phase-1/evidence/references/"
-        "balinese-wariga-sources/kemendikbud-hindu-bs-kls-ix/"
-        "minimum-evidence-quotes.md",
-        "/opt/dw-phase2/phase-1/evidence/references/"
-        "balinese-wariga-sources/kemendikbud-hindu-bs-kls-ix/"
-        "pages-37-40-extracted.txt",
+        PHASE_ROOT / "conformance/STATUS.json",
+        PHASE_ROOT / "conformance/STATUS.schema.md",
+        PHASE_ROOT / "evidence/README.md",
+        PHASE_ROOT / "evidence/references/balinese-wariga-sources/MANIFEST.md",
+        PHASE_ROOT / "docs/audit/INTEGRATION_GOVERNANCE_EVIDENCE_2026-09-16.md",
+        PHASE_ROOT / "evidence/references/balinese-wariga-sources/kemendikbud-hindu-bs-kls-ix/minimum-evidence-quotes.md",
+        PHASE_ROOT / "evidence/references/balinese-wariga-sources/kemendikbud-hindu-bs-kls-ix/pages-37-40-extracted.txt",
     ]
     transient_phrases = [
         "scratch space",

@@ -21,8 +21,9 @@ from pathlib import Path
 import pytest
 
 
-EV_DIR = Path("/opt/dw-phase2/phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2")
-STATUS_PATH = Path("/opt/dw-phase2/phase-1/conformance/STATUS.json")
+PHASE_ROOT = Path(__file__).resolve().parents[1]
+EV_DIR = PHASE_ROOT / "evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2"
+STATUS_PATH = PHASE_ROOT / "conformance/STATUS.json"
 
 
 EXPECTED_LICENSE_SHA = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
@@ -138,7 +139,7 @@ def test_calendrica_firstparty_supersedes_calixir():
 def test_license_dispute_resolved():
     """the original license dispute must be superseded and the resolution record
     must record the first-party Apache 2.0 evidence."""
-    disputes = json.loads(Path("/opt/dw-phase2/phase-1/docs/runbook/disputes.json").read_text())
+    disputes = json.loads((PHASE_ROOT / "docs/runbook/disputes.json").read_text())
     by_id = {d.get("id"): d for d in disputes if d.get("id")}
     assert by_id["DISPUTE-reference-reingold-dershowitz-2018-license-classification-2026-09-15"]["resolution"] == "superseded"
     resolution = by_id["DISPUTE-reference-reingold-dershowitz-2018-license-firstparty-resolution-2026-09-15"]

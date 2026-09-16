@@ -3,8 +3,11 @@ import os
 import json
 import pytest
 import hashlib
+from pathlib import Path
 
-EVIDENCE_DIR = "/opt/dw-phase2/phase-1/evidence/references/balinese-wariga-sources"
+PHASE_ROOT = Path(__file__).resolve().parents[1]
+EVIDENCE_DIR = str(PHASE_ROOT / "evidence/references/balinese-wariga-sources")
+STATUS_PATH = PHASE_ROOT / "conformance/STATUS.json"
 
 
 def test_evidence_directory_exists():
@@ -147,8 +150,7 @@ def test_java_functions_extracted():
 
 def test_status_json_includes_wariga_corpora():
     """STATUS.json must include the new Wariga corpora."""
-    status_path = "/opt/dw-phase2/phase-1/conformance/STATUS.json"
-    status = json.load(open(status_path))
+    status = json.load(open(STATUS_PATH))
     corpora = status.get("corpora", {})
     # new entries
     assert "wariga_suparta_ardhana_2006" in corpora
@@ -160,7 +162,7 @@ def test_status_json_includes_wariga_corpora():
 
 def test_wariga_kemendikbud_eligible_with_scope_limitations():
     """Kemendikbud textbook corpus must be ELIGIBLE but with explicit scope limitations."""
-    status = json.load(open("/opt/dw-phase2/phase-1/conformance/STATUS.json"))
+    status = json.load(open(STATUS_PATH))
     corpus = status["corpora"]["wariga_kemendikbud_hindu_bs_kls_ix_2022"]
     assert corpus["verification_status"] == "VERIFIED"
     assert corpus["reference_eligibility"] == "ELIGIBLE"
@@ -173,7 +175,7 @@ def test_wariga_kemendikbud_eligible_with_scope_limitations():
 
 def test_wariga_suparta_ardhana_metadata_only():
     """S1 (Pokok-Pokok Wariga) must remain INELIGIBLE because chapter text not acquired."""
-    status = json.load(open("/opt/dw-phase2/phase-1/conformance/STATUS.json"))
+    status = json.load(open(STATUS_PATH))
     corpus = status["corpora"]["wariga_suparta_ardhana_2006"]
     assert corpus["verification_status"] == "VERIFIED"  # bibliographic only
     assert corpus["reference_eligibility"] == "INELIGIBLE"  # chapter not acquired
