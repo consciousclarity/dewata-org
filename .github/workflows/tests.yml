@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_CACHE_DIR: "1"
+
 concurrency:
   group: tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -33,7 +37,7 @@ jobs:
       # state would not meet this workflow's evidence-integrity boundary.
       - name: Install declared test dependencies
         working-directory: phase-1
-        run: python -m pip install --disable-pip-version-check -e '.[dev]'
+        run: python -m pip install -e '.[dev]'
 
       - name: Retrieve pinned non-vendored LGPL evidence
         shell: bash

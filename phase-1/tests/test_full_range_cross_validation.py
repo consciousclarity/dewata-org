@@ -78,6 +78,10 @@ def test_machine_readable_artifact_hashes():
     assert recorded.keys() == paths.keys()
     for name, path in paths.items():
         assert _sha256(path) == recorded[name]
+    provenance = json.loads((TOOLS / "provenance.json").read_text(encoding="utf-8"))
+    rust_lock = provenance["rust"]["reproduction_dependency_lock"]
+    assert rust_lock["path"] == "phase-1/tools/full_range_cross_validation/rust-Cargo.lock"
+    assert _sha256(TOOLS / "rust-Cargo.lock") == rust_lock["sha256"]
 
 
 def test_raw_and_normalized_artifacts_have_exact_date_bounds():
