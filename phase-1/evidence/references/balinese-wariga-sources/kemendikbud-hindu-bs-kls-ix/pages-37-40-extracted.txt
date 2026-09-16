@@ -1,0 +1,39 @@
+# Kemendikbud Hindu-BS-KLS-IX — superseded by minimum-evidence-quotes.md
+
+This file is intentionally retained as an empty stub to preserve the
+git history of the prior broader extraction.
+
+The broader pages-37-40 extraction (6508 bytes) has been **replaced**
+by the narrower `minimum-evidence-quotes.md` (4251 bytes including
+licensing documentation) per the 2026-09-16 corrective evidence-gate
++ test-integrity pass and the 2026-09-16 documentation consistency
+pass. Per user instruction: "If redistribution rights are unclear,
+keep metadata/SHA-256/page references/only the minimum quotation
+necessary for the evidentiary claim, rather than broad extracted
+text."
+
+The Indonesian Ministry of Education (Kemendikbud) holds copyright
+on this textbook. The book is publicly retrievable at the canonical
+URL but explicit redistribution permission was not identified
+(standard Indonesian government copyright assertion on PDF page 2;
+NOT Creative Commons). Only minimum quotations necessary for
+evidentiary claims are retained.
+
+The canonical evidence record is the committed URL + SHA-256 +
+access date + minimum quotation documented in
+`minimum-evidence-quotes.md`. No durable evidence storage is
+required at any transient path.
+
+All evidentiary claims previously supported by the broader extraction
+remain supported by `minimum-evidence-quotes.md`:
+
+- Pancawara mapping (page 39) — Quote 1 in minimum-evidence-quotes.md
+- Pawukon exceptions (page 40) — Quote 2 in minimum-evidence-quotes.md
+- License status (page 2) — quoted in minimum-evidence-quotes.md
+
+See `phase-1/evidence/references/balinese-wariga-sources/claim-register.md`
+for the claim-by-claim matrix.
+
+Test verification: the `test_wariga_evidence.py` tests that previously
+referenced this file have been updated to reference
+`minimum-evidence-quotes.md` instead.

@@ -1,0 +1,230 @@
+/* Balinese Saka Calendar - extracted Pawukon/Wewaran functions */
+/* */
+/* Evidence header (canonical provenance, post-stabilization 2026-09-16): */
+/*   original author:          Edy Santosa Putra */
+/*   original repository:      https://github.com/edysantosa/sakacalendar */
+/*   pinned upstream commit:   21ff347c0431cb12e02296f76077aa40525da9e0 */
+/*                            (mutable master URLs are NOT canonical; this */
+/*                            pinned commit is the immutable source identity) */
+/*   original source path:     src/main/com/edysantosa/sakacalendar/SakaCalendar.java */
+/*   full source SHA-256:      dda574c4d0434c9fcc35fa60fa700e1ae1f8e7b5eafc88d20346ed93d5687579 */
+/*   full source size:         119709 bytes */
+/*   excerpt status:           function-level excerpt (5940 bytes / 4.96% of full source); */
+/*                            full source NOT in this public repo */
+/*   upstream license:         GNU LGPL 2.1 */
+/*   license file:             LICENSE.LGPL-2.1 (sibling file in this directory) */
+/*                            SHA-256 9b872a8a070b8ad329c4bd380fb1bf0000f564c75023ec8e1e6803f15364b9e9 */
+/* */
+/* The upstream source explicitly cites Pokok-pokok Wariga by */
+/* I.B. Suparta Ardhana and Tenung Wariga / Dasar Wariga by I.B. Putra */
+/* Manik Aryana as its source of truth. This derivative Java */
+/* implementation is NOT an independent attestation of those books. */
+/* */
+/* This excerpt is committed as an excerpt from the LGPL-2.1-licensed */
+/* upstream source; upstream author attribution and license are retained */
+/* in this evidence package (LICENSE.LGPL-2.1 sibling file). The excerpt */
+/* remains subject to the upstream GNU LGPL 2.1 license and is NOT */
+/* re-licensed under any Dewata project license. */
+/* */
+
+public int getWuku(int field){
+
+		long bedaHari = getDateDiff(pivot.getTimeInMillis(),this.getTimeInMillis());
+		int angkaWuku;
+		int uripWuku;
+		int noWuku;
+
+		angkaWuku = (int)(pivot.angkaWuku + bedaHari)%210 ;
+		if (angkaWuku < 0){
+			angkaWuku = 210 - (int)((-(pivot.angkaWuku + bedaHari))%210) ;
+		}
+
+
+	public int getSaptawara(int field){
+
+		int noSaptawara = 0;
+		int uripSaptawara = 5;
+
+		switch (this.get(Calendar.DAY_OF_WEEK)) {
+			case 1: //Redite
+				noSaptawara = 0;
+				uripSaptawara = 5;
+				break;
+			case 2: //Soma
+				noSaptawara = 1;
+				uripSaptawara = 4;
+				break;
+			case 3: //Anggara
+				noSaptawara = 2;
+				uripSaptawara = 3;
+				break;
+			case 4: //Buda
+				noSaptawara = 3;
+				uripSaptawara = 7;
+				break;
+			case 5: //Wrespati
+				noSaptawara = 4;
+				uripSaptawara = 8;
+				break;
+			case 6: //Sukra
+				noSaptawara = 5;
+				uripSaptawara = 6;
+				break;
+			case 7: //Saniscara
+				noSaptawara = 6;
+				uripSaptawara = 9;
+				break;
+			default:
+				break;
+		}
+
+
+	public int getPancawara(int field){
+
+		int noPancawara = (this.getWuku(ANGKA_WUKU) % 5) + 1 ;
+		int uripPancawara;
+
+		// mendapatkan urip pancawara
+		switch (noPancawara) {
+		case 1:
+			uripPancawara = 5;break;
+		case 2:
+			uripPancawara = 9;break;
+		case 3:
+			uripPancawara = 7;break;
+		case 4:
+			uripPancawara = 4;break;
+		case 5:
+			uripPancawara = 8;break;
+		default:
+			uripPancawara = 5;break;
+		}
+
+
+	public int getTriwara(){
+		int noTriwara = this.getWuku(ANGKA_WUKU) % 3;
+		if (noTriwara == 0){noTriwara = 3;}
+		return noTriwara;
+	}
+
+
+	public int getDwiwara(){
+		int noDwiwara = (this.getPancawara(URIP_PANCAWARA) + this.getSaptawara(URIP_SAPTAWARA)) % 2;
+		if (noDwiwara==0){
+			return 1; //Jika habis dibagi 2 maka menga
+		}else{
+			return 2; //Jika tidak habis dibagi 2 maka pepet
+		}		
+
+
+	public int getCaturwara(){
+		int angkaWuku  = this.getWuku(ANGKA_WUKU);
+		int noCaturwara;
+
+		if (angkaWuku == 71 || angkaWuku == 72 || angkaWuku == 73){	
+			noCaturwara = 3;
+		}else if (angkaWuku <= 70){
+			noCaturwara = angkaWuku % 4;
+		}else{
+			noCaturwara = (angkaWuku + 2) % 4;
+		}
+
+
+	public int getSadwara(){
+		int noSadwara = this.getWuku(ANGKA_WUKU) % 6;
+		if (noSadwara == 0){noSadwara = 6;}
+		return noSadwara;		
+	}
+
+
+	public int getAstawara(){
+		int noAstawara;
+		int angkaWuku  = this.getWuku(ANGKA_WUKU);
+		
+		if (angkaWuku == 71 || angkaWuku == 72 || angkaWuku == 73){	
+			noAstawara = 7;
+		}else if (angkaWuku <= 70){
+			noAstawara = angkaWuku % 8;
+		}else{
+			noAstawara = (angkaWuku + 6) % 8;
+		}
+
+
+	public int getSangawara(){
+		int noSangawara;
+		int angkaWuku  = this.getWuku(ANGKA_WUKU);	
+
+		if (angkaWuku <= 4){
+			noSangawara = 1 ;
+		}else{
+			noSangawara = (angkaWuku + 6) % 9;
+		}
+
+
+	public int getDasawara(){
+		return (((this.getPancawara(URIP_PANCAWARA) + this.getSaptawara(URIP_SAPTAWARA)) % 10)+1);
+	}
+
+
+
+
+/* ===== Jaya Tiga documentation ===== */
+	 * Ini terjadi karena ada hitungan pengecualian yang dikenal dengan istilah Jaya Tiga
+	 * dimulai dari hari Redite wuku Dungulan hingga Angkara wuku Dungulan,
+	 * jadi pada hari Coma dan Anggara wuku Dungulan adalah pengecualian.</p>
+	 *
+	 * <p>Rumus pertama nomor wuku dikali 7 ditambah 2 ditambah nomor Sapta Wara dibagi 4;
+	 * dan rumus kedua Wuku dikali 7 ditambah nomor Sapta Wara di bagi 4.
+	 * Apabila sisa pembagian berjumlah 1 artinya Sri, sisa 2 Laba,  sisa 3 Jaya, dan jika habis terbagi terhitung Menala.</p>
+	 *
+	 * <p><em>Contoh. </em> (Berlaku dari Redite wuku Shinta hingga Redite wuku Dungulan / rumus pertama)
+	 * Wuku Dungulan = 11, dan Sapta Wara Redite = 0. Maka 11 x 7 + 2 + 0 : 4 = 19 sisa 3.
+	 * Jadi pada wuku Dungulan hari (wara) Redite, Catur Waranya adalah Jaya.</p>
+	 *
+	 * <p><em>Contoh 2. </em> (berlaku dari Budha wuku Dungulan hingga Saniscara wuku Watugunung / rumus kedua)
+	 * Wuku Langkir = 13 ; Spta Wara Sukra = 5. Maka 13 x 7 + 5 : 4 = 24 tanpa sisa (0).
+	 * Jadi Catur Wara dalam wuku Langkir, hari (wara) Sukra adalah Mandala.</p>
+	 *
+	 * <p>Pada fungsi ini, dengan menggunakan angkaWuku perhitungan
+	 * rumus pertama menjadi <code>(angkaWuku + 2) mod 4</code>,
+	 * rumus kedua (jika angka wuku <= 70) menjadi <code>angkaWuku mod 4</code>, dan untuk Jaya Tiga pada angka wuku [71,72,73]</p>
+	 *
+	 * <table cellpadding="0" cellspacing="3" border="0"
+	 *        summary="Catur Wara"
+	 *        style="text-align: left; width: 66%;">
+	 *     <tbody>
+	 *         <tr>
+	 *             <th style="vertical-align: top; background-color: rgb(204, 204, 255);
+	 *           text-align: center;">No Catur Wara</th>
+	 *             <th style="vertical-align: top; background-color: rgb(204, 204, 255);
+	 *           text-align: center;">Catur Wara</th>
+	 *             <th style="vertical-align: top; background-color: rgb(204, 204, 255);
+	 *           text-align: center;">Neptu/Urip</th>
+	 *         </tr>
+	 *         <tr>
+	 *             <td style="text-align: center;">1</td>
+	 *             <td>Sri</td>
+	 *             <td style="text-align: center;">4</td>
+	 *         </tr>
+	 *         <tr>
+	 *             <td style="text-align: center;">2</td>
+	 *             <td>Laba</td>
+	 *             <td style="text-align: center;">5</td>
+	 *         </tr>
+	 *         <tr>
+	 *             <td style="text-align: center;">3</td>
+	 *             <td>Jaya</td>
+	 *             <td style="text-align: center;">9</td>
+	 *         </tr>
+	 *         <tr>
+	 *             <td style="text-align: center;">4</td>
+	 *             <td>Mandala</td>
+	 *             <td style="text-align: center;">7</td>
+	 *         </tr>
+	 *     </tbody>
+	 * </table>
+	 *
+	 * @return noCaturwara.
+	 */
+
+

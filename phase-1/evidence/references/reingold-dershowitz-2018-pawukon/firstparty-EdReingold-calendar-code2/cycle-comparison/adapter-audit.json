@@ -1,0 +1,441 @@
+{
+  "schema_version": "1.0",
+  "calendrica": {
+    "repository": "EdReingold/calendar-code2",
+    "commit_sha": "9afc1f3277b839db1a70c2350d6c708ac83df78f",
+    "source_sha256": "642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484",
+    "license": "Apache License 2.0",
+    "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "mapping_source": "verified by runtime probes + 7-date cultural cross-check",
+    "mappings": {
+      "Pancawara": {
+        "domain": [
+          1,
+          5
+        ],
+        "name_by_index": {
+          "1": "Umanis",
+          "2": "Paing",
+          "3": "Pon",
+          "4": "Wage",
+          "5": "Kliwon"
+        }
+      },
+      "Saptawara": {
+        "domain": [
+          1,
+          7
+        ],
+        "name_by_index": {
+          "1": "Redite",
+          "2": "Soma",
+          "3": "Anggara",
+          "4": "Buda",
+          "5": "Wraspati",
+          "6": "Sukra",
+          "7": "Saniscara"
+        }
+      },
+      "Triwara": {
+        "domain": [
+          1,
+          3
+        ],
+        "name_by_index": {
+          "1": "Pasah",
+          "2": "Beteng",
+          "3": "Kajeng"
+        }
+      },
+      "Sadwara": {
+        "domain": [
+          1,
+          6
+        ],
+        "name_by_index": {
+          "1": "Tungleh",
+          "2": "Aryang",
+          "3": "Urukung",
+          "4": "Paniron",
+          "5": "Was",
+          "6": "Maulu"
+        }
+      },
+      "Caturwara": {
+        "domain": [
+          1,
+          4
+        ],
+        "name_by_index": {
+          "1": "Sri",
+          "2": "Laba",
+          "3": "Jaya",
+          "4": "Menala"
+        }
+      },
+      "Asatawara": {
+        "domain": [
+          1,
+          8
+        ],
+        "name_by_index": {
+          "1": "Sri",
+          "2": "Indra",
+          "3": "Guru",
+          "4": "Yama",
+          "5": "Ludra",
+          "6": "Brahma",
+          "7": "Kala",
+          "8": "Uma"
+        }
+      },
+      "Sangawara": {
+        "domain": [
+          1,
+          9
+        ],
+        "name_by_index": {
+          "1": "Dangu",
+          "2": "Jangur",
+          "3": "Gigis",
+          "4": "Nohan",
+          "5": "Ogan",
+          "6": "Erangan",
+          "7": "Urungan",
+          "8": "Tulus",
+          "9": "Dadi"
+        }
+      },
+      "Dasawara": {
+        "domain": [
+          0,
+          9
+        ],
+        "name_by_index": {
+          "0": "Raksasa",
+          "1": "Pandita",
+          "2": "Pati",
+          "3": "Suka",
+          "4": "Duka",
+          "5": "Sri",
+          "6": "Manuh",
+          "7": "Manusa",
+          "8": "Eraja",
+          "9": "Dewa"
+        }
+      },
+      "Dwiwara": {
+        "domain": [
+          1,
+          2
+        ],
+        "name_by_index": {
+          "1": "Menga",
+          "2": "Pepet"
+        }
+      },
+      "Luang": {
+        "semantics": "T = (evenp dasawara); F = (oddp dasawara)",
+        "BASAbali_agrees": false
+      }
+    }
+  },
+  "dewata": {
+    "engine_commit": "5d8e7a1e4c4a6dbea809cbab5c8f0da9e0d97b6b",
+    "mapping_source": "from /opt/dw-phase2/phase-1/src/dewatacalendar/wewaran.py source code",
+    "mappings": {
+      "Pancawara": {
+        "domain": [
+          1,
+          5
+        ],
+        "name_by_index": {
+          "1": "Paing",
+          "2": "Pon",
+          "3": "Wage",
+          "4": "Keliwon",
+          "5": "Umanis"
+        }
+      },
+      "Saptawara": {
+        "domain": [
+          1,
+          7
+        ],
+        "name_by_index": {
+          "1": "Redite",
+          "2": "Soma",
+          "3": "Anggara",
+          "4": "Buda",
+          "5": "Wraspati",
+          "6": "Sukra",
+          "7": "Saniscara"
+        }
+      },
+      "Triwara": {
+        "domain": [
+          1,
+          3
+        ],
+        "name_by_index": {
+          "1": "Pasah",
+          "2": "Beteng",
+          "3": "Kajeng"
+        }
+      },
+      "Sadwara": {
+        "domain": [
+          1,
+          6
+        ],
+        "name_by_index": {
+          "1": "Tungleh",
+          "2": "Aryang",
+          "3": "Urukung",
+          "4": "Paniron",
+          "5": "Was",
+          "6": "Maulu"
+        }
+      },
+      "Caturwara": {
+        "domain": [
+          1,
+          4
+        ],
+        "name_by_index": {
+          "1": "Sri",
+          "2": "Laba",
+          "3": "Jaya",
+          "4": "Menala"
+        }
+      },
+      "Asatawara": {
+        "domain": [
+          1,
+          8
+        ],
+        "name_by_index": {
+          "1": "Sri",
+          "2": "Indra",
+          "3": "Guru",
+          "4": "Yama",
+          "5": "Ludra",
+          "6": "Brahma",
+          "7": "Kala",
+          "8": "Uma"
+        }
+      },
+      "Sangawara": {
+        "domain": [
+          1,
+          9
+        ],
+        "name_by_index": {
+          "1": "Dangu",
+          "2": "Jangur",
+          "3": "Gigis",
+          "4": "Nohan",
+          "5": "Ogan",
+          "6": "Erangan",
+          "7": "Urungan",
+          "8": "Tulus",
+          "9": "Dadi"
+        }
+      },
+      "Dasawara": {
+        "domain": [
+          1,
+          10
+        ],
+        "name_by_index": {
+          "1": "Sri",
+          "2": "Patra",
+          "3": "Pade",
+          "4": "Suka",
+          "5": "Duka",
+          "6": "Sri",
+          "7": "Manuh",
+          "8": "Pati",
+          "9": "Pujut",
+          "10": "Kala"
+        }
+      },
+      "Dwiwara": {
+        "domain": [
+          1,
+          2
+        ],
+        "name_by_index": {
+          "1": "Menga",
+          "2": "Pepet"
+        }
+      },
+      "Luang": {
+        "semantics": "ekawara_present = (urip_sum % 2 == 1)",
+        "BASAbali_agrees": true
+      }
+    }
+  },
+  "cultural_reference": {
+    "source": "kb.org (Kalender Bali Digital)",
+    "author_attribution": "KBD (I Wayan Nuarsa, Univ Udayana, Kemenkumham RI No. C00201000668)",
+    "URL_pattern": "https://kalenderbali.org/?bl={month}&tg={day}&th={year}",
+    "mapping_source": "page title format: 'Kalender Bali Digital - {date} ({Saptawara} {Pancawara} {Wuku})'",
+    "mappings": {
+      "Pancawara": {
+        "name_order": [
+          "Umanis",
+          "Paing",
+          "Pon",
+          "Wage",
+          "Kliwon"
+        ],
+        "index_1": "Umanis"
+      },
+      "Saptawara": {
+        "name_order": [
+          "Redite",
+          "Soma",
+          "Anggara",
+          "Buda",
+          "Wraspati",
+          "Sukra",
+          "Saniscara"
+        ],
+        "index_1": "Redite"
+      },
+      "Caturwara": {
+        "name_order": [
+          "Sri",
+          "Laba",
+          "Jaya",
+          "Menala"
+        ],
+        "index_1": "Sri"
+      },
+      "Asatawara": {
+        "name_order": [
+          "Sri",
+          "Indra",
+          "Guru",
+          "Yama",
+          "Ludra",
+          "Brahma",
+          "Kala",
+          "Uma"
+        ],
+        "index_1": "Sri"
+      },
+      "Sangawara": {
+        "name_order": [
+          "Dangu",
+          "Jangur",
+          "Gigis",
+          "Nohan",
+          "Ogan",
+          "Erangan",
+          "Urungan",
+          "Tulus",
+          "Dadi"
+        ],
+        "index_1": "Dangu"
+      },
+      "Dasawara": {
+        "name_order": [
+          "Raksasa",
+          "Pandita",
+          "Pati",
+          "Suka",
+          "Duka",
+          "Sri",
+          "Manuh",
+          "Manusa",
+          "Eraja",
+          "Dewa"
+        ],
+        "index_0": "Raksasa"
+      }
+    },
+    "convention_matches_calendrica": true,
+    "convention_matches_dewata_pancawara": false,
+    "de_pancawara_diff": "DEW uses convention A (1=Paing); cultural convention is B (1=Umanis). Shift = +1 in DEW's list."
+  },
+  "basabubali_org": {
+    "URL": "https://basaibubali.org/{Wewaran}",
+    "type": "community-curated Balinese dictionary (not primary academic source)",
+    "mappings": {
+      "Pancawara": {
+        "formula": "(bilangan uku * 7 + bilangan Saptawara) / 5",
+        "remainder_to_name": {
+          "1": "Umanis",
+          "2": "Pahing",
+          "3": "Pon",
+          "4": "Wage",
+          "5": "Kliwon"
+        }
+      },
+      "Saptawara": "(no formula on page; standard mapping implied)",
+      "Caturwara": {
+        "formula": "(bilangan uku * 7 + bilangan saptawara) / 4",
+        "remainder_to_name": {
+          "1": "Sri",
+          "2": "Laba",
+          "3": "Jaya",
+          "0": "Menala"
+        }
+      },
+      "Asatawara": "(page empty: 'There is currently no text in this page')",
+      "Sangawara": {
+        "formula": "(bilangan uku * 7 + bilangan Saptawara) / 9",
+        "remainder_to_name": {
+          "1": "Dangu",
+          "2": "Jangur",
+          "3": "Gigis",
+          "4": "Nohan",
+          "5": "Ogan",
+          "6": "Erangan",
+          "7": "Urungan",
+          "8": "Tulus",
+          "0": "Dadi"
+        }
+      },
+      "Dasawara": {
+        "formula": "(urip Pancawara + urip Saptawara + 1) / 10",
+        "remainder_to_name": {
+          "1": "Pandita",
+          "2": "Pati",
+          "3": "Suka",
+          "4": "Duka",
+          "5": "Sri",
+          "6": "Manuh",
+          "7": "Manusa",
+          "8": "Eraja",
+          "9": "Dewa",
+          "0": "Raksasa"
+        }
+      },
+      "Dwiwara": {
+        "formula": "urip Pancawara + urip Saptawara",
+        "rule": "odd = Pepet; even = Menga"
+      },
+      "Ekawara": {
+        "rule": "urip Pancawara + urip Saptawara",
+        "details": "odd = Luang; even = empty"
+      }
+    },
+    "structural_approach": "simple modular arithmetic; no before/after-Dungulan offsets; no joint Caturwara/Astawara treatment; no exception rules",
+    "supports_special_case_structure": false
+  },
+  "spelling_variants": {
+    "Kliwon_Keliwon": "same word, different orthography (Kliwon is more common in modern Bali; Keliwon used in some scholarly texts)",
+    "Wraspati_Wrespati": "same word",
+    "REDITE_Radite": "occasional variant; Redite is standard",
+    "Menala_Mandala": "occasional variant; Menala is standard for Caturwara"
+  },
+  "calendrica_l_semantics": {
+    "Luang": "CAL: bali-luang-from-fixed = evenp(dasawara)",
+    "Luang_basabubali": "BASAbali: odd urip_sum = Luang; even = empty",
+    "Luang_dewata": "Dewata: ekawara_present = (urip_sum % 2 == 1) -- matches BASAbali",
+    "agreement": "BASAbali and Dewata agree; CAL disagrees (opposite parity convention)"
+  }
+}

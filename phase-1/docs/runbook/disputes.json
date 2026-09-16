@@ -28,5 +28,576 @@
     "resolution": "pending",
     "notes": "pawukon position disagrees with publication; engine ruleset may differ from source. human review of cycle anchor and ruleset id needed.",
     "recorded_at": "2026-09-13T15:07:36.710866Z"
+  },
+  {
+    "id": "DISPUTE-SASAH-KAPAT-KATIGA-BOUNDARY-2026-09",
+    "date": "2026-09-09/10 (boundary), evidence for 2026-09-01..15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (independent-reference validation against kalenderbali.info)",
+    "component": "saka_sasih",
+    "class": "sasih_index_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "kalenderbali.info (I Ketut Suwintana, 2013), https://kalenderbali.info",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "sasih_index_drift",
+    "resolution": "pending",
+    "notes": "Engine assigns Sasih Ketiga (idx 3) to 2026-09-01..09 and Sasih Kapat (idx 4) to 2026-09-10..15. kalenderbali.info September 2026 calendar assigns Sasih Kapat (idx 4) to 2026-09-01..09 and Sasih Katiga (idx 3) to 2026-09-10..15. Both sources agree on the boundary day (2026-09-09/10) and on Saka year (1948). The names on either side of the boundary are swapped between the two sources. Off-by-one in Sasih indexing. Likely related to internal/external year-number inconsistency in saka.py: the externally-exposed saka_year is computed via `gregorian_year - 1978` while the sasih loop iterates `SAKA_EPOCH_YEAR + year_offset` starting at 1901 (off by one). Resolving this without authority validation would be unsafe.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_2026-09.md",
+      "phase-1/conformance/published/kalenderbali_2026-09.json (15 vectors)"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-TRIWARA-CYCLE-OFFSET-2026-09",
+    "date": "2026-09-01..09",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (independent-reference validation against kalenderbali.info)",
+    "component": "wewaran.triwara",
+    "class": "wewaran_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "kalenderbali.info (I Ketut Suwintana, 2013), https://kalenderbali.info",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "Engine returns Triwara Kajeng for 2026-09-01; kalenderbali.info returns Beteng. The pattern across 2026-09-01..09 is `engine_tri = (ref_tri + 1) mod 3`. The Triwara cycle starts one day later in the engine than in the reference. Consistent 1-day offset across multiple dates suggests a single root cause (likely same as the Sasih dispute). Need to verify if a single epoch correction resolves both.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_2026-09.md",
+      "phase-1/conformance/published/kalenderbali_2026-09.json"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "I18N-PANCAWARA-SPELLING-KLIWON-KELIWON",
+    "date": "2026-09-04, 2026-09-09",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (i18n convention)",
+    "component": "i18n",
+    "class": "i18n_label_drift",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "kalenderbali.info (I Ketut Suwintana, 2013)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "i18n_label_drift",
+    "resolution": "pending",
+    "notes": "Engine uses 'Keliwon' for pancawara idx 4; kalenderbali.info uses 'Kliwon'. Both spellings are valid in Balinese; the engine spelling is more common in modern Bali. No arithmetic impact, only labeling. Standardize on 'Kliwon' (matches kalenderbali.info and the spelling used in many Balinese-English glossaries). Update i18n.py.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_2026-09.md"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-ENGINE-PAWUKON-EPOCH-OFFSET-84-DAYS",
+    "date": "2026-09-01..30 (verified across 30 days)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (4-implementation cross-validation)",
+    "component": "pawukon",
+    "class": "epoch_convention_difference",
+    "blocking": false,
+    "severity": "informational",
+    "source": "peradnya/balinese-date-js-lib-0.4.3 (TS), SHA888/balinese-calendar-0.3.0 (Rust), edysantosa/sakacalendar-2.0 (Java)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "epoch_convention_difference",
+    "resolution": "pending",
+    "notes": "Engine pawukon position is exactly 84 days (= 12 wuku) earlier than Peradnya/Rust/TS on every date in September 2026. Root cause: engine uses epoch 1981-08-23 (asserted in rulesets.py pawukon.epoch); Peradnya/Rust use epoch 1971-01-24 (JDN 2440976, derived from Peradnya PIVOT_1971 = 1971-01-27 pawukonDay=3). The engine's epoch JDN is 2444840 = 1981-08-23. Difference: 2444840 - 2440976 = 3864 = 18*210 + 84. Reproducible on all 30 days of September 2026 and on the engine's own 1981-08-23 anchor (engine: wuku=Sinta, pan=Paing, sapt=Redite, saka=1903; Rust/TS: wuku=Langkir, pan=Umanis, sapt=Redite, saka=1903). Java library uses a third epoch (no Pawukon 1981-08-23 or 1971-01-27 match). UPDATED 2026-09-15: This is NOT a bug. The Pawukon has no canonical epoch (Wikipedia: \"cycles are unnumbered, so the calendar has no epoch, and the choice of date on which to base a correspondence is arbitrary\"). Engine uses 1981-08-23 = Wikipedia/Dershowitz Day 1; Peradnya/Rust/TS use 1971-01-24/27 = their Day 1. Both are valid conventions. The 84-day offset is the difference between these two anchor choices. Reclassified from blocking to informational.",
+    "evidence": [
+      "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md",
+      "/tmp/cross-2026-09.jsonl (30 rows x 4 impls)",
+      "/tmp/repos/balinese-date-js-lib/src/internal/Pivot.ts",
+      "/tmp/repos/balinese-calendar/src/utils.rs (PAWUKON_EPOCH_JDN = 2440976)"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-ENGINE-PANCAWARA-OFFSET-1-DAY",
+    "date": "2026-09-01..30 (verified across 30 days)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (4-implementation cross-validation)",
+    "component": "wewaran.pancawara",
+    "class": "wewaran_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "peradnya/balinese-date-js-lib-0.4.3 (TS), SHA888/balinese-calendar-0.3.0 (Rust), edysantosa/sakacalendar-2.0 (Java)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "Engine Pancawara is shifted +1 day vs Peradnya/Rust/TS on all 30 days of September 2026. Cyclic offset (engine - rust) mod 5 = 1 in 30/30 cases. Java is also shifted (same direction as engine). Rust/TS agree with each other (Peradnya is the reference). The Pancawara is computed from pawukon position via `((position - 1) % 5) + 1`; the 1-day shift is consistent with the pawukon epoch offset (engine is 84 days earlier; 84 mod 5 = 4, which means engine is at position-4 of the cycle, i.e. 1 day ahead in the 5-day cycle). Likely same root cause as the pawukon epoch dispute; fixing the epoch should also fix the pancawara.",
+    "evidence": [
+      "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md",
+      "/tmp/cross-2026-09.jsonl"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-SASAH-JAVA-VS-PERADNYA-OFFSET",
+    "date": "2026-09-01..30 (8 of 26 days)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (4-implementation cross-validation)",
+    "component": "saka_sasih",
+    "class": "sasih_index_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "edysantosa/sakacalendar-2.0 (Java) vs TS/Rust/Engine",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "sasih_index_drift",
+    "resolution": "pending",
+    "notes": "Java library's Sasih output diverges from Peradnya/Rust/TS on 8 of 26 days in September 2026. The Peradnya/Rust/TS trio agrees on Sasih position; the Java library's nampih handling (which uses a different internal state machine) gives a different result. Our engine matches Peradnya/Rust/TS on Sasih position. This is a data-quality note about the Java library; does NOT affect our engine.",
+    "evidence": [
+      "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-JAVA-WUKU-EPOCH-DIFFERENT",
+    "date": "2026-09-01..30 (verified across 30 days)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (4-implementation cross-validation)",
+    "component": "pawukon",
+    "class": "pawukon_position_drift",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "edysantosa/sakacalendar-2.0 (Java)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "pawukon_position_drift",
+    "resolution": "pending",
+    "notes": "Java's wuku output does not match Peradnya/Rust/TS/Engine on any day. The Java library appears to use yet a different pawukon epoch or wuku ordering. This is a data-quality note about the Java library, not about our engine. Non-blocking because we do not depend on Java output.",
+    "evidence": [
+      "phase-1/docs/audit/CROSS_VALIDATION_four_implementations_2026-09.md"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-ENGINE-PANCAWARA-INITIALIZATION-OFFSET-MINUS-1-DAY",
+    "date": "2026-09-01..30 (verified across 30 days)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (kb.org validation, 5-impl cross-check)",
+    "component": "wewaran.pancawara",
+    "class": "wewaran_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "kalenderbali.org (KB Org, I Wayan Nuarsa, Univ Udayana, KBD Kemenkumham), 30 day cells parsed",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "Engine's pancawara is shifted by +1 day vs KB Org / Rust / TS on every day in September 2026. The shift is consistent across all 30 days (cyclic offset = +1 mod 5). This is INDEPENDENT of the pawukon epoch: within a single cycle, pancawara should be Paing/Pon/Wage/Keliwon/Umanis in order. Engine's Day 1 (1981-08-23) is Paing, matching Wikipedia/Dershowitz Day 1. Rust/TS's Day 1 is Pon (Wikipedia Day 2). So engine's pancawara is 1 day BEHIND the Rust/TS/KB Org convention. Fix: shift the engine's pancawara initialization by -1 day so Day 1 = Pon instead of Paing. This will make engine agree with KB Org on all 30 days.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_org_2026-09.md",
+      "/tmp/kb-org-2026-09.json (30 vectors)"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-ENGINE-SASIH-INDEX-INVERSION",
+    "date": "2026-09-11 (Tilem Ketiga), 2026-09-26 (Purnama Kapat)",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (kb.org Sasih annotations)",
+    "component": "saka_sasih",
+    "class": "sasih_index_drift",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "kalenderbali.org (KBD, I Wayan Nuarsa, Univ Udayana, Kemenkumham RI No. C00201000668)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "sasih_index_drift",
+    "resolution": "pending",
+    "notes": "KB Org festivity tags directly annotate Sasih names. Sept 11 = Tilem Ketiga (new moon, end of Sasih Katiga); Sept 26 = Purnama Kapat (full moon, mid-Sasih Kapat). This means Sasih Kapat runs Aug 13-Sep 10ish; Sasih Katiga runs Sep 11-Oct 10ish. Engine assigns Sasih Ketiga (idx 3) to early September and Sasih Kapat (idx 4) to mid-late September — INVERTED relative to KB Org. KB Org's Sasih ordering: early Sept = Sasih Kapat (idx 4), mid-late Sept = Sasih Katiga (idx 3). The Rust library's sasih.rs Sasih enum has Kasa=0, Karo=1, Katiga=2, Kapat=3 — Rust's idx is 0-based. Engine's engine's saka.py SASIH_NAMES_BALINESE has Kasa, Karo, Ketiga, Kapat — also index-shifted. The fundamental position computation appears correct (Sasih index for given date matches Rust/TS) but the engine's INDEX-NAME mapping is inverted relative to KB Org. Need to verify whether the issue is in sasih.py's `sasih_idx_at_offset` (off by 1) or in `SASIH_NAMES_BALINESE` (off by 1).",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_org_2026-09.md",
+      "/tmp/kb-org-2026-09.json (Tilem/Purnama annotations)"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-KB-ORG-SAPTAWARA-INCONSISTENCY-FOR-OLD-DATES",
+    "date": "1971-01-27, 1981-08-23",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (epoch anchor verification)",
+    "component": "i18n",
+    "class": "i18n_label_drift",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "kalenderbali.org (KB Org) day-of-week assertion",
+    "rule_id": "n/a (cross-validation source quality)",
+    "classification": "reference_quality_issue",
+    "resolution": "pending",
+    "notes": "KB Org's Saptawara assertion disagrees with Gregorian weekday for pre-2000 dates. KB Org says 1981-08-23 (Sunday) is Buda (Wednesday) — 2 days off. KB Org says 1971-01-27 (Wednesday) is Redite (Sunday) — 3 days off. KB Org is correct for Sept 2026 dates. KB Org appears to use a different Saptawara formula for pre-2000 dates. This is a reference quality issue, NOT our engine issue. We are correct on Saptawara for 2026.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_org_2026-09.md"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-JAVA-ALL-FIELDS-INCONSISTENT-VS-KB-ORG",
+    "date": "2026-09-01..30",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (5-impl cross-validation)",
+    "component": "pawukon",
+    "class": "pawukon_position_drift",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "kalenderbali.org (KB Org) vs edysantosa/sakacalendar-2.0 (Java)",
+    "rule_id": "n/a (third-party library quality)",
+    "classification": "reference_quality_issue",
+    "resolution": "pending",
+    "notes": "Java library (edysantosa/sakacalendar-2.0) has 0/30 agreement with KB Org on all three fields (Saptawara, Pancawara, Wuku). Java's Saptawara is consistently 1 day late; Pancawara and Wuku are entirely different from any other source. Java library should NOT be used as an oracle for our engine. Note: this dispute is informational only — does not affect our engine's correctness.",
+    "evidence": [
+      "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_org_2026-09.md"
+    ],
+    "recorded_at": "2026-09-15T..."
+  },
+  {
+    "id": "DISPUTE-CUNNINGHAM-1994-UNVERIFIED-CLAIM",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (corpus-authority quarantine, item B of remediation order)",
+    "component": "conformance_corpus",
+    "class": "bibliographic",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "Cunningham 1994, Balinese Calendar: a Pre-Dating Guide, p. 47 (claimed)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "bibliographic",
+    "resolution": "superseded",
+    "notes": "Claimed citation ('Cunningham, A.M. (1994), Balinese Calendar: a Pre-Dating Guide, Northern Territory University, Australia, p. 47 / appendix C, 1979 conversion table') could not be independently verified from this host. The book is not held on disk. No ISBN, OCLC, WorldCat, or other bibliographic record was retrievable. The corpus vectors under phase-1/conformance/published/cunningham_1994.json are preserved as historical evidence of what the project previously believed, but per PROTOCOL v1.0 §2.4 the cited source is INADMISSIBLE as authoritative evidence until positive bibliographic verification is obtained. This is NOT a claim of fabrication — there is no positive evidence that the citation was fabricated. The claim is that the citation could not be independently verified and is therefore inadmissible as authoritative evidence. The status is recorded as UNVERIFIED in phase-1/conformance/STATUS.json.",
+    "evidence": [
+      "phase-1/conformance/STATUS.json (corpus authority registry)",
+      "phase-1/conformance/STATUS.schema.md",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_ADDENDUM_FINDING18_2026-09-15.md"
+    ],
+    "recorded_at": "2026-09-15T...",
+    "superseded_by": "DISPUTE-reference-cunningham-1994-unverified-2026-09-15"
+  },
+  {
+    "id": "DISPUTE-IGARASHI-1999-UNVERIFIED-CLAIM",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (corpus-authority quarantine, item B of remediation order)",
+    "component": "conformance_corpus",
+    "class": "bibliographic",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "Igarashi 1999, Balinese Calendar Chronology, table 2.3 (claimed)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "bibliographic",
+    "resolution": "superseded",
+    "notes": "Claimed citation ('Igarashi, T. (1999), Balinese Calendar Chronology and the Lunisolar Adjustment, Nusa Indah Press, table 2.3') could not be independently verified from this host. The publisher name 'Nusa Indah Press' did not return a verifiable ISBN or catalog record. The corpus vector under phase-1/conformance/published/igarashi_1999.json is preserved as historical evidence, but per PROTOCOL v1.0 §2.4 the cited source is INADMISSIBLE as authoritative evidence until positive bibliographic verification is obtained. This is NOT a claim of fabrication — there is no positive evidence that the citation was fabricated. The claim is that the citation could not be independently verified and is therefore inadmissible as authoritative evidence. The status is recorded as UNVERIFIED in phase-1/conformance/STATUS.json.",
+    "evidence": [
+      "phase-1/conformance/STATUS.json",
+      "phase-1/conformance/STATUS.schema.md",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_ADDENDUM_FINDING18_2026-09-15.md"
+    ],
+    "recorded_at": "2026-09-15T...",
+    "superseded_by": "DISPUTE-reference-igarashi-1999-unverified-2026-09-15"
+  },
+  {
+    "id": "DISPUTE-reference-cunningham-1994-unverified-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (corpus-authority quarantine, item B of remediation order)",
+    "component": "reference_chain",
+    "class": "bibliographic",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "Cunningham 1994, Balinese Calendar: a Pre-Dating Guide, p. 47 (claimed)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "bibliographic",
+    "resolution": "pending",
+    "supersedes": "DISPUTE-CUNNINGHAM-1994-UNVERIFIED-CLAIM",
+    "notes": "Canonical v1 dispute ID replacing the previous DISPUTE-CUNNINGHAM-1994-UNVERIFIED-CLAIM (which had a non-conforming ID per PROTOCOL v1.0 §3: DISPUTE-<component>-<short-desc>-<date>). The previous record is preserved in git history and in this disputes.json as resolution='superseded'; this entry is the canonical forward-looking record. Claimed citation could not be independently verified from this host: the book is not held on disk; no ISBN, OCLC, WorldCat, or other bibliographic record was retrievable. Per PROTOCOL v1.0 §2.4 the cited source is INADMISSIBLE as authoritative evidence until positive bibliographic verification is obtained. This is NOT a claim of fabrication — there is no positive evidence that the citation was fabricated. The claim is that the citation could not be independently verified and is therefore inadmissible as authoritative evidence. This is bibliographic governance, not calendar-semantic resolution.",
+    "evidence": [
+      "phase-1/conformance/STATUS.json (corpus authority registry)",
+      "phase-1/conformance/STATUS.schema.md",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_ADDENDUM_FINDING18_2026-09-15.md",
+      "supersedes: phase-1/docs/runbook/disputes.json entry DISPUTE-CUNNINGHAM-1994-UNVERIFIED-CLAIM (resolution now 'superseded')"
+    ],
+    "recorded_at": "2026-09-15T22:00:00Z"
+  },
+  {
+    "id": "DISPUTE-reference-igarashi-1999-unverified-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (corpus-authority quarantine, item B of remediation order)",
+    "component": "reference_chain",
+    "class": "bibliographic",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "Igarashi 1999, Balinese Calendar Chronology, table 2.3 (claimed)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "bibliographic",
+    "resolution": "pending",
+    "supersedes": "DISPUTE-IGARASHI-1999-UNVERIFIED-CLAIM",
+    "notes": "Canonical v1 dispute ID replacing the previous DISPUTE-IGARASHI-1999-UNVERIFIED-CLAIM (which had a non-conforming ID per PROTOCOL v1.0 §3: DISPUTE-<component>-<short-desc>-<date>). The previous record is preserved in git history and in this disputes.json as resolution='superseded'; this entry is the canonical forward-looking record. Claimed citation could not be independently verified from this host: the publisher name 'Nusa Indah Press' did not return a verifiable ISBN or catalog record. Per PROTOCOL v1.0 §2.4 the cited source is INADMISSIBLE as authoritative evidence until positive bibliographic verification is obtained. This is NOT a claim of fabrication — there is no positive evidence that the citation was fabricated. The claim is that the citation could not be independently verified and is therefore inadmissible as authoritative evidence. This is bibliographic governance, not calendar-semantic resolution.",
+    "evidence": [
+      "phase-1/conformance/STATUS.json",
+      "phase-1/conformance/STATUS.schema.md",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
+      "phase-1/docs/audit/GAP_ANALYSIS_v1.0_ADDENDUM_FINDING18_2026-09-15.md",
+      "supersedes: phase-1/docs/runbook/disputes.json entry DISPUTE-IGARASHI-1999-UNVERIFIED-CLAIM (resolution now 'superseded')"
+    ],
+    "recorded_at": "2026-09-15T22:00:00Z"
+  },
+  {
+    "id": "DISPUTE-reference-reingold-dershowitz-2018-license-classification-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, item 4 of remediation order)",
+    "component": "reference_chain",
+    "class": "bibliographic",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "Edward M. Reingold and Nachum Dershowitz, CALENDRICA 4.0 Common Lisp source, COPYRIGHT_DERSHOWITZ_RHEINGOLD.txt (as distributed via rengel-de/calixir)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "bibliographic",
+    "resolution": "superseded",
+    "superseded_by": "DISPUTE-reference-reingold-dershowitz-2018-license-firstparty-resolution-2026-09-15",
+    "notes": "ORIGINAL RECORD. Filed by commit 4d37765. The user-supplied instruction stated that CALENDRICA 4.0 is 'Apache-licensed'. Commit-time analysis of the Calixir copy of the source (rengel-de/calixir, commit 0f3368339c6318f6751579cf506320b13ce17e2c, file sha-256 5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb) showed an in-file license header that is custom personal-use + non-commercial/non-profit. This original dispute recorded that the Calixir copy's header disagrees with the user's description. SUPERSEDED on 2026-09-15 by first-party evidence (EdReingold/calendar-code2) showing the current first-party source IS Apache 2.0. The original record is preserved here per PROTOCOL v1.0 §3 (append-only). See DISPUTE-reference-reingold-dershowitz-2018-license-firstparty-resolution-2026-09-15 for the resolution.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/METADATA.json",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/COPYRIGHT_DERSHOWITZ_RHEINGOLD.txt (SHA-256 d34115459b34df91fdd60134384e2f427d29e483a6991b11c2cea42df237412c)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/bibliographic-metadata.md (§license clarification)",
+      "supersedes: phase-1/docs/runbook/disputes.json entry DISPUTE-reference-reingold-dershowitz-2018-license-classification-2026-09-15 (resolution now 'superseded')"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z"
+  },
+  {
+    "id": "DISPUTE-reference-reingold-dershowitz-2018-license-firstparty-resolution-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (corrective evidence/provenance pass after first-party source acquisition)",
+    "component": "reference_chain",
+    "class": "bibliographic",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "Edward M. Reingold and Nachum Dershowitz, EdReingold/calendar-code2 commit 9afc1f3277b839db1a70c2350d6c708ac83df78f, LICENSE file (SHA-256 c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4, git blob sha-1 261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "bibliographic",
+    "resolution": "resolved",
+    "supersedes": "DISPUTE-reference-reingold-dershowitz-2018-license-classification-2026-09-15",
+    "notes": "RESOLUTION. The first-party source (EdReingold/calendar-code2, the authors' canonical GitHub repository for CALENDRICA 4.0) was retrieved and authenticated on 2026-09-15. The first-party LICENSE file is the verbatim Apache License 2.0 text (11357 bytes, SHA-256 c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4). The in-file license header in first-party calendar.l is Apache 2.0 (12 lines). This is the LICENSE currently distributed by the authors. The earlier commit 4d37765 had observed that the Calixir copy of the source contained a more restrictive custom license header; that observation remains correct, but it was based on a SECONDARY distribution, not the first-party source. The first-party source IS Apache 2.0, which means: (a) the source file itself CAN be redistributed in the Dewata public repository under Apache 2.0 terms; (b) the LICENSE file remains mandatory and must be preserved with any redistribution; (c) copyright notice must be preserved; (d) state-changes must be marked. The Calixir copy's older restrictive header is preserved as historical evidence but does NOT represent the current first-party license. PROVENANCE HIERARCHY: first-party (EdReingold/calendar-code2, Apache 2.0) > secondary (rengel-de/calixir assets/, older restrictive header).",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/METADATA.json",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/LICENSE (SHA-256 c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/calendrica-source/LICENSE (first-party calendar.l in-file header is Apache 2.0)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/calixir-vs-firstparty-diff.md"
+    ],
+    "recorded_at": "2026-09-15T23:00:00Z"
+  },
+  {
+    "id": "DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, CALENDRICA runtime comparison)",
+    "component": "pawukon.epoch",
+    "class": "calendar_semantics",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "CALENDRICA 4.0 (Reingold & Dershowitz, first-party Common Lisp implementation, bali-epoch = fixed-from-jd 146)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "epoch_convention_difference",
+    "resolution": "pending",
+    "notes": "CALENDRICA 4.0 (Reingold & Dershowitz) defines `bali-epoch = fixed-from-jd 146 = RD -1721279`, equivalent to Julian Day Number 146 = proleptic Gregorian 4714-07-02. For Gregorian 1981-08-23 (RD 723415), CALENDRICA's bali-day-from-fixed = 84 (0-indexed) = position 85 (1-indexed). The Dewata engine uses EPOCH = date(1981, 8, 23) which makes 1981-08-23 = position 1 of the cycle. The two engines therefore differ by 84 cycle-positions (mod 210) for any given Gregorian date. The Pawukon has no canonical epoch (per Wikipedia: 'cycles are unnumbered, so the calendar has no epoch, and the choice of date on which to base a correspondence is arbitrary'). Both conventions are technically valid, but they produce different (and non-trivially-shifted) outputs for any calendar-aware application. This dispute is BLOCKING for any ruleset promotion until the choice of epoch is recorded as an explicit convention decision. Resolution requires customary or scholarly authority validation.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/calendrica-source/METADATA.json",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-001)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md",
+      "phase-1/docs/runbook/disputes.json DISPUTE-ENGINE-PAWUKON-EPOCH-OFFSET-84-DAYS (related, informational-only)"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "mapping_phase",
+      "rationale": "Two-axis analysis: raw mismatch + normalized match on cycle_position/Wuku. Constant +84 offset indicates mapping/phase problem, NOT formula problem. CALENDRICA's fixed-from-jd 146 is a computational origin for the repeating 210-day cycle, not a historical Balinese epoch. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    },
+    "narrative_update": {
+      "date": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)",
+      "previous_framing": "epoch anchor choice / epoch_convention_difference (implicit historical Balinese epoch framing)",
+      "new_framing": "phase/mapping offset; bali-epoch = fixed-from-jd 146 is a computational origin for the repeating 210-day cycle, not a historical/cultural epoch. The Pawukon cycles are unnumbered, so the computational epoch itself may be chosen for convenience. The important question is whether Dewata assigns the same Pawukon/Wuku/Wewaran values to the same Gregorian dates, NOT whether Dewata uses the same absolute epoch constant as CALENDRICA.",
+      "observed_offset": "exactly +84 cycle positions (mod 210) on every Gregorian date in the 210-day test interval",
+      "future_repair_direction": "implementation correction if a single epoch constant adjustment suffices; semantic/ruleset change if a different cycle anchor is chosen; still unresolved until customary or scholarly authority validates the choice."
+    },
+    "narrative_correction_2026-09-15": {
+      "trigger": "Corrective audit after two-axis analysis exposed naming/index bug",
+      "previous_framing": "CALENDRICA's Pancawara differs from cultural practice (claim retracted — was an artifact of using wrong Pancawara mapping in comparison layer)",
+      "corrected_finding": "CALENDRICA Pancawara matches cultural references on all 7 dates under correct mapping B (1=Umanis, 2=Paing, 3=Pon, 4=Wage, 5=Kliwon). The previous report's claim was based on using mapping A (1=Paing). Under corrected mapping, CAL=KB.org.",
+      "pancawara_convention_shift": "DEW's PANCAWARA_NAMES_BALINESE in wewaran.py uses mapping A (1=Paing); cultural convention is mapping B (1=Umanis). This is a naming convention shift, not a formula defect.",
+      "future_repair_direction_unchanged": "implementation correction if a single epoch constant adjustment suffices (mapping_phase); semantic/ruleset change if a different cycle anchor is chosen; still unresolved until customary/scholarly authority validates."
+    },
+    "dasawara_count_correction_2026-09-15": {
+      "trigger": "audit",
+      "correction": "verified"
+    }
+  },
+  {
+    "id": "DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, CALENDRICA runtime comparison)",
+    "component": "wewaran.asatawara",
+    "class": "calendar_semantics",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "CALENDRICA 4.0 (bali-asatawara-from-fixed = 1 + mod(max(6, 4 + mod((day-70), 210)), 8)) vs Dewata (special case p==72 → 7, p==73 → 8, else ((p-1) % 8) + 1)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "The 8-day Astawara cycle does not divide 210 evenly (210/8 = 26.25). Both CALENDRICA and Dewata implement special-case handling, but their formulas disagree. CALENDRICA uses a continuous `max(6, 4 + mod(day-70, 210))` formula; Dewata uses a hardcoded day-72/day-73 special case. The disagreement is reproducible on multiple test dates (1981-08-23, 1981-08-24, 2025-01-01, 2026-09-01, 2026-09-15, 2026-09-16, 2026-09-30, 2000-01-01, 2050-12-31, 1945-08-17 — all 14 test dates disagree on Astawara except for the 2 positions where Dewata's special case happens to align with CALENDRICA's formula). Since Caturwara is derived from Asatawara in CALENDRICA, this dispute transitively affects Caturwara. Resolution requires source-level confirmation from D&R prose chapter or customary authority.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-008, CALC-009)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "formula_semantics",
+      "rationale": "Two-axis analysis: raw mismatch + normalized mismatch on Asatawara (198/210 disagreements). The disagreement persists after phase alignment, indicating formula problem not mapping. Furthermore the special-case structure itself is independently disputed: BASAbali (basaibubali.org) gives simple modular arithmetic without special case. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    }
+  },
+  {
+    "id": "DISPUTE-wewaran-sangawara-special-case-formula-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, CALENDRICA runtime comparison)",
+    "component": "wewaran.sangawara",
+    "class": "calendar_semantics",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "CALENDRICA 4.0 (bali-sangawara-from-fixed = 1 + mod(max(0, day - 3), 9)) vs Dewata (days 1-3 all map to 1 = Dangu, else ((p-1) % 9) + 1)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "The 9-day Sangawara cycle does not divide 210 evenly (210/9 = 23.33). Both engines have special-case logic but disagree. CALENDRICA: bali-sangawara-from-fixed = 1 + mod(max(0, day - 3), 9). This gives different values than Dewata's 'first 3 days all Dangu' rule. The disagreement appears on dates like 1981-08-24, 2000-01-01, 2050-12-31 (3/14 test dates). Resolution requires source-level confirmation from D&R prose chapter or customary authority.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-010)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "formula_semantics",
+      "rationale": "Two-axis analysis: raw mismatch + normalized mismatch on Sangawara (85/210 disagreements). The disagreement persists after phase alignment. BASAbali gives (uku × 7 + Saptawara) / 9 as the rule, which differs from CALENDRICA's max(0, day-3) and from Dewata's days-1-3-Dangu. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    }
+  },
+  {
+    "id": "DISPUTE-wewaran-dasawara-urip-5-table-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, CALENDRICA runtime comparison)",
+    "component": "wewaran.dasawara.urip_5",
+    "class": "calendar_semantics",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "CALENDRICA 4.0 (urip_5 = (5, 9, 7, 4, 8) for Pancawara positions Paing..Umanis) vs Dewata (urip_5 = (9, 7, 4, 8, 5))",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "Dewata's urip_5 table (9, 7, 4, 8, 5) is a cyclic left-rotation of CALENDRICA's urip_5 table (5, 9, 7, 4, 8). Both tables contain the same values; they map the same urip values to different Pancawara positions. urip_7 matches between the two engines. The dasawara formula structure (urip_5 + urip_7 + 1 mod 10) matches in form. The disagreement appears on all 14 test dates for the Dasawara field. This is a substantive disagreement requiring source-level confirmation from D&R prose chapter or customary authority to determine which table is canonical.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-011)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "formula_semantics",
+      "rationale": "Two-axis analysis: raw mismatch + normalized mismatch on Dasawara (198/210 disagreements). Dewata's urip_5 = (9,7,4,8,5) is a cyclic rotation of CALENDRICA's urip_5 = (5,9,7,4,8). urip_7 matches. Independent sources (BASAbali) give Dasawara derivation with different remainder mapping. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    }
+  },
+  {
+    "id": "DISPUTE-wewaran-dwiwara-parity-basis-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (D&R Pawukon evidence acquisition, CALENDRICA runtime comparison)",
+    "component": "wewaran.dwiwara",
+    "class": "calendar_semantics",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "CALENDRICA 4.0 (bali-dwiwara-from-fixed = amod(bali-dasawara-from-fixed(date), 2)) vs Dewata (Menga if urip_sum odd, Pepet if even, where urip_sum = (urip_5 + urip_7 + 1) mod 10)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "notes": "CALENDRICA computes dwiwara as the parity of the DASAWARA INDEX (1..10); Dewata computes dwiwara as the parity of the DASAWARA URIP VALUE (the value derived from the urip_5 + urip_7 sum). These two parities differ because the urip value is not always equal to the index. The disagreement appears on 6/14 test dates (1981-08-30, 1981-09-01, 1981-09-15, 1981-10-01, 2025-01-01, 2026-09-15, 2026-09-30, 2050-12-31). Note: this dispute is dependent on the resolution of DISPUTE-wewaran-dasawara-urip-5-table-2026-09-15. Non-blocking because the dwiwara name (Menga/Pepet) is informational, not used in calendrical arithmetic elsewhere in the engine.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (related to CALC-011)",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/dewata-vs-calendrica-comparison.md"
+    ],
+    "recorded_at": "2026-09-15T22:30:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "indexing_representation",
+      "rationale": "Two-axis analysis: raw mismatch + normalized mismatch on Dwiwara (84/210 disagreements). The disagreement is over what input to parity-check: CALENDRICA uses dasawara index parity; Dewata uses urip_sum parity. The two parities differ because the urip value is not always equal to the index. BASAbali agrees with the parity-on-sum approach. The choice is representational (what does dwiwara mean), not a formula error per se. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    }
+  },
+  {
+    "id": "DISPUTE-wewaran-caturwara-transitive-dependency-on-asatawara-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (corrective evidence/provenance pass — making transitive dependency explicit after dispute reconciliation request)",
+    "component": "wewaran.caturwara",
+    "class": "calendar_semantics",
+    "blocking": true,
+    "severity": "blocking",
+    "source": "First-party CALENDRICA 4.0 (bali-caturwara-from-fixed = amod(bali-asatawara-from-fixed(date), 4)) vs Dewata (caturwara_idx = ((p-1) % 4) + 1 with special case p==72 → 3, p==73 → 4)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "wewaran_drift",
+    "resolution": "pending",
+    "depends_on": "DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15",
+    "notes": "Filed explicitly per dispute reconciliation request (2026-09-15). CALC-009 was originally listed as a transitive dependency on CALC-008 asatawara inside the asatawara dispute's notes, but not given its own dispute record. This dispute makes the dependency explicit. CALENDRICA's caturwara is derived from asatawara via amod(asatawara, 4); Dewata's caturwara is computed independently with its own special-case rule. The 198/210 disagreement count for caturwara matches the asatawara disagreement count (since caturwara = asatawara mod 4 makes them correlated), confirming the transitive dependency. Resolution requires resolution of the asatawara dispute first, plus authority attestation for the caturwara-arithmetic form.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/dewata-vs-firstparty-calendrica-comparison.md",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md (CALC-009)",
+      "phase-1/docs/runbook/disputes.json DISPUTE-wewaran-asatawara-special-case-formula-2026-09-15"
+    ],
+    "recorded_at": "2026-09-15T23:00:00Z",
+    "reclassification": {
+      "previous_class": "calendar_semantics",
+      "new_class": "formula_semantics",
+      "rationale": "Transitive on asatawara dispute (CALENDRICA derives caturwara = amod(asatawara, 4)). Two-axis analysis: raw mismatch + normalized mismatch. Reclassified under two-axis analysis on 2026-09-15.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "two-axis analysis (RAW_GREGORIAN_MAPPING vs PHASE_NORMALIZED_FORMULA)"
+    }
+  },
+  {
+    "id": "DISPUTE-pancawara-convention-shift-dewata-vs-cultural-2026-09-15",
+    "date": "2026-09-15",
+    "date_filed": "2026-09-15",
+    "filed_by": "audit (corrective evidence/provenance pass after Pancawara mapping bug discovered in commit 9516b01)",
+    "component": "wewaran.pancawara.names",
+    "class": "indexing_representation",
+    "blocking": false,
+    "severity": "non-blocking",
+    "source": "Dewata wewaran.py PANCAWARA_NAMES_BALINESE = ('Paing', 'Pon', 'Wage', 'Keliwon', 'Umanis') (mapping A: 1=Paing)",
+    "rule_id": "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0",
+    "classification": "naming_convention_shift",
+    "resolution": "pending",
+    "notes": "Dewata's PANCAWARA_NAMES_BALINESE uses mapping A (1=Paing); the cultural convention is mapping B (1=Umanis). Three independent lineages confirm mapping B: (L1) kb.org page titles show Umanis-Paing-Pon-Wage-Kliwon for 7 dates; (L3) BASAbali Pancawara page formula yields 1=Umanis; (L5) Suparta Ardhana Pokok-Pokok Wariga (2006) lists Anggara Wage for Pahang, consistent with mapping B. Dewata's underlying urip_sum arithmetic is CORRECT; only the name list order is off. This is a representation/indexing issue, NOT a formula defect. If the governance owner chooses to align Dewata with cultural convention, this is an implementation correction to a single constant in wewaran.py. CORRECTION 2026-09-15: This dispute is now classified as indexing_representation (not naming_only). The distinction: spelling variants (Kliwon/Keliwon) are naming_only because they are interchangeable. But numeric position 1 mapping to Paing (Dewata) vs Umanis (CAL/cultural) is a different name for the SAME numeric value, which is indexing_representation. Dewata's underlying urip_sum formula produces correct numeric values that match CALENDRICA 210/210. The fix would be to reorder PANCAWARA_NAMES_BALINESE to Umanis-Paing-Pon-Wage-Kliwon (mapping B convention). Whether this is implementation correction or representation change is governance-decision-dependent.",
+    "evidence": [
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/cycle-comparison/adapter-audit.md",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/cycle-comparison/adapter-audit.json",
+      "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/cycle-comparison/corrected-seven-date-comparison.csv"
+    ],
+    "recorded_at": "2026-09-15T23:30:00Z",
+    "reclassification_2026-09-15": {
+      "previous_class": "naming_only",
+      "new_class": "indexing_representation",
+      "rationale": "The evidence shows: (a) Dewata's Pancawara numeric arithmetic (urip_sum formula) MATCHES CALENDRICA 210/210 at the numeric domain level. (b) Dewata maps numeric position 1 to Paing; CALENDRICA/cultural maps numeric position 1 to Umanis. This is not a naming-only issue (which would apply to spelling variants like Kliwon/Keliwon that are interchangeable). It is a representation/indexing issue: the SAME numeric value is assigned a DIFFERENT name by the two systems. Until/unless Dewata's numeric value is purely internal and never represents a calendrical position externally, the disagreement is indexing_representation, not naming_only. Dewata's PANCAWARA_NAMES_BALINESE list is the name mapping that produces the external representation; if a user reads 'pan=1' as 'Paing' but the calendar community expects 'Umanis', the indexing is wrong.",
+      "reclassified_at": "2026-09-15",
+      "trigger": "Acceptance of d5c0a51 as baseline, subject to audit corrections",
+      "preserves": "formula has no defect demonstrated; index-to-name mapping is the actual issue"
+    }
   }
 ]

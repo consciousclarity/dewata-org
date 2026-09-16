@@ -1,0 +1,45 @@
+{
+  "source": {
+    "url": "https://raw.githubusercontent.com/rengel-de/calixir/master/assets/calendrica-4.0.cl",
+    "repo": "https://github.com/rengel-de/calixir",
+    "repo_commit_sha": "0f3368339c6318f6751579cf506320b13ce17e2c",
+    "repo_commit_date": "2020-07-18T08:13:30Z",
+    "filename": "calendrica-4.0.cl",
+    "size_bytes": 258050,
+    "sha256": "5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb",
+    "redistribution_status": "NOT_REDISTRIBUTED",
+    "redistribution_note": "Per CALENDRICA 4.0 LICENSE clause 1, the source file itself is NOT redistributed; metadata + SHA-256 + retrieval URL is recorded instead. Per the LICENSE, redistribution to others is not permitted."
+  },
+  "license": {
+    "filename": "COPYRIGHT_DERSHOWITZ_RHEINGOLD.txt",
+    "size_bytes": 4237,
+    "sha256": "d34115459b34df91fdd60134384e2f427d29e483a6991b11c2cea42df237412c",
+    "type": "custom_personal_use_and_noncommercial_reuse",
+    "license_grants": [
+      "personal use copy + backup",
+      "non-commercial, non-profit software re-use with prominent credit and rights preserved"
+    ],
+    "license_prohibits": [
+      "making the code or its output accessible, used, or available to others",
+      "any other uses without author authorization"
+    ],
+    "author_contact": "reingold@iit.edu",
+    "author_intent_note": "Authors' public-service intent is more liberal than suggested by the License; see http://www.calendarists.com"
+  },
+  "sample_data": {
+    "filename": "dates4.csv",
+    "size_bytes": 4114,
+    "sha256": "49ba8658fe1208e67589a1b4e61b70cddbd42b134c37272bccddd06cc32602ff",
+    "columns_used": "Bali Pawukon (Luang..Dasawara, cols 14..23)",
+    "rows_count": "see file (one RD per row, no Balinese RD specifically chosen)",
+    "book_reference": "Sample values per Appendix C of 'Calendrical Calculations', 4th ed., Cambridge University Press"
+  },
+  "extraction_context": {
+    "access_date": "2026-09-15",
+    "extractor": "Hermes / Warden",
+    "method": "git+curl from public Calixir repo (rengel-de/calixir)",
+    "calendrica_runtime_verified": true,
+    "runtime_verification_engine": "SBCL 2.2.9",
+    "runtime_verification_date": "2026-09-15"
+  }
+}

@@ -23,27 +23,61 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 from .api import compose_day
+from .corpus_status import (
+    annotate_vectors_with_status,
+)
 
 
 CORPUS_DIR = Path(__file__).resolve().parent.parent.parent / "conformance"
+PUBLISHED_DIR = CORPUS_DIR / "published"
 
 
 def load_corpus(topic: str) -> list[dict]:
-    """load conformance vectors for a topic. returns list of dicts."""
-    path = CORPUS_DIR / f"{topic}.json"
-    if not path.exists():
-        path = CORPUS_DIR / f"{topic}.jsonl"
-    if not path.exists():
+    """load conformance vectors for a topic. returns list of dicts.
+
+    each returned vector is annotated with `_corpus_status` per
+    PROTOCOL v1.0 evidence model — see phase-1/src/dewatacalendar/corpus_status.py.
+    the annotation is informational; consumers that want to know
+    whether the corpus may satisfy a validation gate should call
+    can_satisfy_validation_gate() rather than reading the field
+    directly. historical vector values are not modified.
+
+    the corpus basename is derived from the path's stem. the
+    annotation reflects the registered status in STATUS.json, or
+    UNVERIFIED if the manifest is missing or the corpus is not
+    registered (a directory name does not confer authority).
+
+    search order for the corpus file:
+      1. conformance/published/<topic>.json  (historical sources;
+         STATUS.json declares these basenames)
+      2. conformance/<topic>.json            (top-level — for
+         ground-truth fixtures added in the future)
+      3. conformance/<topic>.jsonl           (legacy format)
+
+    STATUS.json itself is NOT loadable as a corpus — `load_corpus`
+    refuses to load it (see `test_status_file_is_not_loadable_as_a_corpus`).
+    """
+    candidates = [
+        PUBLISHED_DIR / f"{topic}.json",
+        PUBLISHED_DIR / f"{topic}.jsonl",
+        CORPUS_DIR / f"{topic}.json",
+        CORPUS_DIR / f"{topic}.jsonl",
+    ]
+    path = next((p for p in candidates if p.exists()), None)
+    if path is None:
         raise FileNotFoundError(f"no corpus file for topic: {topic}")
     text = path.read_text(encoding="utf-8")
     if path.suffix == ".jsonl":
-        return [json.loads(line) for line in text.splitlines() if line.strip()]
-    data = json.loads(text)
-    if isinstance(data, dict) and "vectors" in data:
-        return data["vectors"]
-    if isinstance(data, list):
-        return data
-    raise ValueError(f"unknown corpus format for {topic}")
+        raw_vectors = [json.loads(line) for line in text.splitlines() if line.strip()]
+    else:
+        data = json.loads(text)
+        if isinstance(data, dict) and "vectors" in data:
+            raw_vectors = data["vectors"]
+        elif isinstance(data, list):
+            raw_vectors = data
+        else:
+            raise ValueError(f"unknown corpus format for {topic}")
+    return annotate_vectors_with_status(raw_vectors, topic)
 
 
 def _check_value(actual: object, expected: object, path: str, errors: list[str]) -> bool:
@@ -71,7 +105,14 @@ def _check_value(actual: object, expected: object, path: str, errors: list[str])
 
 
 def run_corpus(topic: str, *, on_date: Callable[[_dt.date], object] | None = None) -> tuple[int, int, list[str]]:
-    """run conformance vectors for a topic. returns (passed, total, errors)."""
+    """run conformance vectors for a topic. returns (passed, total, errors).
+
+    vectors are loaded with their `_corpus_status` annotation. the
+    per-vector pass/fail count is unchanged. callers that need to
+    know whether the topic may satisfy an independent-reference
+    validation gate should call can_satisfy_validation_gate() on
+    the corpus basename after this function returns.
+    """
     vectors = load_corpus(topic)
     if on_date is None:
         on_date = compose_day

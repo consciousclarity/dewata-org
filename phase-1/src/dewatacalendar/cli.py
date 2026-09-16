@@ -80,11 +80,38 @@ def cmd_test(args: argparse.Namespace) -> int:
     try:
         from .cross_validation import cross_validate_all, format_outcome
         results = cross_validate_all()
+        n_authoritative = 0
+        n_diagnostic = 0
         for r in results:
-            print(f"  {r.date}  [{r.status:8s}]  {r.source[:60]}")
+            gate_marker = (
+                "AUTHORITATIVE"
+                if r.corpus_may_satisfy_validation_gate
+                else (
+                    f"NON-AUTHORITATIVE "
+                    f"[{r.corpus_verification_status} + "
+                    f"{r.corpus_reference_eligibility} + "
+                    f"{r.corpus_authority_basis}]"
+                )
+            )
+            print(f"  {r.date}  [{r.status:8s}]  corpus={r.corpus_basename} {gate_marker}  {r.source[:50]}")
+            if r.corpus_may_satisfy_validation_gate:
+                n_authoritative += 1
+            else:
+                n_diagnostic += 1
         n_match = sum(1 for r in results if r.status == "match")
         n_disputed = sum(1 for r in results if r.status == "disputed")
-        print(f"  -- {n_match} match, {n_disputed} disputed (recorded in docs/runbook/disputes.json) --")
+        print(
+            f"  -- {n_match} match, {n_disputed} disputed "
+            f"({n_authoritative} from authoritative corpora, {n_diagnostic} from "
+            f"non-authoritative / unverified corpora; non-authoritative results "
+            f"are diagnostic only and do not satisfy independent-reference "
+            f"validation gates per PROTOCOL v1.0 §2.4 + STATUS.json schema v2) --"
+        )
+        print(
+            "  -- corpus evidence status (two-axis): "
+            "see phase-1/conformance/STATUS.json (verification_status + "
+            "reference_eligibility + authority_basis)"
+        )
     except Exception as e:
         print(f"  cross-validation skipped: {e}")
     return 0
