@@ -1,11 +1,11 @@
 {
   "schema_version": "3.0",
   "last_modified": "2026-09-15T23:30:00Z",
-  "policy": "per PROTOCOL v1.0 §2.4 + gap analysis Finding 5: preserved != trusted. A corpus's directory placement (published/, ground-truth/, etc.) does NOT confer authority. Two orthogonal axes govern the gate: verification_status (is the source / citation retrievable?) and reference_eligibility (may this corpus satisfy an independent-reference validation gate for calendar correctness?). The gate requires VERIFIED + ELIGIBLE. Anything else fails closed.",
+  "policy": "per PROTOCOL v1.0 \u00a72.4 + gap analysis Finding 5: preserved != trusted. A corpus's directory placement (published/, ground-truth/, etc.) does NOT confer authority. Two orthogonal axes govern the gate: verification_status (is the source / citation retrievable?) and reference_eligibility (may this corpus satisfy an independent-reference validation gate for calendar correctness?). The gate requires VERIFIED + ELIGIBLE. Anything else fails closed.",
   "axes": {
     "verification_status": {
       "UNVERIFIED": "the citation could not be independently verified from this host (book not held, ISBN not retrievable, page cannot be cross-checked, etc.)",
-      "VERIFIED": "the source has been fetched / the citation has been confirmed against a retrievable record (the source itself may still be non-authoritative — see reference_eligibility)"
+      "VERIFIED": "the source has been fetched / the citation has been confirmed against a retrievable record (the source itself may still be non-authoritative \u2014 see reference_eligibility)"
     },
     "reference_eligibility": {
       "INELIGIBLE": "the corpus may inform the work but cannot satisfy an independent-reference validation gate, even if VERIFIED. reasons include: practitioner / non-academic source, source does not actually cover the claimed calendrical relationship, source is older than the regime it claims to describe.",
@@ -15,18 +15,19 @@
       "scholarly": "academic publication, peer-reviewed or from a recognized scholarly press",
       "customary": "attested by a Balinese customary authority (pemangku, bendesa, etc.)",
       "institutional": "attested by a state institution (university, ministry, heritage body)",
-      "practitioner": "practitioner calendar (commercial or community) — may be VERIFIED but is generally INELIGIBLE for authoritative calendar validation",
+      "practitioner": "practitioner calendar (commercial or community) \u2014 may be VERIFIED but is generally INELIGIBLE for authoritative calendar validation",
       "software_reference": "a software implementation that itself cites a verifiable source (the source is what matters, not the software)",
-      "unknown": "the basis could not be classified — UNVERIFIED by default"
+      "unknown": "the basis could not be classified \u2014 UNVERIFIED by default"
     }
   },
   "gate_predicates": {
-    "can_satisfy_validation_gate": "verification_status == 'VERIFIED' AND reference_eligibility == 'ELIGIBLE' (fail-closed otherwise)",
-    "can_promote_ruleset_using": "verification_status == 'VERIFIED' AND reference_eligibility == 'ELIGIBLE'",
-    "can_be_described_as_ground_truth": "verification_status == 'VERIFIED' AND reference_eligibility == 'ELIGIBLE'",
-    "can_be_silently_copied_to_authoritative_fixture": "verification_status == 'VERIFIED' AND reference_eligibility == 'ELIGIBLE'"
+    "can_satisfy_validation_gate": "VERIFIED + ELIGIBLE + eligible_claim_ids non-empty + claim_id in eligible_claim_ids. CLAIM-SCOPED: caller MUST supply claim_id. Returns False unconditionally for unscoped (claim_id=None) queries.",
+    "can_promote_ruleset_using": "RETURNS FALSE UNCONDITIONALLY. The executable promotion-authority mechanism does not exist yet. No caller input \u2014 including a complete RulesetPromotionContext with arbitrary strings as governance_authorization_artifact \u2014 can authorize a promotion.",
+    "can_be_described_as_ground_truth": "RETURNS FALSE UNCONDITIONALLY. Ground-truth designation requires an explicit accepted-rule mechanism with appropriate human/governance authority that this module does not yet implement.",
+    "can_be_silently_copied_to_authoritative_fixture": "RETURNS FALSE UNCONDITIONALLY. There is no condition under which evidence may be silently promoted into an authoritative fixture."
   },
-  "separation_from_ceremonial_tiers": "this status governs the bibliographic / evidence-chain layer for conformance corpora. It does NOT affect Dewata's ceremonial/record provenance tiers (computed / registered / predicted / verified) governed by PROTOCOL §2.6. A corpus's verification_status: VERIFIED does NOT imply 'verified' in the ceremonial provenance ladder.",
+  "removed_source_level_booleans_2026-09-16": "may_satisfy_validation_gate and may_be_described_as_ground_truth have been removed from corpus entries because they implied source-level boolean authority that is forbidden under the v3.0 claim-scoped model. Use verification_status, reference_eligibility, and eligible_claim_ids (the structured fields) instead. may_justify_ruleset_promotion is retained as DOCUMENTATION-ONLY and is NOT consulted by any gate function.",
+  "separation_from_ceremonial_tiers": "this status governs the bibliographic / evidence-chain layer for conformance corpora. It does NOT affect Dewata's ceremonial/record provenance tiers (computed / registered / predicted / verified) governed by PROTOCOL \u00a72.6. A corpus's verification_status: VERIFIED does NOT imply 'verified' in the ceremonial provenance ladder.",
   "corpora": {
     "cunningham_1994": {
       "corpus_file": "phase-1/conformance/published/cunningham_1994.json",
@@ -34,17 +35,15 @@
       "verification_status": "UNVERIFIED",
       "reference_eligibility": "INELIGIBLE",
       "authority_basis": "unknown",
-      "reason": "Claimed citation ('Cunningham, A.M. (1994), Balinese Calendar: a Pre-Dating Guide, Northern Territory University, Australia, p. 47 / appendix C') could not be independently verified — book not held on this host, no ISBN/OCLC/WorldCat record retrievable, no scanned page available. Per gap analysis Finding 5: claimed reference could not be independently verified and is therefore inadmissible as authoritative evidence until positive bibliographic verification is obtained. The corpus vectors are preserved as historical evidence of what the project previously believed, not as ground truth. This is NOT a claim of fabrication — there is no positive evidence that the citation was fabricated.",
+      "reason": "Claimed citation ('Cunningham, A.M. (1994), Balinese Calendar: a Pre-Dating Guide, Northern Territory University, Australia, p. 47 / appendix C') could not be independently verified \u2014 book not held on this host, no ISBN/OCLC/WorldCat record retrievable, no scanned page available. Per gap analysis Finding 5: claimed reference could not be independently verified and is therefore inadmissible as authoritative evidence until positive bibliographic verification is obtained. The corpus vectors are preserved as historical evidence of what the project previously believed, not as ground truth. This is NOT a claim of fabrication \u2014 there is no positive evidence that the citation was fabricated.",
       "related_dispute_id": "DISPUTE-reference-cunningham-1994-unverified-2026-09-15",
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
       "citation_keys_present_in_corpus": [
-        "Cunningham-1994-Balinese-Calendar-Pre-Dating-Guide (UNVERIFIED — no positive bibliographic evidence on this host)"
+        "Cunningham-1994-Balinese-Calendar-Pre-Dating-Guide (UNVERIFIED \u2014 no positive bibliographic evidence on this host)"
       ],
       "preserved": true,
-      "may_satisfy_validation_gate": false,
-      "may_justify_ruleset_promotion": false,
-      "may_be_described_as_ground_truth": false
+      "may_justify_ruleset_promotion": false
     },
     "igarashi_1999": {
       "corpus_file": "phase-1/conformance/published/igarashi_1999.json",
@@ -52,17 +51,15 @@
       "verification_status": "UNVERIFIED",
       "reference_eligibility": "INELIGIBLE",
       "authority_basis": "unknown",
-      "reason": "Claimed citation ('Igarashi, T. (1999), Balinese Calendar Chronology and the Lunisolar Adjustment, Nusa Indah Press, table 2.3') could not be independently verified — no ISBN/WorldCat record for 'Nusa Indah Press' retrievable. Per gap analysis Finding 5: same reasoning as Cunningham. Preserved as historical evidence.",
+      "reason": "Claimed citation ('Igarashi, T. (1999), Balinese Calendar Chronology and the Lunisolar Adjustment, Nusa Indah Press, table 2.3') could not be independently verified \u2014 no ISBN/WorldCat record for 'Nusa Indah Press' retrievable. Per gap analysis Finding 5: same reasoning as Cunningham. Preserved as historical evidence.",
       "related_dispute_id": "DISPUTE-reference-igarashi-1999-unverified-2026-09-15",
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md (Findings 5, 14)",
       "citation_keys_present_in_corpus": [
-        "Igarashi-1999-Balinese-Calendar-Chronology (UNVERIFIED — no positive bibliographic evidence on this host)"
+        "Igarashi-1999-Balinese-Calendar-Chronology (UNVERIFIED \u2014 no positive bibliographic evidence on this host)"
       ],
       "preserved": true,
-      "may_satisfy_validation_gate": false,
-      "may_justify_ruleset_promotion": false,
-      "may_be_described_as_ground_truth": false
+      "may_justify_ruleset_promotion": false
     },
     "kalenderbali_2026-09": {
       "corpus_file": "phase-1/conformance/published/kalenderbali_2026-09.json",
@@ -70,17 +67,15 @@
       "verification_status": "VERIFIED",
       "reference_eligibility": "INELIGIBLE",
       "authority_basis": "practitioner",
-      "reason": "Source is kalenderbali.info (I Ketut Suwintana, 2013, practitioner site with fuzzy-logic Metodani Mamdani for dewasa ayu). The page returns 200 with verifiable content for 15 of 30 September 2026 day cells — the source IS retrievable, so verification_status is VERIFIED. Per gap analysis Finding 9: the source is self-described as 'not peer-reviewed academic'. The source is a practitioner calendar, so reference_eligibility is INELIGIBLE for authoritative calendar validation. The corpus may be used for historical comparison and diagnostic output only.",
+      "reason": "Source is kalenderbali.info (I Ketut Suwintana, 2013, practitioner site with fuzzy-logic Metodani Mamdani for dewasa ayu). The page returns 200 with verifiable content for 15 of 30 September 2026 day cells \u2014 the source IS retrievable, so verification_status is VERIFIED. Per gap analysis Finding 9: the source is self-described as 'not peer-reviewed academic'. The source is a practitioner calendar, so reference_eligibility is INELIGIBLE for authoritative calendar validation. The corpus may be used for historical comparison and diagnostic output only.",
       "related_dispute_id": null,
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/docs/audit/REFERENCE_VALIDATION_kalenderbali_2026-09.md",
       "citation_keys_present_in_corpus": [
-        "KalenderBali-Info-2026-09 (VERIFIED page; INELIGIBLE — practitioner source)"
+        "KalenderBali-Info-2026-09 (VERIFIED page; INELIGIBLE \u2014 practitioner source)"
       ],
       "preserved": true,
-      "may_satisfy_validation_gate": false,
-      "may_justify_ruleset_promotion": false,
-      "may_be_described_as_ground_truth": false
+      "may_justify_ruleset_promotion": false
     },
     "reingold_dershowitz_2018_pawukon_chapter": {
       "corpus_file": null,
@@ -88,7 +83,7 @@
       "verification_status": "VERIFIED",
       "reference_eligibility": "INELIGIBLE",
       "authority_basis": "scholarly",
-      "reason": "Cambridge University Press 2018 Ultimate Edition, Chapter 12 (Balinese Pawukon Calendar), DOI 10.1017/9781107415058.015. Bibliographic existence VERIFIED by three independent sources: Cambridge publisher page, CrossRef DOI registry, Open Library edition record OL34742744M (ISBN-13 9781107415058, publish_date 2018). The chapter text itself was NOT accessible from this host (paywall + JS-rendered shell, HTTP 500 on book-page direct fetch). Substantive calendrical claims are NOT YET VERIFIED — chapter text acquisition remains blocked. Reference eligibility for algorithmic claims stays INELIGIBLE until chapter text is acquired and each claim is supported by a quote or precise paraphrase. Bibliographic existence is VERIFIED; algorithmic claim support is not. Per the user's instruction: 'Bibliographic existence alone is insufficient to make an algorithmic corpus eligible. Eligibility must be claim-scoped.'",
+      "reason": "Cambridge University Press 2018 Ultimate Edition, Chapter 12 (Balinese Pawukon Calendar), DOI 10.1017/9781107415058.015. Bibliographic existence VERIFIED by three independent sources: Cambridge publisher page, CrossRef DOI registry, Open Library edition record OL34742744M (ISBN-13 9781107415058, publish_date 2018). The chapter text itself was NOT accessible from this host (paywall + JS-rendered shell, HTTP 500 on book-page direct fetch). Substantive calendrical claims are NOT YET VERIFIED \u2014 chapter text acquisition remains blocked. Reference eligibility for algorithmic claims stays INELIGIBLE until chapter text is acquired and each claim is supported by a quote or precise paraphrase. Bibliographic existence is VERIFIED; algorithmic claim support is not. Per the user's instruction: 'Bibliographic existence alone is insufficient to make an algorithmic corpus eligible. Eligibility must be claim-scoped.'",
       "related_dispute_id": null,
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/bibliographic-metadata.md",
@@ -96,9 +91,7 @@
         "reingold-dershowitz-2018-balinese-pawukon (scholarly bibliographic record, chapter body not acquired)"
       ],
       "preserved": true,
-      "may_satisfy_validation_gate": false,
-      "may_justify_ruleset_promotion": false,
-      "may_be_described_as_ground_truth": false
+      "may_justify_ruleset_promotion": false
     },
     "reingold_dershowitz_2018_calendrica_4_0_firstparty": {
       "corpus_file": "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/calendar.l",
@@ -106,7 +99,7 @@
       "verification_status": "VERIFIED",
       "reference_eligibility": "ELIGIBLE",
       "authority_basis": "software_reference",
-      "reason": "FIRST-PARTY source — EdReingold/calendar-code2 commit 9afc1f3277b839db1a70c2350d6c708ac83df78f (main, 2022-02-04, 'Harmonize license header with license file'). Repository is the authors' canonical GitHub home for CALENDRICA 4.0; EdReingold = Edward M. Reingold, the listed owner. Source file calendar.l (254735 bytes) SHA-256 642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484, git blob sha-1 2e4ad0f58ac52cb5fd497aa97b2b9ffe57ec623d (verified against GitHub API). LICENSE file is Apache License 2.0 verbatim (11357 bytes, SHA-256 c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4, blob sha-1 261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64). In-file header in calendar.l is Apache 2.0 (12 lines, lines 8-19). Runtime verified on this host: SBCL 2.2.9 loaded calendar.l; bali-epoch = -1721279, bali-day-from-fixed(723415) = 84, bali-pawukon-from-fixed(723415) = (NIL 1 1 3 1 1 1 3 1 1). Full 210-day cycle comparison against Dewata: Pancawara 210/210 match, Saptawara 210/210, Triwara 210/210, Sadwara 210/210; Caturwara 12/210, Astawara 12/210, Sangawara 125/210, Dasawara 12/210, Dwiwara 126/210. CLAIM-SCOPED eligibility: ELIGIBLE for the 4 modular-arithmetic claims (CALC-002 cycle arithmetic, CALC-004 saptawara, CALC-005 pancawara, CALC-006 triwara, CALC-007 sadwara). NOT eligible for the 5 disputed claims (CALC-001 epoch anchor, CALC-008/009 asatawara/caturwara special cases, CALC-010 sangawara special case, CALC-011 dasawara urip_5 table). NOTE: 4 blocking disputes pending (epoch, asatawara, sangawara, dasawara urip_5) + 1 transitive blocking (caturwara) + 1 non-blocking (dwiwara parity). Per PROTOCOL v1.0, promotion of any ruleset component using this corpus is BLOCKED until those disputes are resolved.",
+      "reason": "FIRST-PARTY source \u2014 EdReingold/calendar-code2 commit 9afc1f3277b839db1a70c2350d6c708ac83df78f (main, 2022-02-04, 'Harmonize license header with license file'). Repository is the authors' canonical GitHub home for CALENDRICA 4.0; EdReingold = Edward M. Reingold, the listed owner. Source file calendar.l (254735 bytes) SHA-256 642ad18fef302f401f9f8d19d9ecac3d0eff800acfdd57e19835e59470e23484, git blob sha-1 2e4ad0f58ac52cb5fd497aa97b2b9ffe57ec623d (verified against GitHub API). LICENSE file is Apache License 2.0 verbatim (11357 bytes, SHA-256 c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4, blob sha-1 261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64). In-file header in calendar.l is Apache 2.0 (12 lines, lines 8-19). Runtime verified on this host: SBCL 2.2.9 loaded calendar.l; bali-epoch = -1721279, bali-day-from-fixed(723415) = 84, bali-pawukon-from-fixed(723415) = (NIL 1 1 3 1 1 1 3 1 1). Full 210-day cycle comparison against Dewata: Pancawara 210/210 match, Saptawara 210/210, Triwara 210/210, Sadwara 210/210; Caturwara 12/210, Astawara 12/210, Sangawara 125/210, Dasawara 12/210, Dwiwara 126/210. CLAIM-SCOPED eligibility: ELIGIBLE for the 4 modular-arithmetic claims (CALC-002 cycle arithmetic, CALC-004 saptawara, CALC-005 pancawara, CALC-006 triwara, CALC-007 sadwara). NOT eligible for the 5 disputed claims (CALC-001 epoch anchor, CALC-008/009 asatawara/caturwara special cases, CALC-010 sangawara special case, CALC-011 dasawara urip_5 table). NOTE: 4 blocking disputes pending (epoch, asatawara, sangawara, dasawara urip_5) + 1 transitive blocking (caturwara) + 1 non-blocking (dwiwara parity). Per PROTOCOL v1.0, promotion of any ruleset component using this corpus is BLOCKED until those disputes are resolved.",
       "related_dispute_id": "DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15",
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/METADATA.json, phase-1/evidence/references/reingold-dershowitz-2018-pawukon/claim-register.md, phase-1/evidence/references/reingold-dershowitz-2018-pawukon/firstparty-EdReingold-calendar-code2/dewata-vs-firstparty-calendrica-comparison.md",
@@ -114,9 +107,7 @@
         "reingold-dershowitz-2018-calendrica-4.0-firstparty (EdReingold/calendar-code2 commit 9afc1f3, Apache 2.0)"
       ],
       "preserved": true,
-      "may_satisfy_validation_gate": true,
       "may_justify_ruleset_promotion": false,
-      "may_be_described_as_ground_truth": false,
       "supersedes": "reingold_dershowitz_2018_calendrica_4_0 (Calixir secondary copy)",
       "blocking_disputes_pending": [
         "DISPUTE-pawukon-epoch-anchor-calendrica-vs-dewata-2026-09-15",
@@ -140,9 +131,7 @@
         "reingold-dershowitz-2018-calendrica-4.0-calixir (rengel-de/calixir assets, secondary)"
       ],
       "preserved": true,
-      "may_satisfy_validation_gate": false,
       "may_justify_ruleset_promotion": false,
-      "may_be_described_as_ground_truth": false,
       "superseded_by": "reingold_dershowitz_2018_calendrica_4_0_firstparty"
     },
     "wariga_suparta_ardhana_2006": {
@@ -159,9 +148,7 @@
         "wariga-suparta-ardhana-2006-pokok-pokok (VERIFIED bibliographic, chapter body not acquired)"
       ],
       "preserved": true,
-      "may_satisfy_validation_gate": false,
-      "may_justify_ruleset_promotion": false,
-      "may_be_described_as_ground_truth": false
+      "may_justify_ruleset_promotion": false
     },
     "wariga_putra_manik_ariana_2009": {
       "corpus_file": null,
@@ -177,9 +164,7 @@
         "wariga-putra-manik-ariana-2009-tenung (VERIFIED bibliographic, chapter body not acquired)"
       ],
       "preserved": true,
-      "may_satisfy_validation_gate": false,
-      "may_justify_ruleset_promotion": false,
-      "may_be_described_as_ground_truth": false
+      "may_justify_ruleset_promotion": false
     },
     "wariga_kemendikbud_hindu_bs_kls_ix_2022": {
       "corpus_file": "phase-1/evidence/references/balinese-wariga-sources/kemendikbud-hindu-bs-kls-ix/minimum-evidence-quotes.md",
@@ -187,19 +172,17 @@
       "verification_status": "VERIFIED",
       "reference_eligibility": "ELIGIBLE",
       "authority_basis": "institutional",
-      "reason": "Indonesian Ministry of Education (Kemendikbud) + Ministry of Religious Affairs textbook 'Hindu-BS-KLS-IX' (Hindu Religion Book, Grade 9, Kurikulum 21/Merdeka, 2022). PDF SHA-256 0ac38bf5e59c3ef755d3296894a3d865da43c0945c92b3ed4d1e19457b9fe429, 20157376 bytes. License (verified 2026-09-16 from page 2): standard Indonesian government copyright assertion ('Hak Cipta pada Kementerian Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia. Dilindungi Undang-Undang.') — NOT Creative Commons. Redistribution rights are NOT explicitly granted. Per user instruction 2026-09-16, only the minimum-evidence quotes are retained in this package (see minimum-evidence-quotes.md): Quote 1 (Pancawara mapping page 39), Quote 2 (Pawukon exceptions paragraph page 40), and the License status quote (page 2). The full PDF is held at /tmp/refs/hindu-bs-kls-ix.pdf for verification only and is NOT redistributed in this public repo. Documented verbatim: Caturwara 3 consecutive Jaya at Wuku Dungulan starting from Redite; Astawara 3 consecutive Kala at Wuku Dungulan starting from Redite; Sangawara 4 consecutive Dangu at Wuku Sinta starting from Redite. Pancawara mapping explicit on page 39: '(1) Umanis, (2) Pahing, (3) Pon, (4) Wage, (5) Kliwon' — confirms Mapping B. Authority basis: institutional (state curriculum textbook). ELIGIBLE for substantive claims about Wewaran/Pawukon special-case structure, but only within scope of the minimum-evidence quotes. No Wuku/Gregorian examples. Multiple-tradition preserved per PROTOCOL v1.0.",
+      "reason": "Indonesian Ministry of Education (Kemendikbud) + Ministry of Religious Affairs textbook 'Hindu-BS-KLS-IX' (Hindu Religion Book, Grade 9, Kurikulum 21/Merdeka, 2022). PDF SHA-256 0ac38bf5e59c3ef755d3296894a3d865da43c0945c92b3ed4d1e19457b9fe429, 20157376 bytes. License (verified 2026-09-16 from page 2): standard Indonesian government copyright assertion ('Hak Cipta pada Kementerian Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia. Dilindungi Undang-Undang.') \u2014 NOT Creative Commons. Redistribution rights are NOT explicitly granted. Per user instruction 2026-09-16, only the minimum-evidence quotes are retained in this package (see minimum-evidence-quotes.md): Quote 1 (Pancawara mapping page 39), Quote 2 (Pawukon exceptions paragraph page 40), and the License status quote (page 2). The full PDF is held at /tmp/refs/hindu-bs-kls-ix.pdf for verification only and is NOT redistributed in this public repo. Documented verbatim: Caturwara 3 consecutive Jaya at Wuku Dungulan starting from Redite; Astawara 3 consecutive Kala at Wuku Dungulan starting from Redite; Sangawara 4 consecutive Dangu at Wuku Sinta starting from Redite. Pancawara mapping explicit on page 39: '(1) Umanis, (2) Pahing, (3) Pon, (4) Wage, (5) Kliwon' \u2014 confirms Mapping B. Authority basis: institutional (state curriculum textbook). ELIGIBLE for substantive claims about Wewaran/Pawukon special-case structure, but only within scope of the minimum-evidence quotes. No Wuku/Gregorian examples. Multiple-tradition preserved per PROTOCOL v1.0.",
       "related_dispute_id": null,
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/evidence/references/balinese-wariga-sources/bibliographic-records.md, phase-1/evidence/references/balinese-wariga-sources/claim-register.md",
       "citation_keys_present_in_corpus": [
-        "wariga-kemendikbud-hindu-bs-kls-ix-2022 (ELIGIBLE — institutional government textbook, pages 37-40 retrieved)"
+        "wariga-kemendikbud-hindu-bs-kls-ix-2022 (ELIGIBLE \u2014 institutional government textbook, pages 37-40 retrieved)"
       ],
       "preserved": true,
-      "may_satisfy_validation_gate": true,
       "may_justify_ruleset_promotion": false,
-      "may_be_described_as_ground_truth": false,
       "scope_limitations": [
-        "no Wuku/Gregorian examples in pages 37-40 — Wuku/Gregorian phase remains insufficiently evidenced",
+        "no Wuku/Gregorian examples in pages 37-40 \u2014 Wuku/Gregorian phase remains insufficiently evidenced",
         "Pancawara ordering confirmed (mapping B) but does not adjudicate the Dewata vs CALENDRICA naming convention dispute",
         "special-case content (Caturwara=Jaya, Astawara=Kala, Sangawara=Dangu) provides independent confirmation of CALENDRICA-like special-case structure but disagrees on Sangawara duration (4 days vs CALENDRICA's 3)"
       ]
@@ -210,21 +193,19 @@
       "verification_status": "VERIFIED",
       "reference_eligibility": "ELIGIBLE",
       "authority_basis": "practitioner",
-      "reason": "Independent Balinese cultural reference site babadbali.com. Pancawara page (SHA-256 a2958109770f38e448cbbf2b5624231ecac520152c1cb868668b66f1054c3adb, 10340 bytes) and Wuku page (SHA-256 3a970cf779236dda3d40800db1e66829e60d936eabaa231b43b4f010fb710af9, 20983 bytes). Pancawara page lists Pancawara elements as 'Pon, Wage, Kliwon, Umanis dan Paing' and explicitly assigns numeric indices 1-5: '1 Legi or manis... 2 Paing or Pait... 3 Pon or Petak... 4 Wage or Cemeng... 5 Kliwon or Kasih' — confirms Mapping B convention. Wuku page contains all 30 wuku names with urip values, location, sifat, and symbolic associations. Authority basis: practitioner (cultural reference site, not peer-reviewed). ELIGIBLE for Wuku/Pancawara ordering claims but not for customary attestation. Same lineage as peradnya/balinese-date-js-lib (derivative) but independent of CALENDRICA, kb.org, Kemendikbud textbook.",
+      "reason": "Independent Balinese cultural reference site babadbali.com. Pancawara page (SHA-256 a2958109770f38e448cbbf2b5624231ecac520152c1cb868668b66f1054c3adb, 10340 bytes) and Wuku page (SHA-256 3a970cf779236dda3d40800db1e66829e60d936eabaa231b43b4f010fb710af9, 20983 bytes). Pancawara page lists Pancawara elements as 'Pon, Wage, Kliwon, Umanis dan Paing' and explicitly assigns numeric indices 1-5: '1 Legi or manis... 2 Paing or Pait... 3 Pon or Petak... 4 Wage or Cemeng... 5 Kliwon or Kasih' \u2014 confirms Mapping B convention. Wuku page contains all 30 wuku names with urip values, location, sifat, and symbolic associations. Authority basis: practitioner (cultural reference site, not peer-reviewed). ELIGIBLE for Wuku/Pancawara ordering claims but not for customary attestation. Same lineage as peradnya/balinese-date-js-lib (derivative) but independent of CALENDRICA, kb.org, Kemendikbud textbook.",
       "related_dispute_id": null,
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/evidence/references/balinese-wariga-sources/bibliographic-records.md",
       "citation_keys_present_in_corpus": [
-        "wariga-babadbali-com (VERIFIED — independent Balinese cultural reference site)"
+        "wariga-babadbali-com (VERIFIED \u2014 independent Balinese cultural reference site)"
       ],
       "preserved": true,
-      "may_satisfy_validation_gate": true,
       "may_justify_ruleset_promotion": false,
-      "may_be_described_as_ground_truth": false,
       "scope_limitations": [
         "no special-case structure documented for Caturwara/Astawara/Sangawara on these pages",
         "no Gregorian/Wuku mapping examples",
-        "practitioner source — customary attestation requires separate authority"
+        "practitioner source \u2014 customary attestation requires separate authority"
       ]
     },
     "wariga_edysantosa_sakacalendar_java": {
@@ -233,21 +214,19 @@
       "verification_status": "VERIFIED",
       "reference_eligibility": "ELIGIBLE",
       "authority_basis": "software_reference",
-      "reason": "Java implementation of Balinese Pawukon/Saka calendar by edysantosa/sakacalendar (https://github.com/edysantosa/sakacalendar). Source file SHA-256 dda574c4d0434c9fcc35fa60fa700e1ae1f8e7b5eafc88d20346ed93d5687579, 119709 bytes, LGPL-2.1 license. Source code explicitly cites S1 (I.B. Suparta Ardhana's Pokok-pokok Wariga) and S2 (I.B. Putra Manik Aryana's Tenung Wariga) as its source of truth. Implements: Pancawara `noPancawara = (noWuku % 5) + 1` (mapping B convention), Caturwara with Jaya Tiga exception at Wuku Dungulan, Astawara with Kala exception at days 71-73, Sangawara with Dangu Pat exception for days 1-4 (4 consecutive Dangu), Dasawara via urip_sum mod 10, Dwiwara via urip_sum parity. NOTE: This is a DERIVATIVE of S1+S2 — same lineage as Pokok-pokok Wariga + Tenung Wariga. Counts as one witness, not two independent witnesses, in source-dependency analysis.",
+      "reason": "Java implementation of Balinese Pawukon/Saka calendar by edysantosa/sakacalendar (https://github.com/edysantosa/sakacalendar). Source file SHA-256 dda574c4d0434c9fcc35fa60fa700e1ae1f8e7b5eafc88d20346ed93d5687579, 119709 bytes, LGPL-2.1 license. Source code explicitly cites S1 (I.B. Suparta Ardhana's Pokok-pokok Wariga) and S2 (I.B. Putra Manik Aryana's Tenung Wariga) as its source of truth. Implements: Pancawara `noPancawara = (noWuku % 5) + 1` (mapping B convention), Caturwara with Jaya Tiga exception at Wuku Dungulan, Astawara with Kala exception at days 71-73, Sangawara with Dangu Pat exception for days 1-4 (4 consecutive Dangu), Dasawara via urip_sum mod 10, Dwiwara via urip_sum parity. NOTE: This is a DERIVATIVE of S1+S2 \u2014 same lineage as Pokok-pokok Wariga + Tenung Wariga. Counts as one witness, not two independent witnesses, in source-dependency analysis.",
       "related_dispute_id": null,
       "date_classified": "2026-09-15",
       "evidence_review_artifact": "phase-1/evidence/references/balinese-wariga-sources/bibliographic-records.md",
       "citation_keys_present_in_corpus": [
-        "wariga-edysantosa-sakacalendar-java (ELIGIBLE — software derivative of S1+S2, same lineage)"
+        "wariga-edysantosa-sakacalendar-java (ELIGIBLE \u2014 software derivative of S1+S2, same lineage)"
       ],
       "preserved": true,
-      "may_satisfy_validation_gate": true,
       "may_justify_ruleset_promotion": false,
-      "may_be_described_as_ground_truth": false,
       "scope_limitations": [
-        "derivative of S1+S2 — same lineage, not independent witness for Wewaran formulas",
+        "derivative of S1+S2 \u2014 same lineage, not independent witness for Wewaran formulas",
         "no Gregorian/Wuku examples in source code (purely algorithmic)",
-        "LGPL-2.1 license — derivative works must respect license terms"
+        "LGPL-2.1 license \u2014 derivative works must respect license terms"
       ]
     }
   },

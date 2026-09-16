@@ -248,31 +248,64 @@ Read by `can_promote_ruleset_using(record, context)` to verify that
 the caller's `context.blocking_dispute_ids` enumerates every
 blocking dispute. Un-enumerated blocking disputes fail closed.
 
-## gate hierarchy (v3.0)
+## gate hierarchy (v3.0 — post-stabilization 2026-09-16)
 
 There are four layered gates in `phase-1/src/dewatacalendar/corpus_status.py`:
 
-1. **`can_satisfy_validation_gate(record, *, claim_id=None)`** — reference-level.
-   Returns True iff the corpus is `VERIFIED + ELIGIBLE` and the
-   `claim_id` (if provided) is in `eligible_claim_ids`. A True result
-   means the source MAY PARTICIPATE in independent-reference
-   validation for the specific claim. It does NOT authorize promotion.
+### 1. `can_satisfy_validation_gate(record, *, claim_id)` — REFERENCE-LEVEL, CLAIM-SCOPED
 
-2. **`can_promote_ruleset_using(record, context)`** — promotion-level.
-   Returns True iff the record satisfies the reference gate for every
-   claim_id in the context AND `RulesetPromotionContext.is_complete()`
-   is True AND `scope_match` AND `conformance_passed` AND
-   `governance_authorization_artifact` is set AND every record
-   blocking dispute is enumerated in `context.blocking_dispute_ids`.
+Returns True iff (every condition required):
+  - `claim_id` is not None (the caller MUST specify a claim)
+  - the record is a `CorpusRecord`
+  - `verification_status == "VERIFIED"`
+  - `reference_eligibility == "ELIGIBLE"`
+  - `eligible_claim_ids` is non-empty
+  - `claim_id` is in `eligible_claim_ids`
 
-3. **`can_be_described_as_ground_truth(record)`** — fail closed.
-   Returns False unconditionally. Ground-truth designation requires an
-   explicit accepted-rule mechanism with appropriate human/governance
-   authority that this module does not yet implement.
+A True result answers ONLY: "Can source S support claim C?"
 
-4. **`can_be_silently_copied_to_authoritative_fixture(record)`** — fail closed.
-   Returns False unconditionally. There is no condition under which
-   evidence may be silently promoted into an authoritative fixture.
+It does NOT answer: "Is source S generally valid?" — the unscoped
+source-level authority shortcut is forbidden. The gate always
+returns False for `claim_id=None`.
+
+### 2. `can_promote_ruleset_using(record, context)` — RULESET-PROMOTION-LEVEL, ALWAYS FAIL-CLOSED
+
+Returns False unconditionally.
+
+Promotion is an authority-bearing action. The executable
+promotion-authority mechanism (which would independently verify
+dispute records, blocking-dispute resolution state, resolver
+authority, resolution evidence artifacts, affected
+claim/component scope, required conformance-run artifacts, explicit
+governance authorization, and matching ruleset candidate) does
+not exist yet. No caller input — including a complete
+`RulesetPromotionContext` with arbitrary strings as
+`governance_authorization_artifact` — can authorize a promotion
+today.
+
+`RulesetPromotionContext` is retained only as a future-schema
+prototype. It is **NOT YET AUTHORIZATION-BEARING**.
+
+### 3. `can_be_described_as_ground_truth(record)` — ALWAYS FAIL-CLOSED
+
+Returns False unconditionally.
+
+### 4. `can_be_silently_copied_to_authoritative_fixture(record)` — ALWAYS FAIL-CLOSED
+
+Returns False unconditionally.
+
+## removed source-level booleans (post-stabilization 2026-09-16)
+
+The per-corpus `may_satisfy_validation_gate` and
+`may_be_described_as_ground_truth` boolean fields have been REMOVED
+from STATUS.json entries. They implied corpus-as-a-whole authority
+that is forbidden under the v3.0 claim-scoped model. Use the
+structured fields (`verification_status`, `reference_eligibility`,
+`eligible_claim_ids`) instead.
+
+`may_justify_ruleset_promotion` is retained as DOCUMENTATION-ONLY
+and is NOT consulted by any gate function. No duplicated policy
+booleans should drift away from the structured model.
 
 ## legacy CorpusStatus (v2.0 deprecated)
 
