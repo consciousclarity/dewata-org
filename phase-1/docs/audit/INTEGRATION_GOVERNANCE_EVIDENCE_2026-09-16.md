@@ -187,7 +187,9 @@ the related test files.
 dangling-references scan: 0 repository artifacts missing
 all STATUS.json corpus_file references resolve to existing artifacts
 OR are explicitly null with scope_limitations notes documenting why
-the source is held at /tmp/refs/ instead of in the public repo.
+the source is publicly retrievable but explicit redistribution
+permission was not identified (a transient retrieval copy was used
+during verification and is noncanonical).
 
 Specifically:
 - `reingold_dershowitz_2018_calendrica_4_0_calixir`: corpus_file=null;
@@ -195,15 +197,18 @@ Specifically:
   Calixir restrictive license header. Metadata + SHA-256 in
   calendrica-source/METADATA.json.
 - `wariga_babadbali_com`: corpus_file=null; babadbali.com is an
-  external source held at /tmp/refs/babadbali-pancawara.html and
-  /tmp/refs/babadbali-wuku.html for verification only. SHA-256
-  fingerprints recorded in STATUS reason field.
+  external source (babadbali.com is publicly retrievable at the
+  canonical URL; a transient retrieval copy was used during
+  verification and is noncanonical. SHA-256 fingerprints
+  preserved in STATUS.json reason field).
 
 classification of references:
   repository artifact (in-tree): 9 entries (wariga_kemendikbud,
     wariga_edysantosa Java, calendrica firstparty files, evidence
     markdown/json)
-  external source (held at /tmp/refs/, NOT in repo): 2 entries
+  external source (publicly retrievable; transient retrieval copy was
+  used during verification; canonical evidence = URL + SHA-256 +
+  access date; NOT in repo): 2 entries
     (calendrica Calixir secondary, babadbali.com)
   intentionally unavailable source: 2 entries (wariga_suparta
     ardhana_2006, wariga_putra_manik_ariana_2009 — both INELIGIBLE

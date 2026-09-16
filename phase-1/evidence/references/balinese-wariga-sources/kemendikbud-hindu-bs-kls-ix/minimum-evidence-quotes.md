@@ -1,13 +1,15 @@
 # Kemendikbud Hindu-BS-KLS-IX (2022) — minimum evidentiary quotes
 
 Compiled: 2026-09-15.
-Updated: 2026-09-16 (corrective pass: minimum-extraction reduction + license clarification).
+Updated: 2026-09-16 (corrective pass: minimum-extraction reduction
++ license clarification + /tmp-refs documentation policy).
 
 This file contains ONLY the minimum necessary quotations required for
 the evidentiary claims documented in
 `phase-1/evidence/references/balinese-wariga-sources/claim-register.md`.
-The full PDF is held at /tmp/refs/hindu-bs-kls-ix.pdf for verification
-but is NOT redistributed in this evidence package.
+The full PDF is publicly retrievable at the canonical URL recorded
+below; explicit redistribution permission was not identified; only
+minimum quotations necessary for evidentiary claims are retained.
 
 ## license status (verified 2026-09-16)
 
@@ -17,30 +19,38 @@ The PDF page 2 contains the verbatim statement:
 > Teknologi Republik Indonesia. Dilindungi Undang-Undang."
 
 This is **standard Indonesian government copyright assertion** — NOT
-a Creative Commons license. The book is held by the Indonesian
-Ministry of Education, Culture, Research, and Technology. The
-Disclaimer on page 2 explains the book is "prepared by the Government
-in fulfillment of quality, affordable, equitable educational book
-needs" per UU No. 3 Tahun 2017.
+a Creative Commons license or any other open-content license. The
+book is held by the Indonesian Ministry of Education, Culture,
+Research, and Technology. The Disclaimer on page 2 explains the
+book is "prepared by the Government in fulfillment of quality,
+affordable, equitable educational book needs" per UU No. 3 Tahun
+2017.
 
-**Conclusion**: redistribution rights are NOT explicitly granted via
-an open-content license. The Indonesian government typically
-distributes such textbooks for free educational use but retains
-copyright. Per user instruction 2026-09-16: "If redistribution rights
-are unclear, keep metadata/SHA-256/page references/only the minimum
-quotation necessary for the evidentiary claim, rather than broad
-extracted text."
+**Conclusion**: Source is publicly retrievable, but explicit
+redistribution permission was not identified; only minimum
+quotations necessary for evidentiary claims are retained. Per user
+instruction 2026-09-16: "If redistribution rights are unclear, keep
+metadata/SHA-256/page references/only the minimum quotation
+necessary for the evidentiary claim, rather than broad extracted
+text."
 
-This file replaces the prior broader pages-37-40 extraction with the
-narrow minimum-evidence quotes only.
+This file replaces the prior broader extraction with the narrow
+minimum-evidence quotes only.
 
 ## SHA-256 fingerprint
 
 The full PDF SHA-256:
 `0ac38bf5e59c3ef755d3296894a3d865da43c0945c92b3ed4d1e19457b9fe429`
 
-The full PDF is held at /tmp/refs/hindu-bs-kls-ix.pdf
-(20,157,376 bytes, 209 pages) for verification only.
+The full PDF is 20,157,376 bytes (209 pages). It is publicly
+retrievable at the canonical URL; a transient retrieval copy was used
+during verification and is **noncanonical**. The canonical evidence
+record is the committed URL/hash/retrieval-date metadata plus the
+retained minimum quotation below.
+
+Canonical URL: https://static-sc.cloudapp.web.id/content/pdf/bukuteks/kurikulum21/Hindu-BS-KLS-IX.pdf
+
+Access date: 2026-09-15
 
 ISBN-13: 978-602-244-367-4 (full volume)
 ISBN-13: 978-602-244-715-3 (volume 3)
@@ -73,9 +83,8 @@ This documents:
 
 ## evidence-package integrity
 
-This file replaces the prior broader extraction
-(`pages-37-40-extracted.txt`, 6508 bytes). The narrower minimum-quote
-version preserves every evidentiary claim made in
+This file replaces the prior broader extraction. The narrower
+minimum-quote version preserves every evidentiary claim made in
 `claim-register.md` while reducing the committed text to only the
 minimum necessary for those claims.
 

@@ -7,14 +7,24 @@ the file is binary or large), not in `/tmp`.
 
 **Status as of 2026-09-15:** empty. Per the gap analysis
 (`phase-1/docs/audit/GAP_ANALYSIS_v1.0_2026-09-15.md`, Findings 6
-and 8), the following evidence currently lives in `/tmp` and should
-be moved here when remediation is approved:
+and 8), the following evidence was originally captured during
+retrieval as transient working copies and should be promoted here when
+remediation is approved:
 
 - `/tmp/cross-2026-09.jsonl` — 30-day × 4-impl cross-validation output
 - `/tmp/kb-2026-09.json` — kalenderbali.info parsed day cells (15 vectors)
 - `/tmp/kb-org-2026-09.json` — kalenderbali.org parsed day cells (30 vectors)
-- `/tmp/refs/*.html` — fetched reference pages (babadbali, kalenderbali.*, wikipedia, cambridge, etc.)
-- `/tmp/repos/*` — cloned reference implementations (peradnya/balinese-date-js-lib, edysantosa/sakacalendar, SHA888/balinese-calendar)
+- `/tmp/refs/*.html` (transient retrieval copies — not durable evidence storage)
+- `/tmp/repos/*` (transient cloned reference implementations)
+
+NOTE: per the v3.0-post-stabilization `/tmp/refs/` policy
+(2026-09-16), `/tmp/` is scratch space only and `/tmp/refs/` is not
+durable evidence storage. The files at `/tmp/refs/` (when present)
+are transient retrieval copies used during verification. The
+canonical evidence record is the committed URL + SHA-256 + access
+date + minimum quotation/metadata as listed in each evidence
+package's manifest. This README is being updated to reflect that
+policy.
 
 Per PROTOCOL §2.7, citation keys for these references follow the
 `AuthorYearShortTitle` pattern (lowercase, hyphen-separated):

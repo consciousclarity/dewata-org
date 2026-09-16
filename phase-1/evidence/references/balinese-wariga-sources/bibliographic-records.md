@@ -70,7 +70,7 @@ Per PROTOCOL v1.0 and user instruction (verbatim): "If only bibliographic metada
 
 ## S3. edysantosa/sakacalendar (Java implementation citing S1, S2)
 
-**Type:** Independent open-source implementation that **cites S1 and S2 as its source of truth**.
+**Type:** Derivative open-source implementation citing S1 and S2 as its source of truth. (Not an independent attestation of S1/S2; same evidentiary lineage.)
 
 **Repository metadata:**
 - URL: https://github.com/edysantosa/sakacalendar
@@ -101,14 +101,15 @@ Per PROTOCOL v1.0 and user instruction (verbatim): "If only bibliographic metada
 - Publisher: Kementerian Pendidikan, Kebudayaan, Riset, dan Teknologi (Kemendikbud) + Kementerian Agama (Religious Affairs Ministry)
 - Title: Hindu-BS-KLS-IX (Hindu Pendidikan Agama Buddha / Hindu Religion Book, Grade 9)
 - Year: 2022
-- License: Government open-content license (free to use for educational purposes)
+- License status (verified 2026-09-16 from PDF page 2): standard Indonesian government copyright assertion ("Hak Cipta pada Kementerian Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia. Dilindungi Undang-Undang."). NOT a Creative Commons license or any other open-content license. Explicit redistribution permission was not identified; only minimum quotations necessary for evidentiary claims are retained.
 - Source URL: https://static-sc.cloudapp.web.id/content/pdf/bukuteks/kurikulum21/Hindu-BS-KLS-IX.pdf
+- Access date: 2026-09-15
 
 **Source file SHA-256:**
 `0ac38bf5e59c3ef755d3296894a3d865da43c0945c92b3ed4d1e19457b9fe429`
 
-**Wewaran content location:** Pages 37–40 contain:
-- Pancawara table with mapping "(1) Umanis, (2) Pahing, (3) Pon, (4) Wage, (5) Kliwon"
+**Wewaran content location:** Pages 37–40 contain (minimum quotations in `minimum-evidence-quotes.md`):
+- Pancawara mapping "(1) Umanis, (2) Pahing, (3) Pon, (4) Wage, (5) Kliwon"
 - Caturwara/Astawara/Sangawara tables
 - **Pawukon exceptions** ("Namun yang perlu dipahami ada beberapa pengecualian yaitu") — page 40 explicitly documents:
   - Caturwara: 3 consecutive Jaya at Wuku Dungulan (Redite Jaya, Soma Jaya, Anggara Jaya)

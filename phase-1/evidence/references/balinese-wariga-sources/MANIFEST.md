@@ -1,50 +1,88 @@
-# MANIFEST — Balinese Wariga Source Package
+# Balinese Wariga Source Evidence — MANIFEST
 
 Compiled: 2026-09-15.
+Updated: 2026-09-16 (corrective pass: license clarification + /tmp-refs
+documentation policy + lineage terminology).
 
-All files in this directory are evidence artifacts retrieved from independent Balinese Wariga sources.
-Each row records file SHA-256, size, and retrieval date.
+This manifest records the canonical evidence record for each source
+in this evidence package. For external sources, the canonical
+evidence record consists of the source URL, retrieval/access date,
+SHA-256 of retrieved bytes, byte size, redistribution status, and
+the committed minimum quotation or metadata where legally
+appropriate. Transient retrieval copies at `/tmp/refs/` are
+noncanonical and are not part of permanent evidence storage.
 
-## Files
+## in-tree evidence artifacts (committed to this evidence package)
 
-| File | Purpose | Size (bytes) | SHA-256 | Retrieval date |
-|---|---|---|---|---|
-| `bibliographic-records.md` | Catalog of source records | — | (markdown, no hash) | 2026-09-15 |
-| `claim-register.md` | Claim-by-claim matrix | — | (markdown, no hash) | 2026-09-15 |
-| `source-provenance-graph.md` | Lineage graph | — | (markdown, no hash) | 2026-09-15 |
-| `source-access-notes.md` | Retrieval methodology | — | (markdown, no hash) | 2026-09-15 |
-| `kemendikbud-hindu-bs-kls-ix/pages-37-40-extracted.txt` (stub) | Superseded stub — see `minimum-evidence-quotes.md` | historical |
-| `kemendikbud-hindu-bs-kls-ix/minimum-evidence-quotes.md` | Kemendikbud textbook minimum-evidence quotes + license status | 3867 | (no hash on markdown) | 2026-09-16 |
-| `edysantosa-sakacalendar/extracted-functions.txt` | Java Pawukon/Wewaran functions + Jaya Tiga docs | 5940 | (no hash on extracted text) | 2026-09-15 |
+| file | purpose | size | last_modified |
+|---|---|---|---|
+| `bibliographic-records.md` | Catalog of source records | — | 2026-09-16 |
+| `claim-register.md` | Claim-by-claim matrix | — | 2026-09-15 |
+| `source-provenance-graph.md` | Lineage graph | — | 2026-09-15 |
+| `source-access-notes.md` | Retrieval methodology | — | 2026-09-15 |
+| `kemendikbud-hindu-bs-kls-ix/minimum-evidence-quotes.md` | Kemendikbud textbook minimum-evidence quotes + license status | 4251 | 2026-09-16 |
+| `kemendikbud-hindu-bs-kls-ix/pages-37-40-extracted.txt` (stub) | Superseded stub — replaced by `minimum-evidence-quotes.md` | historical | — |
+| `edysantosa-sakacalendar/extracted-functions.txt` | Java Pawukon/Wewaran functions + Jaya Tiga docs (function-level extraction) | 5940 | 2026-09-15 |
 
-## Original source artifacts (NOT included in git)
+## external source records (canonical evidence = URL + hash + access date + minimum quotation)
 
-The original source artifacts are held outside this evidence directory for copyright/access reasons.
-SHA-256 fingerprints recorded for provenance.
+| source | canonical URL | access date | byte size | SHA-256 | redistribution status | committed evidence |
+|---|---|---|---|---|---|---|
+| S1. Pokok-pokok Wariga (I.B. Suparta Ardhana, 2006, Paramita Surabaya, ISBN-10 979722242X, LCCN 2007308755) | Open Library OL5988117W bibliographic record | 2026-09-15 | n/a | n/a (book not retrieved) | NOT redistributed — copyright held by Paramita; chapter text not accessible from this host (ebook_access=no_ebook) | bibliographic metadata only |
+| S2. Tenung Wariga (I.B. Putra Manik Aryana, 2009, Bali Aga Denpasar) | Open Library search returned numFound=0; cited in S3 source code | 2026-09-15 | n/a | n/a (book not retrieved) | NOT redistributed — copyright held by Bali Aga; chapter text not accessible from this host | bibliographic metadata only |
+| S3. edysantosa/sakacalendar (Java implementation, LGPL-2.1) | https://raw.githubusercontent.com/edysantosa/sakacalendar/master/src/main/com/edysantosa/sakacalendar/SakaCalendar.java | 2026-09-15 | 119709 | `dda574c4d0434c9fcc35fa60fa700e1ae1f8e7b5eafc88d20346ed93d5687579` | Derivative open-source implementation citing S1/S2 (NOT an independent evidentiary lineage from those books). Function-level extraction committed (5940 bytes / 4.96% of full source); full file NOT in public repo | `extracted-functions.txt` (function bodies only) |
+| S4. Kemendikbud Hindu-BS-KLS-IX (2022, Indonesian Ministry of Education, ISBN-13 978-602-244-367-4 full volume / 978-602-244-715-3 volume 3) | https://static-sc.cloudapp.web.id/content/pdf/bukuteks/kurikulum21/Hindu-BS-KLS-IX.pdf | 2026-09-15 | 20157376 | `0ac38bf5e59c3ef755d3296894a3d865da43c0945c92b3ed4d1e19457b9fe429` | Publicly retrievable but explicit redistribution permission NOT identified (standard Indonesian government copyright assertion on PDF page 2; NOT Creative Commons). Only minimum quotations necessary for evidentiary claims are retained. | `minimum-evidence-quotes.md` (4251 bytes) |
+| S5. babadbali.com (cultural reference site) | https://www.babadbali.com/pewarigaan/pancawara.htm and https://www.babadbali.com/pewarigaan/wuku.htm | 2026-09-15 | 10340 / 20983 | `a2958109770f38e448cbbf2b5624231ecac520152c1cb868668b66f1054c3adb` (pancawara) / `3a970cf779236dda3d40800db1e66829e60d936eabaa231b43b4f010fb710af9` (wuku) | External source — pages retrievable; full HTML NOT in this public repo. SHA-256 fingerprints recorded in STATUS.json reason field. | SHA-256 + brief quoted observations in claim-register.md |
 
-| Source | Artifact | Size (bytes) | SHA-256 | Held at |
-|---|---|---|---|---|
-| S1 Pokok-Pokok Wariga | not retrieved | — | — | — |
-| S2 Tenung Wariga | not retrieved | — | — | — |
-| S3 edysantosa/sakacalendar | `SakaCalendar.java` | 119709 | `dda574c4d0434c9fcc35fa60fa700e1ae1f8e7b5eafc88d20346ed93d5687579` | `/tmp/refs/sakacalendar.java` (working copy) |
-| S4 Kemendikbud Hindu-BS-KLS-IX | `Hindu-BS-KLS-IX.pdf` | 20157376 | `0ac38bf5e59c3ef755d3296894a3d865da43c0945c92b3ed4d1e19457b9fe429` | `/tmp/refs/hindu-bs-kls-ix.pdf` (working copy) |
-| S5a babadbali/pancawara.htm | HTML page | 10340 | `a2958109770f38e448cbbf2b5624231ecac520152c1cb868668b66f1054c3adb` | `/tmp/refs/babadbali-pancawara.html` (working copy) |
-| S5b babadbali/wuku.htm | HTML page | 20983 | `3a970cf779236dda3d40800db1e66829e60d936eabaa231b43b4f010fb710af9` | `/tmp/refs/babadbali-wuku.html` (working copy) |
+## /tmp/refs/ policy
 
-## Copyright status
+PROTOCOL v1.0 makes `/tmp/` scratch space only. `/tmp/refs/` is not
+durable evidence storage. The files at `/tmp/refs/` (when present)
+are transient retrieval copies used during verification. The canonical
+evidence record is the committed URL + SHA-256 + access date +
+minimum quotation / metadata as listed above.
 
-| Source | Copyright status |
+A transient retrieval copy may have existed during retrieval, but it
+is NOT durable evidence storage. This is not a requirement that
+`/tmp/refs/` files continue to exist.
+
+## original source artifacts (NOT redistributed)
+
+- `calendrica-source/calendrica-4.0.cl` (Calixir secondary copy): NOT in
+  this public repo per the older restrictive license header on the
+  Calixir-bundled source. Metadata + SHA-256 fingerprint preserved in
+  `calendrica-source/METADATA.json`.
+- `babadbali.com` HTML pages: NOT in this public repo (external
+  source). SHA-256 fingerprints preserved in STATUS.json reason field.
+
+## copyright status summary
+
+| source | copyright status |
 |---|---|
-| S1 Pokok-Pokok Wariga | Copyright Paramita. No full text retained in this evidence package. Bibliographic metadata only. |
-| S2 Tenung Wariga | Copyright Bali Aga. No full text retained. Bibliographic metadata only. |
-| S3 edysantosa/sakacalendar | LGPL-2.1 license. Only extracted function bodies retained (under fair use for analysis/citation). Full file retained only at /tmp/refs/ for runtime verification. |
-| S4 Kemendikbud textbook | Indonesian government open-content (free for educational use). Pages 37-40 extracted (text-only quotation, ~6500 chars). Full PDF retained only at /tmp/refs/ for verification. |
-| S5 babadbali.com | Copyright holder unknown. HTML pages retained only at /tmp/refs/ for retrieval verification. Substantive claims quoted under fair use. |
+| S1 Pokok-pokok Wariga | Copyright Paramita. NOT redistributed. Bibliographic metadata only. |
+| S2 Tenung Wariga | Copyright Bali Aga. NOT redistributed. Bibliographic metadata only. |
+| S3 edysantosa/sakacalendar | LGPL-2.1. Function-level extraction under fair-use citation; full file NOT in repo. |
+| S4 Kemendikbud textbook | Standard Indonesian government copyright assertion (NOT Creative Commons, NOT open-content). Publicly retrievable but explicit redistribution permission NOT identified. Only minimum quotations retained. |
+| S5 babadbali.com | External source. Full HTML NOT in repo. SHA-256 + quoted observations only. |
+| `kemendikbud-hindu-bs-kls-ix/pages-37-40-extracted.txt` (stub) | Stub retained for git-history preservation; no copyrighted content beyond what is in `minimum-evidence-quotes.md`. |
 
-## Note on extraction choices
+## lineage terminology
 
-Per PROTOCOL v1.0 and user instruction:
-- We do NOT commit copyrighted full-book/chapter material to the public repo
-- We DO commit metadata/hashes/citation/short quotations/claim records
-- We DO retain working copies at /tmp/refs/ for runtime verification (outside public repo)
-- The original PDFs/HTML files are NOT in this git directory
+- **Independent attestation**: S4 (Kemendikbud), S5 (babadbali.com),
+  and `basaibubali.org` (community wiki) are independent Balinese
+  sources relative to each other.
+- **Derivative open-source implementation citing S1/S2**: S3
+  (edysantosa/sakacalendar) explicitly cites Pokok-pokok Wariga and
+  Tenung Wariga as its source of truth. S3 is NOT an independent
+  attestation of S1/S2; agreement between S3 and CALENDRICA is
+  algorithmic corroboration between two software implementations
+  that both trace to overlapping Wariga traditions, not customary or
+  cultural attestation.
+
+## what is NOT verifiable from this host
+
+- S1 (Pokok-pokok Wariga) chapter text — requires institutional library
+  access or commercial purchase (~$4.30 USD via Tokopedia)
+- S2 (Tenung Wariga) chapter text — same
+- Independent Wuku/Gregorian examples from printed Kalender Bali with
+  publication provenance

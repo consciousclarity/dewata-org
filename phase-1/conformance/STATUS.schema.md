@@ -5,11 +5,29 @@ the sidecar manifest that records the **bibliographic / evidence-
 chain status** of every conformance corpus file under
 `phase-1/conformance/`.
 
-schema version: **3.0** (introduced when the two-axis model was
-extended with structured claim/scope and blocking-dispute fields,
-and the gate hierarchy was re-architected into four layered gates
-in the post-remediation pass of 2026-09-16; v2.0 was the prior
-two-axis split introduced by the original v1.0 remediation).
+schema version: **3.0**
+
+v3.0 changes from v2.0:
+- extended with structured claim-scope and blocking-dispute fields
+- gate hierarchy re-architected into four distinct gates with
+  different semantics (validation, promotion, ground truth, fixture
+  copying)
+- legacy `CorpusStatus` enum retained for deserialization only;
+  never authorizes a modern gate
+- v3.0-post-stabilization (2026-09-16): the reference gate is
+  **claim-scoped** and requires an explicit `claim_id`; unscoped
+  source-level boolean authority shortcuts are forbidden
+- v3.0-post-stabilization (2026-09-16): `can_promote_ruleset_using`
+  returns False unconditionally; the executable promotion-authority
+  mechanism does not exist yet
+- v3.0-post-stabilization (2026-09-16 documentation consistency pass):
+  STATUS.schema.md fully rewritten for internal consistency; legacy
+  four-gates-are-identical language and obsolete `may_satisfy_validation_gate`
+  / `may_be_described_as_ground_truth` source-level boolean fields are
+  removed; `/tmp/refs/` policy documented as transient retrieval space
+  (not durable evidence storage); Kemendikbud licensing corrected
+  (NOT open-content); edysantosa lineage terminology corrected
+  (derivative, not independent)
 
 ## why a sidecar exists
 
@@ -43,199 +61,136 @@ fields:
 | value | meaning |
 |---|---|
 | `UNVERIFIED` | the citation could not be independently verified from this host (book not held, ISBN not retrievable, page cannot be cross-checked, etc.) |
-| `VERIFIED`   | the source has been fetched / the citation has been confirmed against a retrievable record |
+| `VERIFIED` | the source has been fetched / the citation has been confirmed against a retrievable record (the source itself may still be non-authoritative — see axis 2) |
 
-### axis 2 — `reference_eligibility` (may this corpus satisfy an independent-reference validation gate?)
-
-| value | meaning |
-|---|---|
-| `INELIGIBLE` | the corpus may inform the work but cannot satisfy an independent-reference validation gate. reasons: practitioner / non-academic source, source does not actually cover the claimed calendrical relationship, source is older than the regime it claims to describe |
-| `ELIGIBLE`   | the corpus may satisfy an independent-reference validation gate for calendar correctness |
-
-### optional `authority_basis` (why a corpus is / is not eligible)
+### axis 2 — `reference_eligibility` (may this corpus support independent-reference validation for calendar correctness?)
 
 | value | meaning |
 |---|---|
-| `scholarly`         | academic publication, peer-reviewed or from a recognized scholarly press |
-| `customary`         | attested by a Balinese customary authority (pemangku, bendesa, etc.) |
-| `institutional`     | attested by a state institution (university, ministry, heritage body) |
-| `practitioner`      | practitioner calendar (commercial or community) — may be VERIFIED but generally INELIGIBLE for authoritative calendar validation |
+| `INELIGIBLE` | the corpus may inform the work but cannot satisfy an independent-reference validation gate, even if VERIFIED. reasons include practitioner/non-academic source, source does not actually cover the claimed calendrical relationship, source is older than the regime it claims to describe |
+| `ELIGIBLE` | the corpus MAY PARTICIPATE in independent-reference validation for claims within its structured `eligible_claim_ids` scope. An ELIGIBLE flag does NOT automatically grant eligibility for every claim in that corpus — see gate hierarchy below. |
+
+The two axes are **necessary source-level prerequisites** for the
+reference gate. They are not sufficient on their own — see gate
+hierarchy §1 below.
+
+## optional authority_basis
+
+a corpus may additionally record an authority_basis to explain WHY
+it is (or is not) eligible:
+
+| value | meaning |
+|---|---|
+| `scholarly` | academic publication, peer-reviewed or from a recognized scholarly press |
+| `customary` | attested by a Balinese customary authority (pemangku, bendesa, etc.) |
+| `institutional` | attested by a state institution (university, ministry, heritage body) |
+| `practitioner` | practitioner calendar (commercial or community) — may be VERIFIED but is generally INELIGIBLE for authoritative calendar validation |
 | `software_reference` | a software implementation that itself cites a verifiable source (the source is what matters, not the software) |
-| `unknown`           | the basis could not be classified — UNVERIFIED by default |
-
-### the gate rule
-
-```
-can_satisfy_validation_gate(corpus) =
-    verification_status == "VERIFIED"
-  AND reference_eligibility == "ELIGIBLE"
-```
-
-anything else fails closed. There is no implicit upgrade.
-
-### matrix
-
-| verification | eligibility | gate | semantic |
-|---|---|---|---|
-| VERIFIED | ELIGIBLE | **passes** | the corpus is a properly cited, authoritative, on-topic source |
-| VERIFIED | INELIGIBLE | fails | the source is retrievable but not authoritative for calendar validation |
-| UNVERIFIED | ELIGIBLE | fails | the citation cannot be independently retrieved |
-| UNVERIFIED | INELIGIBLE | fails | both axes fail closed |
-
-## legacy single-axis status
-
-the previous version of the corpus status used a single `CorpusStatus`
-enum (`UNVERIFIED` / `NON_AUTHORITATIVE` / `ATTESTED`). That enum is
-retained as a derived convenience for callers that don't need the
-two-axis detail:
-
-| legacy | two-axis mapping |
-|---|---|
-| `UNVERIFIED` | `(UNVERIFIED, INELIGIBLE)` |
-| `NON_AUTHORITATIVE` | `(VERIFIED, INELIGIBLE)` |
-| `ATTESTED` | `(VERIFIED, ELIGIBLE)` |
-
-callers that want the full detail should use the `CorpusRecord`
-dataclass from `phase-1/src/dewatacalendar/corpus_status.py`.
-
-## top-level shape
-
-```
-{
-  "schema_version": "2.0",
-  "last_modified": "<ISO8601>",
-  "policy": "<free text>",
-  "axes": {
-    "verification_status": { "UNVERIFIED": "...", "VERIFIED": "..." },
-    "reference_eligibility": { "INELIGIBLE": "...", "ELIGIBLE": "..." },
-    "authority_basis": { ... }
-  },
-  "gate_predicates": { ... },
-  "separation_from_ceremonial_tiers": "<free text>",
-  "corpora": { ... },
-  "enforcement": "<free text>"
-}
-```
-
-## `corpora` entries
-
-```
-"<corpus_basename>": {
-  "corpus_file":                "<rel path under the repo root>",
-  "corpus_class":               "published | unverified | ground-truth",
-  "verification_status":        "UNVERIFIED | VERIFIED",
-  "reference_eligibility":      "INELIGIBLE | ELIGIBLE",
-  "authority_basis":            "<one of the authority_basis values>",
-  "reason":                     "<free text, brief>",
-  "related_dispute_id":         "<DISPUTE-* id, or null>",
-  "date_classified":            "<YYYY-MM-DD>",
-  "evidence_review_artifact":   "<rel path>",
-  "citation_keys_present_in_corpus": [
-    "<AuthorYearShortTitle>",
-    ...
-  ],
-  "preserved":                  true | false,
-  "may_satisfy_validation_gate":        true | false,
-  "may_justify_ruleset_promotion":      true | false,
-  "may_be_described_as_ground_truth":   true | false
-}
-```
-
-the three `may_*` fields are derived from `verification_status` and
-`reference_eligibility` for fast machine-check; they are also
-asserted explicitly so a future schema update that changes the
-predicates does not silently change the recorded behavior.
-
-## gate predicates
-
-the gate predicates are functions, not just JSON fields. The Python
-implementation lives in
-`phase-1/src/dewatacalendar/corpus_status.py`:
-
-- `can_satisfy_validation_gate(record) -> bool`
-- `can_promote_ruleset_using(record) -> bool`
-- `can_be_described_as_ground_truth(record) -> bool`
-- `can_be_silently_copied_to_authoritative_fixture(record) -> bool`
-
-all four are `(verification == VERIFIED) AND (eligibility == ELIGIBLE)`.
-any other combination returns False. Unrecognized values fail closed.
-
-## how downstream code MUST use this
-
-any code path that:
-
-- claims a corpus as authoritative,
-- cites a corpus to justify a ruleset promotion,
-- presents a corpus value as ground truth,
-- silently copies values from a corpus into a new authoritative fixture
-
-MUST pass through the gate predicates. If the corpus's axes do not
-satisfy `VERIFIED + ELIGIBLE`, the claim must be downgraded to
-"historical" or "diagnostic" and the corpus's status must be reported
-to the caller.
-
-the cross-validation machinery annotates every loaded vector with
-`_corpus_verification_status`, `_corpus_reference_eligibility`,
-`_corpus_authority_basis`, and `_corpus_legacy_status` fields.
-Code that consumes a vector should check those fields before
-treating the value as authoritative.
+| `unknown` | the basis could not be classified — UNVERIFIED by default |
 
 ## separation from Dewata's ceremonial provenance ladder
 
-this status governs the **bibliographic / evidence-chain layer** for
-conformance corpora. It is NOT a substitute for, and does not
-affect, Dewata's ceremonial/record provenance tiers:
+this status governs the **bibliographic / evidence-chain** layer for
+conformance corpora. It is NOT a substitute for, and does not affect,
+Dewata's ceremonial/record provenance tiers:
 
 | tier | meaning | governance |
 |---|---|---|
-| `computed`     | derived from a deterministic computation, not yet attested | PROTOCOL §2.6 |
-| `registered`   | recorded in a Dewata registry; presence-only, not attested | PROTOCOL §2.6 |
-| `predicted`    | the engine's forward-looking claim about a future value | PROTOCOL §2.6 |
-| `verified`     | attested by an applicable human or customary authority | PROTOCOL §2.6 |
+| `computed` | derived from a deterministic computation, not yet attested | PROTOCOL §2.6 |
+| `registered` | recorded in a Dewata registry; presence-only, not attested | PROTOCOL §2.6 |
+| `predicted` | the engine's forward-looking claim about a future value | PROTOCOL §2.6 |
+| `verified` | attested by an applicable human or customary authority | PROTOCOL §2.6 |
 
 those tiers are about CEREMONIAL records (e.g. a banjar's computation
 that a given day is a Purnama). corpus evidence status is about
-BIBLIOGRAPHIC sources used to validate the engine's arithmetic. the
-two namespaces do not interact.
+BIBLIOGRAPHIC sources used to validate the engine's arithmetic.
+the two namespaces do not interact.
 
 in particular: a corpus's `verification_status: VERIFIED` does NOT
 imply `verified` in the ceremonial provenance ladder. the ceremonial
 tier requires a human or customary attestation per PROTOCOL §2.6,
 which is a separate process.
 
-## how this sidecar changes over time
+## gate hierarchy (v3.0 — post-stabilization 2026-09-16)
 
-- A corpus's `(verification_status, reference_eligibility)` may move in
-  either axis as evidence is acquired or new evidence undermines the
-  source.
-- A corpus's status may move from UNVERIFIED → VERIFIED (citation
-  found); from INELIGIBLE → ELIGIBLE (citation authority established);
-  or in the opposite direction (citation refuted, authority withdrawn).
-- Status transitions are append-only in the audit log (any status
-  change should be recorded in `disputes.json` with a new dispute
-  ID or as a resolution of an existing dispute).
-- the `STATUS.json` file itself may be edited; the sidecar is a
-  registry, not an event log. the event log is `disputes.json`.
+There are FOUR layered gates in
+`phase-1/src/dewatacalendar/corpus_status.py`. They are layered from
+most permissive (top) to most restrictive (bottom), and they do NOT
+have the same semantics. Each gate answers a different question.
 
-## relationship to PROTOCOL v1.0
+### 1. `can_satisfy_validation_gate(record, *, claim_id)` — REFERENCE-LEVEL, CLAIM-SCOPED
 
-this sidecar is the implementation of the gap analysis Finding 5
-remediation (corpus authority quarantine). It is part of the v1.0
-PROTOCOL's evidence model (§2.4 artifact evidence standard, §2.7
-canonical evidence root, §3 dispute classes including `bibliographic`).
+Answers ONLY: "Can source S support claim C?"
+
+Returns True iff every condition holds:
+- `claim_id` is not None (the caller MUST supply an explicit claim)
+- the record is a `CorpusRecord`
+- `verification_status == "VERIFIED"`
+- `reference_eligibility == "ELIGIBLE"`
+- `eligible_claim_ids` is non-empty
+- `claim_id` is present in `eligible_claim_ids`
+
+A True result means the source MAY PARTICIPATE in independent-
+reference validation for the specific claim. It does NOT mean:
+- the source is sufficient to promote a ruleset
+- the source becomes ground truth
+- values from the source may be silently copied
+
+Unscoped calls (no `claim_id`) fail closed. There is no source-level
+boolean authority shortcut.
+
+### 2. `can_promote_ruleset_using(record, context)` — RULESET-PROMOTION-LEVEL, ALWAYS FAIL-CLOSED
+
+Returns False unconditionally.
+
+Promotion is an authority-bearing action that requires independent
+verification of dispute records, blocking-dispute resolution state,
+resolver authority, resolution evidence artifacts, affected
+claim/component scope, required conformance-run artifacts, explicit
+governance authorization, and matching ruleset candidate.
+
+The executable promotion-authority mechanism does not exist yet.
+Until it does, this gate is fail-closed for every caller — including
+callers that supply a complete `RulesetPromotionContext` with
+arbitrary strings as `governance_authorization_artifact`.
+
+`RulesetPromotionContext` is retained only as a future-schema
+prototype. It is **NOT YET AUTHORIZATION-BEARING**.
+
+### 3. `can_be_described_as_ground_truth(record)` — ALWAYS FAIL-CLOSED
+
+Returns False unconditionally.
+
+Ground-truth designation requires an explicit accepted-rule mechanism
+with appropriate human/governance authority that this module does
+not yet implement.
+
+Use the following vocabulary instead:
+- eligible reference
+- supporting evidence
+- independently verified source
+- accepted rule
+- attested record
+
+Do not allow software to convert the first three into the latter two.
+
+### 4. `can_be_silently_copied_to_authoritative_fixture(record)` — ALWAYS FAIL-CLOSED
+
+Returns False unconditionally. There is no condition under which
+evidence may be silently promoted into an authoritative fixture.
 
 ## structured scope and dispute fields (schema v3.0)
 
 v3.0 adds two STRUCTURED fields per entry that the gate machinery
 reads directly. Free-text `scope_limitations` and the manually-entered
-boolean `may_justify_ruleset_promotion` are documentation only and
-are NOT consulted by any gate function.
+boolean `may_justify_ruleset_promotion` are documentation only and are
+NOT consulted by any gate function.
 
 ### `eligible_claim_ids` (structured claim scope)
 
 A tuple of claim IDs the corpus is explicitly scoped to support
 (e.g. `["CALC-005"]`). An empty tuple means "no explicit scope"
-and fails closed on claim-scoped gates.
+and fails closed on claim-scoped queries.
 
 For every claim in `RulesetPromotionContext.claim_ids`, the corpus
 record's `eligible_claim_ids` must contain the same claim ID. This is
@@ -248,74 +203,167 @@ Read by `can_promote_ruleset_using(record, context)` to verify that
 the caller's `context.blocking_dispute_ids` enumerates every
 blocking dispute. Un-enumerated blocking disputes fail closed.
 
-## gate hierarchy (v3.0 — post-stabilization 2026-09-16)
+Per v3.0-post-stabilization (2026-09-16), `can_promote_ruleset_using`
+returns False unconditionally regardless of this field. The field
+is preserved as structured data for a future executable mechanism.
 
-There are four layered gates in `phase-1/src/dewatacalendar/corpus_status.py`:
+### `scope_limitations` (free text, DOCUMENTATION ONLY)
 
-### 1. `can_satisfy_validation_gate(record, *, claim_id)` — REFERENCE-LEVEL, CLAIM-SCOPED
+A list of free-text strings documenting any claim/region/period
+limitations on the corpus's applicability. NOT consulted by any gate
+function. Use `eligible_claim_ids` (structured) for any claim-scope
+enforcement.
 
-Returns True iff (every condition required):
-  - `claim_id` is not None (the caller MUST specify a claim)
-  - the record is a `CorpusRecord`
-  - `verification_status == "VERIFIED"`
-  - `reference_eligibility == "ELIGIBLE"`
-  - `eligible_claim_ids` is non-empty
-  - `claim_id` is in `eligible_claim_ids`
+### `may_justify_ruleset_promotion` (boolean, DOCUMENTATION ONLY — DEPRECATED for executable use)
 
-A True result answers ONLY: "Can source S support claim C?"
+A boolean that was historically used to indicate whether the corpus
+might justify a ruleset promotion. Per v3.0-post-stabilization
+(2026-09-16) this field is DOCUMENTATION-ONLY and is NOT consulted
+by `can_promote_ruleset_using`. Future promotion decisions must
+derive from structured artifacts (resolution records, conformance-
+run artifacts, governance-authorization artifacts), not from this
+boolean. **No duplicated policy boolean should drift away from the
+structured model.**
 
-It does NOT answer: "Is source S generally valid?" — the unscoped
-source-level authority shortcut is forbidden. The gate always
-returns False for `claim_id=None`.
+## per-corpus example (v3.0)
 
-### 2. `can_promote_ruleset_using(record, context)` — RULESET-PROMOTION-LEVEL, ALWAYS FAIL-CLOSED
+```json
+{
+  "corpora": {
+    "example_corpus": {
+      "corpus_file": "path/to/evidence/file.json",
+      "corpus_class": "primary_evidence",
+      "verification_status": "VERIFIED",
+      "reference_eligibility": "ELIGIBLE",
+      "authority_basis": "scholarly",
+      "reason": "...",
+      "related_dispute_id": "DISPUTE-...",
+      "date_classified": "YYYY-MM-DD",
+      "evidence_review_artifact": "path/to/review.md",
+      "citation_keys_present_in_corpus": ["..."],
+      "preserved": true,
+      "eligible_claim_ids": ["CALC-001", "CALC-002"],
+      "blocking_disputes_pending": ["DISPUTE-A"],
+      "scope_limitations": [
+        "free-text limitation, NOT consulted by any gate function"
+      ],
+      "may_justify_ruleset_promotion": false
+    }
+  }
+}
+```
 
-Returns False unconditionally.
+Fields removed in v3.0 (because they implied source-level boolean
+authority that is forbidden under the claim-scoped model):
+- ~~`may_satisfy_validation_gate`~~ — REMOVED. A source-level boolean
+  that claimed "this corpus passes the validation gate" is
+  contradicted by the post-stabilization claim-scoped gate.
+- ~~`may_be_described_as_ground_truth`~~ — REMOVED. Same reasoning.
 
-Promotion is an authority-bearing action. The executable
-promotion-authority mechanism (which would independently verify
-dispute records, blocking-dispute resolution state, resolver
-authority, resolution evidence artifacts, affected
-claim/component scope, required conformance-run artifacts, explicit
-governance authorization, and matching ruleset candidate) does
-not exist yet. No caller input — including a complete
-`RulesetPromotionContext` with arbitrary strings as
-`governance_authorization_artifact` — can authorize a promotion
-today.
+Use `verification_status`, `reference_eligibility`, and
+`eligible_claim_ids` (the structured fields) instead.
 
-`RulesetPromotionContext` is retained only as a future-schema
-prototype. It is **NOT YET AUTHORIZATION-BEARING**.
+## top-level policy
 
-### 3. `can_be_described_as_ground_truth(record)` — ALWAYS FAIL-CLOSED
+```
+verification_status: a necessary source-level prerequisite. the
+  source has been fetched / the citation has been confirmed against
+  a retrievable record.
 
-Returns False unconditionally.
+reference_eligibility: a necessary source-level prerequisite. this
+  corpus MAY PARTICIPATE in independent-reference validation for
+  claims within its structured eligible_claim_ids scope.
 
-### 4. `can_be_silently_copied_to_authoritative_fixture(record)` — ALWAYS FAIL-CLOSED
+actual validation gate (can_satisfy_validation_gate(record, claim_id)):
+  returns True iff the source is CorpusRecord, the caller supplies
+  an explicit claim_id, the axes are VERIFIED + ELIGIBLE, and
+  eligible_claim_ids is non-empty AND claim_id is present in
+  eligible_claim_ids. unscoped calls fail closed.
 
-Returns False unconditionally.
+ruleset promotion (can_promote_ruleset_using): DISABLED / FAIL-CLOSED
+  today. no caller input can authorize a promotion.
 
-## removed source-level booleans (post-stabilization 2026-09-16)
+ground-truth designation (can_be_described_as_ground_truth):
+  ALWAYS FAIL-CLOSED.
 
-The per-corpus `may_satisfy_validation_gate` and
-`may_be_described_as_ground_truth` boolean fields have been REMOVED
-from STATUS.json entries. They implied corpus-as-a-whole authority
-that is forbidden under the v3.0 claim-scoped model. Use the
-structured fields (`verification_status`, `reference_eligibility`,
-`eligible_claim_ids`) instead.
-
-`may_justify_ruleset_promotion` is retained as DOCUMENTATION-ONLY
-and is NOT consulted by any gate function. No duplicated policy
-booleans should drift away from the structured model.
+silent authoritative fixture copying
+  (can_be_silently_copied_to_authoritative_fixture):
+  ALWAYS FAIL-CLOSED.
+```
 
 ## legacy CorpusStatus (v2.0 deprecated)
 
-the legacy single-axis `CorpusStatus` enum (`UNVERIFIED`,
-`NON_AUTHORITATIVE`, `ATTESTED`) is retained for deserialization /
-backward compatibility BUT:
+the legacy single-axis `CorpusStatus` enum
+(`UNVERIFIED`, `NON_AUTHORITATIVE`, `ATTESTED`) is retained for
+backward-compatible deserialization only. It is DEPRECATED.
 
+| variant | meaning | modern usage |
+|---|---|---|
+| `UNVERIFIED` | derived from `(UNVERIFIED, INELIGIBLE)` axes | deserialization only |
+| `NON_AUTHORITATIVE` | derived from `(VERIFIED, INELIGIBLE)` axes | deserialization only |
+| `ATTESTED` | derived from `(VERIFIED, ELIGIBLE)` axes | deserialization only |
+
+ATTESTED must NEVER satisfy a modern evidence gate:
 - it MUST NOT satisfy `can_satisfy_validation_gate` on its own
 - it MUST NOT satisfy `can_promote_ruleset_using`
 - it MUST NOT satisfy `can_be_described_as_ground_truth`
 - it MUST NOT satisfy `can_be_silently_copied_to_authoritative_fixture`
 
-modern callers must supply the explicit two-axis `CorpusRecord`.
+Modern callers must supply the explicit two-axis `CorpusRecord` with
+its `eligible_claim_ids` field and an explicit `claim_id` argument.
+The legacy enum is convenient only when deserializing older
+artifacts; it is **not** an authorization shortcut.
+
+## top-level example (v3.0)
+
+```json
+{
+  "schema_version": "3.0",
+  "last_modified": "YYYY-MM-DDTHH:MM:SSZ",
+  "axes": { ... },
+  "policy": "...",
+  "gate_predicates": {
+    "can_satisfy_validation_gate": "...",
+    "can_promote_ruleset_using": "...",
+    "can_be_described_as_ground_truth": "...",
+    "can_be_silently_copied_to_authoritative_fixture": "..."
+  },
+  "removed_source_level_booleans_2026-09-16": "...",
+  "separation_from_ceremonial_tiers": "...",
+  "corpora": { ... }
+}
+```
+
+## how this sidecar changes over time
+
+- A corpus's `(verification_status, reference_eligibility)` may move
+  in either axis as evidence is acquired or new evidence undermines
+  the source.
+- A corpus's status may move from UNVERIFIED → VERIFIED (citation
+  found); from INELIGIBLE → ELIGIBLE (citation authority
+  established); or in the opposite direction (citation refuted,
+  authority withdrawn).
+- `eligible_claim_ids` and `blocking_disputes_pending` are STRUCTURED
+  fields that the gate machinery reads. They should be added/updated
+  through append-only changes, with each change recorded in
+  `disputes.json` per PROTOCOL v1.0 §3.2.
+- Status transitions are append-only in the audit log (any status
+  change should be recorded in `disputes.json` with a new dispute ID
+  or as a resolution of an existing dispute).
+- the `STATUS.json` file itself may be edited; the sidecar is a
+  registry, not an event log. the event log is `disputes.json`.
+
+## relationship to PROTOCOL v1.0
+
+this sidecar is the implementation of the gap analysis Finding 5
+remediation (corpus authority quarantine). It is part of the v1.0
+PROTOCOL's evidence model (§2.4 artifact evidence standard, §2.7
+canonical evidence root, §3 dispute classes including
+`bibliographic`).
+
+The v3.0-post-stabilization changes are part of the corrective
+evidence-gate + test-integrity pass and the stabilization pass
+executed in commits `037e0be` and `53ec52b` on the
+`warden/phase2-foundation-20260914` history branch (and preserved in
+the clean `integration/governance-evidence-20260916` integration
+branch).
