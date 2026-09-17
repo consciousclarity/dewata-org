@@ -13,6 +13,7 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO = ROOT.parent
 DOCS = ROOT / "docs"
 ARTIFACTS = ROOT / "build-artifacts"
 ARTIFACTS.mkdir(exist_ok=True)
@@ -293,11 +294,11 @@ def test_bahasa_bali_spelling_only_from_repo_i18n_table():
     `phase-1/src/dewatacalendar/i18n.py`'s WUKU_I18N / PANCAWARA_I18N /
     SAPTAWARA_I18N / SASIH_I18N / RAHINAN_I18N, or in
     `README_BAL.md`. This is the no-invention invariant."""
-    i18n_py = (ROOT / "../src/dewatacalendar/i18n.py").resolve()
+    i18n_py = (REPO / "phase-1/src/dewatacalendar/i18n.py").resolve()
     if not i18n_py.exists():
         pytest.skip(f"{i18n_py} not in this checkout")
     text_i18n = i18n_py.read_text(encoding="utf-8")
-    readme_bal = (ROOT / "../README_BAL.md").resolve()
+    readme_bal = (REPO / "README_BAL.md").resolve()
     text_readme = readme_bal.read_text(encoding="utf-8") if readme_bal.exists() else ""
 
     failures = []
