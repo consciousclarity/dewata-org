@@ -1,0 +1,53 @@
+{
+  "source": {
+    "url": "https://www.babadbali.com/pewarigaan/wuku.htm",
+    "page_title": "Babad Bali — Pewarigaan / Wuku",
+    "filename_unvendored": "babadbali-wuku.html",
+    "size_bytes_unvendored": 20983,
+    "sha256_unvendored": "3a970cf779236dda3d40800db1e66829e60d936eabaa231b43b4f010fb710af9",
+    "redistribution_status": "NOT_VENDORED",
+    "redistribution_decision": "The babadbali.com Wuku page is the governing source for the wuku-table-fix-20260919 engine change (governance decision 2026-09-19). The page bytes are NOT committed to the repository. Per the project's established precedent (STATUS.json:178, wariga_kemendikbud_hindu_bs_kls_ix_2022 reason field), explicit redistribution permission was not identified for this page; only minimum evidence necessary to verify the engine change is retained in this package. The minimum evidence is the 30 Nama Bali link-text strings recorded verbatim below in sample_data.nama_bali_link_text_extracted. The page itself exists only as a transient retrieval copy on the build host, retained outside the public tree at /home/alex/workspace/transfer/babadbali-wuku.html (also unpushed). SHA-256 and byte count above describe that transient copy; they are recorded here so a future re-fetch can be verified against the same bytes, not so the bytes themselves are vendored.",
+    "precedent_reference": "phase-1/conformance/STATUS.json:178 (wariga_kemendikbud_hindu_bs_kls_ix_2022). The Kemendikbud textbook carries a standard Indonesian government copyright assertion with no open-content license; the package retains only minimum-evidence quotes, not the full PDF. The same reasoning applies here: babadbali.com's public terms do not authorise redistribution of the page itself."
+  },
+  "sample_data": {
+    "page_section": "Daftar 30 Wuku (Wuku list)",
+    "columns_observed": [
+      "Posisi (1..30)",
+      "Nama Bali (link text, primary)",
+      "Nama Jawa (Javanese name, secondary)",
+      "Urip (1..9)",
+      "Letak (compass direction)",
+      "Sifatnya (properties, descriptive prose)"
+    ],
+    "rows_count": 30,
+    "nama_bali_link_text_extracted": [
+      "Sinta", "Landep", "Ukir", "Kulantir", "Tolu",
+      "Gumbreg", "Wariga", "Warigadian", "Julungwangi", "Sungsang",
+      "Dungulan", "Kuningan", "Langkir", "Medangsia", "Pujut",
+      "Pahang", "Krulut", "Merakih", "Tambir", "Medangkungan",
+      "Matal", "Uye", "Menail", "Prangbakat", "Bala",
+      "Ugu", "Wayang", "Kelawu", "Dukut", "Watugunung"
+    ],
+    "extraction_notes": "Nama Bali column is the link text inside <a href=\"uku/NN*.htm\">. Nama Jawa column is the adjacent <td>; explicitly NOT a Balinese spelling. Urip values are integers in [1..9].",
+    "minimum_evidence_rationale": "These 30 strings are the minimum evidence necessary to verify that WUKU_NAMES_BALINESE in the engine matches the babadbali canonical ordering. The page itself is not vendored because its redistribution status is uncertain; the strings are vendored because they are the precise assertion the engine fix relies on."
+  },
+  "extraction_context": {
+    "access_date": "2026-09-15",
+    "extractor": "Hermes / Warden",
+    "method": "curl + parse from public babadbali.com URL",
+    "transient_copy_location_unvendored": "/home/alex/workspace/transfer/babadbali-wuku.html (host-only; not committed)",
+    "sha256_of_transient_copy": "3a970cf779236dda3d40800db1e66829e60d936eabaa231b43b4f010fb710af9"
+  },
+  "eligibility": {
+    "status_json_path": "phase-1/conformance/STATUS.json",
+    "status_json_key": "wariga_babadbali_com",
+    "status_json_line_reference": 199,
+    "reference_eligibility": "ELIGIBLE",
+    "scope_limitations": [
+      "Wuku/Pancawara ordering claims only — not customary attestation",
+      "Nama Bali link-text column is governing for Balinese spelling; Nama Jawa column is Javanese and must not be substituted",
+      "no aksara Bali column on this page; balinese_script is empty across WUKU_I18N"
+    ],
+    "governing_decision": "wuku-table-fix-20260919 (governance decision 2026-09-19): babadbali.com/pewarigaan/wuku.htm is the governing source for wuku spelling in the engine. STATUS.json:199 already registered this source as ELIGIBLE; no eligibility change was needed."
+  }
+}

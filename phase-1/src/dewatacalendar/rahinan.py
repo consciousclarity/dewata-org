@@ -99,9 +99,13 @@ def rahinan_for(pawukon: PawukonDate, saka: SakaDate, wewaran_position: int | No
     if saka.is_tilem:
         out.append(Rahinan("tilem", "Tilem", "new-moon", "mathematical", True))
 
-    # Hari Raya Saraswati: last day of Wuku Watugunung (wuku_idx=21),
-    # Saptawara Saniscara → matching both
-    if pawukon.wuku_idx == 21 and ww.saptawara_name == "Saniscara":
+    # Hari Raya Saraswati: last day of Wuku Watugunung (wuku_idx=30),
+    # Saptawara Saniscara → matching both.
+    # Predicate co-committed with WUKU_NAMES_BALINESE swap (governance decision 2026-09-19).
+    # Babadbali canonical Watugunung is at index 30; the prior engine had Watugunung at
+    # index 21 (with Matal at 21 under canonical), so the predicate must move in the same
+    # commit as the table — a name-only fix would silently relocate Saraswati onto Matal.
+    if pawukon.wuku_idx == 30 and ww.saptawara_name == "Saniscara":
         out.append(Rahinan("saraswati", "Hari Raya Saraswati", "wuku", "social", True))
 
     # Hari Raya Galungan: Wuku Dungulan (wuku_idx=11), Buda Kliwon

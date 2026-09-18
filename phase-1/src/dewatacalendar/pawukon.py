@@ -30,21 +30,15 @@ from .exceptions import InvalidDateError
 EPOCH: _dt.date = _dt.date(1981, 8, 23)
 
 # 30 wuku names in cycle order, indexed 1..30. Sinta = 1, Watugunung = 30.
+# Pinned to babadbali.com/pewarigaan/wuku.htm (SHA-256 3a970cf779236dda3d40800db1e66829e60d936eabaa231b43b4f010fb710af9).
+# Governing source per governance decision 2026-09-19. 21/30 positions change vs prior engine state.
 WUKU_NAMES_BALINESE: tuple[str, ...] = (
-    "Sinta", "Landep", "Ukir", "Kulantir", "Taulu", "Gumbreg", "Wariga",
-    "Warigadian", "Julungwangi", "Sungsang", "Kuningan", "Langkir", "Medangsia",
-    "Pujut", "Pamaglong", "Bala", "Ugu", "Wayang", "Klawu", "Dukut",
-    "Watugunung", "Srigati", "Pendebwake", "Krton", "Temu", "Tambir",
-    "Pradaksine", "Batu", "Watu", "Sungkun",
-)
-
-WUKU_NAMES_BALINESE_SCRIPT: tuple[str, ...] = (
-    "ᬓᭁᬭᬢᬶᬩᬲᭀ", "ᬮᬦ᭄ᬤᭂᬧ᭄", "ᬉᬓᬶᬃ", "ᬓᭁᬮᬦ᭄ᬢᬶᬃ", "ᬢᭂᬉᬸᬮ᭄ᬉ",
-    "ᬕᭁᬩ᭄ᬪᭂᬕ᭄", "ᬯᬭᬶᬕ", "ᬯᬭᬶᬕᬤᬶᬬᬦ᭄", "ᬚ᭄ᬉᬸᬮᭁᬯᬗᬶ", "ᬲ᭄ᬉ᭄ᬧᬂ",
-    "ᬓ᭄ᬉᬦᬶᬗᬦ᭄", "ᬮᬗ᭄ᬓᬶᬃ", "ᬫᭂᬤᬂᬲᬶᬬ", "ᬧ᭄ᬉᬚ᭄ᬉᬢ᭄", "ᬧᬫ᭄ᬕ᭄ᬮᭀᬗ᭄",
-    "ᬩᬮ", "ᬅᬉᬸ", "ᬯᬪᬂ", "ᬓ᭄ᬮᬯ᭄", "ᬤ᭄ᬉᬓ᭄ᬉᬢ᭄",
-    "ᬯᬢ᭄ᬉᬕ᭄ᬉᬦᭁᬗ᭄", "ᬲ᭄ᬭᬶᬕᬢᬶ", "ᬧᭂᬤᭂᬪ᭄ᬯᬓᭂ", "ᬓ᭄ᬭ᭄ᬢᭀᬦ᭄", "ᬢᭂᬫ᭄ᬉ",
-    "ᬢᬫ᭄ᬪᬶᬃ", "ᬧ᭄ᬭᬤᬓ᭄ᬲᬶᬦᭂ", "ᬩᬢ᭄ᬉ", "ᬯᬢ᭄ᬉ", "ᬲ᭄ᬉᬂᬓ᭄ᬉᬦ᭄",
+    "Sinta", "Landep", "Ukir", "Kulantir", "Tolu",
+    "Gumbreg", "Wariga", "Warigadian", "Julungwangi", "Sungsang",
+    "Dungulan", "Kuningan", "Langkir", "Medangsia", "Pujut",
+    "Pahang", "Krulut", "Merakih", "Tambir", "Medangkungan",
+    "Matal", "Uye", "Menail", "Prangbakat", "Bala",
+    "Ugu", "Wayang", "Kelawu", "Dukut", "Watugunung",
 )
 
 
@@ -57,7 +51,6 @@ class PawukonDate:
     cycle_count: int         # number of completed 210-day cycles since epoch
     wuku_idx: int            # [1..30]
     wuku_name: str           # balinese
-    wuku_name_script: str    # balinese script
     wuku_day: int            # [1..7]
 
 
@@ -86,7 +79,6 @@ def _position_from_offset(offset_days: int) -> PawukonDate:
         cycle_count=cycle_count,
         wuku_idx=wuku_idx,
         wuku_name=WUKU_NAMES_BALINESE[wuku_idx - 1],
-        wuku_name_script=WUKU_NAMES_BALINESE_SCRIPT[wuku_idx - 1],
         wuku_day=wuku_day,
     )
 
@@ -97,10 +89,3 @@ def pawukon_for_gregorian(date: _dt.date, *, epoch: _dt.date = EPOCH) -> Pawukon
         raise InvalidDateError(f"date out of range: {date.isoformat()}")
     offset = (date - epoch).days
     return _position_from_offset(offset)
-
-
-def wuku_name(idx: int) -> tuple[str, str]:
-    """return (balinese_name, balinese_script_name) for wuku index [1..30]."""
-    if not 1 <= idx <= 30:
-        raise InvalidDateError(f"wuku idx out of range: {idx}")
-    return WUKU_NAMES_BALINESE[idx - 1], WUKU_NAMES_BALINESE_SCRIPT[idx - 1]
