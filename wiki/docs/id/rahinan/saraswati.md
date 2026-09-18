@@ -16,8 +16,8 @@ language_variants:
     spelling: saraswati
 alternative_spellings:
 - saraswati
-short_definition: rahinan id engine 'saraswati' terpicu ketika Wuku 21 (Watugunung)
-  + Saniscara.
+short_definition: rahinan id engine 'saraswati' terpicu di Wuku 30 (Watugunung) +
+  Saniscara.
 detailed_explanation: (definition body intentionally short — see source citations;
   expansion requires customary sign-off or new evidence)
 dewata_specific_meaning: definition carried from the source citations; this page does
@@ -41,13 +41,13 @@ translation_review_status:
   id: needs_review
   en: needs_review
 ruleset_version_relevance: pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0
-last_reviewed: '2026-09-17'
+last_reviewed: '2026-09-19'
 reviewer: '[[ai-trail]]/wiki-foundation-20260917'
 status: implementation_definition
 ---
 
 # Saraswati
 
-rahinan id engine 'saraswati' terpicu ketika Wuku 21 (Watugunung) + Saniscara.
+rahinan id engine 'saraswati' terpicu di Wuku 30 (Watugunung) + Saniscara.
 
 
