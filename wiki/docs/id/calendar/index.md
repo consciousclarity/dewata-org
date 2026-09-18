@@ -6,7 +6,7 @@ translation_review_status:
 last_reviewed: 2026-09-17
 ---
 
-# Bagian Kalender (Calendar foundations)
+# Bagian Kalender
 
 Subbagian di bagian ini menjelaskan mesin kalender bali **sebagaimana
 diimplementasikan** oleh `phase-1/src/dewatacalendar/`. Status setiap

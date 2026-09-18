@@ -48,8 +48,6 @@ nav:
   - about.md
   - contributing.md
 - Bahasa Indonesia (`/id/`):
-  - about.md
-  - contributing.md
   - id/index.md
   - Calendar foundations:
     - id/calendar/index.md
@@ -150,11 +148,23 @@ nav:
     - id/platform/signed-snapshot.md
     - id/platform/verified.md
     - id/platform/visibility-tier.md
+  - Wewaran — day-classification cycles:
+    - id/wewaran/index.md
+    - id/wewaran/astawara.md
+    - id/wewaran/caturwara.md
+    - id/wewaran/dasawara.md
+    - id/wewaran/dwiwara.md
+    - id/wewaran/ekawara.md
+    - id/wewaran/jejepan.md
+    - id/wewaran/pancawara.md
+    - id/wewaran/sadwara.md
+    - id/wewaran/sangawara.md
+    - id/wewaran/saptawara.md
+    - id/wewaran/triwara.md
+    - id/wewaran/urip.md
   - A-Z index:
     - id/a-z/index.md
 - English (`/en/`):
-  - about.md
-  - contributing.md
   - en/index.md
   - Calendar foundations:
     - en/calendar/index.md
@@ -255,11 +265,23 @@ nav:
     - en/platform/signed-snapshot.md
     - en/platform/verified.md
     - en/platform/visibility-tier.md
+  - Wewaran — day-classification cycles:
+    - en/wewaran/index.md
+    - en/wewaran/astawara.md
+    - en/wewaran/caturwara.md
+    - en/wewaran/dasawara.md
+    - en/wewaran/dwiwara.md
+    - en/wewaran/ekawara.md
+    - en/wewaran/jejepan.md
+    - en/wewaran/pancawara.md
+    - en/wewaran/sadwara.md
+    - en/wewaran/sangawara.md
+    - en/wewaran/saptawara.md
+    - en/wewaran/triwara.md
+    - en/wewaran/urip.md
   - A-Z index:
     - en/a-z/index.md
-- 'Basa Bali (status: pending customary review) (`/ban/`)':
-  - about.md
-  - contributing.md
+- Basa Bali (pending customary review) (`/ban/`):
   - ban/index.md
   - Calendar foundations:
     - ban/calendar/index.md
@@ -360,5 +382,19 @@ nav:
     - ban/platform/signed-snapshot.md
     - ban/platform/verified.md
     - ban/platform/visibility-tier.md
+  - Wewaran — day-classification cycles:
+    - ban/wewaran/index.md
+    - ban/wewaran/astawara.md
+    - ban/wewaran/caturwara.md
+    - ban/wewaran/dasawara.md
+    - ban/wewaran/dwiwara.md
+    - ban/wewaran/ekawara.md
+    - ban/wewaran/jejepan.md
+    - ban/wewaran/pancawara.md
+    - ban/wewaran/sadwara.md
+    - ban/wewaran/sangawara.md
+    - ban/wewaran/saptawara.md
+    - ban/wewaran/triwara.md
+    - ban/wewaran/urip.md
   - A-Z index:
     - ban/a-z/index.md

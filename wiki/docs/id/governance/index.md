@@ -7,7 +7,7 @@ translation_review_status:
 last_reviewed: 2026-09-17
 ---
 
-# Bagian Tata Kelola Adat dan Lembaga
+# Bagian Tata Kelola Adat
 
 Bagian ini menjelaskan istilah-istilah lembaga adat Bali dan
 mekanisme sign-off yang menjadi syarat untuk promosi aturan

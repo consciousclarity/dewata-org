@@ -25,12 +25,12 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 CONFIG = ROOT / "mkdocs.yml"
 
-SECTION_ORDER = ["calendar", "rahinan", "governance", "evidence", "platform", "a-z"]
+SECTION_ORDER = ["calendar", "rahinan", "governance", "evidence", "platform", "wewaran", "a-z"]
 LANG_ORDER = ["id", "en", "ban"]
 LANG_LABEL = {
     "id": "Bahasa Indonesia",
     "en": "English",
-    "ban": "Basa Bali (status: pending customary review)",
+    "ban": "Basa Bali (pending customary review)",
 }
 SECTION_LABEL = {
     "calendar": "Calendar foundations",
@@ -38,6 +38,7 @@ SECTION_LABEL = {
     "governance": "Customary and institutional terms",
     "evidence": "Evidence and governance",
     "platform": "Dewata platform",
+    "wewaran": "Wewaran — day-classification cycles",
     "a-z": "A-Z index",
 }
 
@@ -47,21 +48,10 @@ def build_nav_for_language(lang_dir: Path) -> list:
     for one language, in declared section order, each followed by
     its sorted-pages."""
     children: list = []
-    # Top-level (sibling to language root) pages
-    for p in sorted((lang_dir.parent).glob("*.md")):
-        if p.name == "index.md":
-            continue
-        children.append(str(p.relative_to(DOCS)))
+    # Language root index (the canonical entry point for this language)
     idx = lang_dir / "index.md"
     if idx.exists():
         children.append(str(idx.relative_to(DOCS)))
-    # top-level pages (those that live directly under `<lang>/` and
-    # are not in a subdirectory; right now there's nothing here, but
-    # the structure accommodates future additions)
-    for p in sorted(lang_dir.glob("*.md")):
-        if p.name == "index.md":
-            continue
-        children.append(str(p.relative_to(DOCS)))
     # per-section children
     for sec in SECTION_ORDER:
         sec_dir = lang_dir / sec

@@ -7,7 +7,7 @@ translation_review_status:
 last_reviewed: 2026-09-17
 ---
 
-# Bagian Platform dewata
+# Bagian Platform Dewata
 
 Bagian ini menjelaskan nama-nama produk dan struktur rilis dewata.org
 yang bukan kalender. Halaman di sini bersumber pada
