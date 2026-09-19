@@ -324,3 +324,237 @@ def test_bahasa_bali_spelling_only_from_repo_i18n_table():
         "(phase-1/src/dewatacalendar/i18n.py, README_BAL.md):\n"
         + "\n".join(f"  {p}: {s}" for p, s in failures)
     )
+
+
+# ───────────────────────── front-matter stray-content guard ──────────────────────────
+#
+# Origin: a harness-leak regression. On 2026-09-19, the assistant harness
+# inserted a stray `http://localhost:41185/chat` line into the front-matter
+# of wiki/docs/id/rahinan/id-mapping.md at PR #6 (wiki-foundation-20260917).
+# The line was not a declared YAML key, but PyYAML happily parsed it as a
+# top-level key with value None, which then sat between the `language_variants`
+# block and the `id:` subkey. All 13 wiki metadata tests passed over the
+# corruption because they only validate declared fields. The line landed
+# in the public site and the search index.
+#
+# Two failures in one: a structural test that ignores stray content
+# between declared fields, and an isolation test that never catches
+# URL/host-path/markup fragments injected into front-matter. This test
+# closes both gaps. Front-matter is a structured YAML document and only
+# declared fields (with declared subkeys for dict-valued fields, and
+# declared scalar items for list-valued fields) are valid content. URL,
+# host-path, and markdown-link-fragment content is allowed only inside
+# the `source_citations` list (paths/quote text can legitimately cite
+# external artefacts) and inside the `customary_review_status.note` field
+# (which may reference external attestations). Anywhere else, these
+# patterns indicate harness output that leaked into the document.
+ALLOWED_TOP_LEVEL_KEYS = {
+    "canonical_term",
+    "canonical_slug",
+    "category",
+    "language_variants",
+    "alternative_spellings",
+    "short_definition",
+    "detailed_explanation",
+    "dewata_specific_meaning",
+    "affects",
+    "examples",
+    "related_terms",
+    "source_citations",
+    "evidence_status",
+    "dispute_ids",
+    "customary_review_status",
+    "translation_review_status",
+    "ruleset_version_relevance",
+    "last_reviewed",
+    "reviewer",
+    "status",
+}
+
+# dict-valued fields and the keys permitted inside them.
+ALLOWED_SUBKEYS_BY_TOP_LEVEL = {
+    "language_variants": {"ban", "id", "en"},
+    "translation_review_status": {"ban", "id", "en"},
+    "customary_review_status": {"status", "note"},
+}
+
+# Top-level fields whose scalar text content is allowed to mention URLs,
+# host paths, or markdown-link fragments because they reference external
+# evidence or attestations directly. Everything else is forbidden.
+FIELDS_ALLOWING_URL_OR_PATH_LIKE_TEXT = {
+    "source_citations",   # each list item is a dict with `path` and `quote`
+    "customary_review_status",  # `note` may reference attestations
+}
+
+# Patterns that, anywhere in front-matter outside the allowed fields,
+# indicate leaked harness content. The patterns are deliberately
+# specific to the failure mode that produced the localhost line: URLs,
+# IP/host:port literals, and Markdown link syntax.
+URL_OR_PATH_PATTERNS = [
+    re.compile(r"https?://[^\s\"]+"),       # http(s) URLs
+    re.compile(r"\b(?:localhost|127\.0\.0\.1|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+\b"),  # host:port or IP:port
+    re.compile(r"\[[^\]\n]+\]\([^)\n]+\)"),  # markdown link [text](url)
+    re.compile(r"</[a-zA-Z][\w-]*>"),        # closing HTML/XML tag fragment
+    re.compile(r"<\s*[a-zA-Z][\w./-]*\s*/?>"),  # opening HTML/XML/self-closing tag
+]
+
+
+def _iter_all_md_with_frontmatter() -> list[Path]:
+    """all .md files under wiki/docs/ that begin with --- and have a
+    closing ---, regardless of whether they declare a canonical_slug."""
+    out = []
+    for p in sorted(DOCS.rglob("*.md")):
+        text = p.read_text(encoding="utf-8")
+        if not text.startswith("---\n"):
+            continue
+        end = text.find("\n---\n", 4)
+        if end == -1:
+            continue
+        out.append(p)
+    return out
+
+
+def test_front_matter_has_only_declared_keys_and_subkeys():
+    """Every top-level key in every front-matter block must be in
+    ALLOWED_TOP_LEVEL_KEYS; every subkey of a dict-valued field must be
+    in ALLOWED_SUBKEYS_BY_TOP_LEVEL for that field. Stray keys (which
+    the harness leak produced) fail loudly here."""
+    failures = []
+    for path in _iter_all_md_with_frontmatter():
+        text = path.read_text(encoding="utf-8")
+        end = text.find("\n---\n", 4)
+        try:
+            meta = yaml.safe_load(text[4:end])
+        except yaml.YAMLError as e:
+            failures.append((path.relative_to(DOCS), "YAMLError", str(e)))
+            continue
+        if not isinstance(meta, dict):
+            failures.append((path.relative_to(DOCS), "top-level not a dict", type(meta).__name__))
+            continue
+        for k in meta.keys():
+            if k not in ALLOWED_TOP_LEVEL_KEYS:
+                failures.append((path.relative_to(DOCS), "stray top-level key", k))
+        for field, allowed_subkeys in ALLOWED_SUBKEYS_BY_TOP_LEVEL.items():
+            value = meta.get(field)
+            if not isinstance(value, dict):
+                continue
+            for sub in value.keys():
+                if sub not in allowed_subkeys:
+                    failures.append((path.relative_to(DOCS), f"stray subkey under {field}", sub))
+        # source_citations entries are dicts; they have a constrained shape too.
+        sc = meta.get("source_citations")
+        if isinstance(sc, list):
+            for entry in sc:
+                if not isinstance(entry, dict):
+                    failures.append((path.relative_to(DOCS), "source_citations entry not a dict", str(entry)[:60]))
+                    continue
+                if "path" not in entry:
+                    failures.append((path.relative_to(DOCS), "source_citations entry missing path", list(entry.keys())))
+    assert not failures, (
+        "front-matter has undeclared keys or stray content:\n"
+        + "\n".join(f"  {p}: {kind} = {val!r}" for p, kind, val in failures)
+    )
+
+
+def test_front_matter_has_no_url_path_or_markup_outside_declared_fields():
+    """URL, host:port, IP:port, and markdown-link-fragment patterns are
+    forbidden in front-matter except inside `source_citations` (which
+    holds evidence citations that legitimately include paths and quote
+    text) and inside `customary_review_status.note` (which may reference
+    attestations). Anywhere else is harness leak or stray editor content.
+
+    Two checks run in series. First: walk the parsed YAML structure and
+    flag any url/path/markup pattern in a scalar value whose field
+    path is not in the allowlist. This catches content that parses
+    cleanly into a real field but shouldn't be there. Second: walk the
+    raw front-matter bytes and flag the same patterns anywhere in the
+    block, regardless of parse outcome. This catches the failure mode
+    in which a stray line breaks YAML parsing entirely (PyYAML refuses
+    to parse, so the structured walk would silently skip); mkdocs-material
+    still renders the raw front-matter as visible text in that case, so
+    the harness leak becomes a visible defect on the public site."""
+    failures = []
+
+    for path in _iter_all_md_with_frontmatter():
+        text = path.read_text(encoding="utf-8")
+        end = text.find("\n---\n", 4)
+        fm_block = text[4:end]
+        try:
+            meta = yaml.safe_load(fm_block)
+            parsed_ok = True
+        except yaml.YAMLError:
+            meta = None
+            parsed_ok = False
+
+        # check (a): parsed structure, when parsing succeeded.
+        if parsed_ok and isinstance(meta, dict):
+            def walk(obj, path_here):
+                if isinstance(obj, dict):
+                    for k, v in obj.items():
+                        walk(v, path_here + [str(k)])
+                elif isinstance(obj, list):
+                    for i, v in enumerate(obj):
+                        if isinstance(v, dict):
+                            for k, v2 in v.items():
+                                walk(v2, path_here + [f"[{i}].{k}"])
+                        else:
+                            walk(v, path_here + [f"[{i}]"])
+                elif isinstance(obj, str):
+                    if any(a in FIELDS_ALLOWING_URL_OR_PATH_LIKE_TEXT for a in path_here):
+                        return
+                    for pat in URL_OR_PATH_PATTERNS:
+                        if pat.search(obj):
+                            failures.append((
+                                path.relative_to(DOCS),
+                                ".".join(path_here),
+                                obj[:120],
+                            ))
+                            return
+            walk(meta, [])
+
+        # check (b): raw front-matter bytes, regardless of parse outcome.
+        # We exempt the lines that declare an allowed field whose value
+        # may legitimately contain paths/urls (source_citations items,
+        # customary_review_status.note). Other lines that match any
+        # pattern fail.
+        lines = fm_block.split("\n")
+        for line_no, line in enumerate(lines, start=1):
+            # skip blank lines, top-level field names that are themselves
+            # allowed keys, and the allowed-list literal
+            stripped = line.strip()
+            if not stripped:
+                continue
+            # is this a top-level field declaration? key names from the
+            # allowlist + colon = an allowed declaration line
+            top_match = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*:", stripped)
+            if top_match and top_match.group(1) in ALLOWED_TOP_LEVEL_KEYS:
+                continue
+            # is this a subkey declaration inside an allowed dict field
+            # (we know the field context from indentation, but for
+            # simplicity we just check the subkey-name pattern)
+            sub_match = re.match(r"^\s+([A-Za-z_][A-Za-z0-9_]*)\s*:", stripped)
+            if sub_match:
+                # any subkey declared in the allowlist is fine; the
+                # field's allowlist status will be evaluated by check (a)
+                subkey_name = sub_match.group(1)
+                if subkey_name in {"ban", "id", "en", "status", "note", "path", "role", "quote"}:
+                    continue
+            # is this a YAML list item marker? skip "  - " lines.
+            if re.match(r"^\s+-\s", stripped):
+                continue
+            # any remaining non-empty line: scan for patterns
+            for pat in URL_OR_PATH_PATTERNS:
+                if pat.search(stripped):
+                    failures.append((
+                        path.relative_to(DOCS),
+                        f"raw-line:{line_no}",
+                        stripped[:120],
+                    ))
+                    break
+
+    assert not failures, (
+        "front-matter contains url/host-path/markup-fragment content outside "
+        "the declared fields that allow it (source_citations, "
+        "customary_review_status):\n"
+        + "\n".join(f"  {p}  field={f}  value={v!r}" for p, f, v in failures)
+    )

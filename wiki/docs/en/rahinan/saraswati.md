@@ -16,7 +16,7 @@ language_variants:
     spelling: saraswati
 alternative_spellings:
 - saraswati
-short_definition: engine rahinan id 'saraswati' triggers when Wuku 21 (Watugunung)
+short_definition: engine rahinan id 'saraswati' triggers at Wuku 30 (Watugunung)
   + Saniscara.
 detailed_explanation: (definition body intentionally short — see source citations;
   expansion requires customary sign-off or new evidence)
@@ -41,13 +41,13 @@ translation_review_status:
   id: needs_review
   en: needs_review
 ruleset_version_relevance: pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0
-last_reviewed: '2026-09-17'
+last_reviewed: '2026-09-19'
 reviewer: '[[ai-trail]]/wiki-foundation-20260917'
 status: implementation_definition
 ---
 
 # Saraswati
 
-engine rahinan id 'saraswati' triggers when Wuku 21 (Watugunung) + Saniscara.
+engine rahinan id 'saraswati' triggers at Wuku 30 (Watugunung) + Saniscara.
 
 

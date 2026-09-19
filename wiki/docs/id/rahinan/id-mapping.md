@@ -6,7 +6,6 @@ language_variants:
   ban:
     status: pending_customary_review
     spelling: "(no verified Bahasa Bali spelling)"
-http://localhost:41185/chat
   id:
     status: implementation_definition
     spelling: id-mapping
@@ -45,7 +44,7 @@ translation_review_status:
   id: needs_review
   en: needs_review
 ruleset_version_relevance: "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0"
-last_reviewed: 2026-09-17
+last_reviewed: 2026-09-19
 reviewer: "[[ai-trail]]/wiki-foundation-20260917"
 status: implementation_definition
 ---
@@ -62,7 +61,7 @@ status: implementation_definition
 | `redite_paing` | Redite + Paing | Tumpek Uduh |
 | `purnama` | `saka.is_purnama` | Purnama (full moon) |
 | `tilem` | `saka.is_tilem` | Tilem (new moon) |
-| `saraswati` | Wuku 21 + Saniscara | Hari Raya Saraswati |
+| `saraswati` | Wuku 30 + Saniscara | Hari Raya Saraswati |
 | `galungan` | Wuku 11 + Buda + Keliwon | Hari Raya Galungan |
 | `kuningan` | Wuku 12 + Saniscara + Keliwon | Hari Raya Kuningan |
 | `nyepi` | Sasih 9 + Tilem + Tithi 1 | Hari Raya Nyepi |
