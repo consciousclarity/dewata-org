@@ -149,10 +149,10 @@ term(
     status="implementation_definition",
     sources=[
         ("phase-1/src/dewatacalendar/saka.py", "implementation"),
-        ("phase-1/src/dewatacalendar/rulesets.py", "ruleset", "nampih_threshold_months=(12,11)"),
+        ("phase-1/src/dewatacalendar/rulesets.py", "ruleset", "nampih_declared_rule_implemented=False"),
     ],
-    summary_id="Interkalasi Saka Bali: mencegah Tilem Kapitu jatuh di Desember Gregorian.",
-    summary_en="Bali Saka intercalation: prevents Tilem Kapitu from falling in Gregorian December.",
+    summary_id="Interkalasi Saka Bali. Aturan Tilem Kapitu yang dideklarasikan tidak diimplementasikan; engine memakai uji saka_year % 3 yang tidak bersumber.",
+    summary_en="Bali Saka intercalation. The declared Tilem Kapitu rule is not implemented; the engine uses an uncited saka_year % 3 test.",
 )
 
 term(

@@ -29,8 +29,19 @@ RULESET_METADATA: dict[str, dict[str, object]] = {
         # reports the claim and reports that the engine does not honor it.
         "pangunalatri_implemented": False,
         "pangunalatri_days_declared": 63,
-        "nampih_threshold_months": (12, 11),
-        "nampih_rule": "prevent Tilem Kapitu from falling in gregorian December",
+        # nampih: what the engine computes and what the ruleset declared are
+        # two different rules. the engine applies a single uncited
+        # `saka_year % 3 == 0` test; the declared Tilem Kapitu rule has never
+        # been implemented, `nampih_threshold_months` is read by no code, and
+        # since the strip removed tilem from the engine the declared predicate
+        # can no longer be evaluated at all. GAP_ANALYSIS_v1.0 Finding 3
+        # classifies this gap as blocking for saka_sasih, Phase 0 and
+        # ruleset_promotion, and notes the engine does not model the 1993-2003
+        # nampih regimes that Peradnya/Rust/TS gate on.
+        "nampih_rule_actual": "saka_year % 3 == 0 -> nampih Desta (13 sasih, 395-day year); uncited",
+        "nampih_rule_declared": "prevent Tilem Kapitu from falling in gregorian December",
+        "nampih_declared_rule_implemented": False,
+        "nampih_threshold_months_declared": (12, 11),
         "reference": "Igarashi bali saka calculation; Cunningham 1994",
     },
     "wewaran": {
