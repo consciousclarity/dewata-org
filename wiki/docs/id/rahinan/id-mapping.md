@@ -12,7 +12,7 @@ language_variants:
   en:
     status: implementation_definition
     spelling: id-mapping
-short_definition: Pemetaan dari 12 id rahinan engine ke nama hari manusia.
+short_definition: Pemetaan dari 9 id rahinan engine ke nama hari manusia.
 detailed_explanation: |
   Engine `phase-1/src/dewatacalendar/rahinan.py` memancarkan
   id-id berikut; tiap id biasa diasosiasikan dengan satu nama
@@ -31,8 +31,6 @@ related_terms:
   - buda-kliwon
   - saniscara-umanis
   - tumpek-landep
-  - purnama
-  - tilem
 source_citations:
   - path: phase-1/src/dewatacalendar/rahinan.py
     role: implementation
@@ -44,8 +42,8 @@ translation_review_status:
   id: needs_review
   en: needs_review
 ruleset_version_relevance: "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0"
-last_reviewed: 2026-09-19
-reviewer: "[[ai-trail]]/wiki-foundation-20260917"
+last_reviewed: 2026-09-20
+reviewer: "[[ai-trail]]/strip-saka-unimplemented-fields-20260920"
 status: implementation_definition
 ---
 
@@ -59,12 +57,18 @@ status: implementation_definition
 | `tumpek_landep` | Saniscara + Keliwon | Tumpek Landep |
 | `anggara_kliwon` | Anggara + Keliwon | Anggara Kasih (label engine) |
 | `redite_paing` | Redite + Paing | Tumpek Uduh |
-| `purnama` | `saka.is_purnama` | Purnama (full moon) |
-| `tilem` | `saka.is_tilem` | Tilem (new moon) |
 | `saraswati` | Wuku 30 + Saniscara | Hari Raya Saraswati |
 | `galungan` | Wuku 11 + Buda + Keliwon | Hari Raya Galungan |
 | `kuningan` | Wuku 12 + Saniscara + Keliwon | Hari Raya Kuningan |
-| `nyepi` | Sasih 9 + Tilem + Tithi 1 | Hari Raya Nyepi |
+
+Engine saat ini memancarkan **9 id rahinan** (di atas). Tiga id
+berikut dihapus pada strip 2026-09-20 untuk kolom yang belum
+diimplementasikan, dan didokumentasikan sebagai permukaan yang
+belum diimplementasikan di wiki:
+
+- `purnama` (Purnama / bulan purnama) — lihat [id/rahinan/purnama.md](/id/rahinan/purnama.md)
+- `tilem` (Tilem / bulan mati) — lihat [id/rahinan/tilem.md](/id/rahinan/tilem.md)
+- `nyepi` (Hari Raya Nyepi) — lihat [id/rahinan/nyepi.md](/id/rahinan/nyepi.md)
 
 Label kotak `nama manusia` di sini adalah default `label` yang
 dipancarkan engine pada tiap rahinan sesuai pemetaan internal;

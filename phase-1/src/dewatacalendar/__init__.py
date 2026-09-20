@@ -20,7 +20,7 @@ not divisible by those lengths.
 
     pawukon.py        — 210-day cycle, position lookup
     wewaran.py        — 10 concurrent cycles, derived from pawukon position
-    saka.py           — lunisolar, year, sasih, tilem/purnama
+    saka.py           — saka year + sasih indexing (lunisolar unvalidated)
     rahinan.py        — named ceremony days derived from above
     rulesets.py       — frozen rule versions
     conformance.py    — vector harness

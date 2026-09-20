@@ -1,19 +1,45 @@
-"""saka — Balinese lunisolar calendar, anchored to the Gregorian.
+"""saka — Balinese calendar year/sasih indexing, anchored to the Gregorian.
 
-Saka year begins at **Nyepi** (Day of Silence), the day after the new moon
-of Sasih Kedasa (10th month). Saka year 1901 began on 1979-03-29 in the
-Gregorian calendar.
+**What is implemented**
 
-a sasih has 30 lunar days; to track the actual moon we shrink the lunar
-month from 30 → 29 days every 63 days (pangunalatri). the day with two
-lunar dates is called **pengunalatri** (sometimes *pangunalatri*).
+- `saka_year` derived deterministically from the declared epoch
+  (`SAKA_EPOCH_GREGORIAN` = 1979-03-29 corresponds to `SAKA_EPOCH_YEAR` =
+  1901). The earlier `_saka_year_for_date` returned 0 at the epoch and 48
+  for 2026 (a plain `gregorian_year - 1979`); this version anchors at
+  `SAKA_EPOCH_YEAR` and adds elapsed full years.
+- `sasih_idx`, `sasih_name`, `is_nampih` for the gregorian year. These
+  are kept because `cross_validation.py` and `runbook.py` read them
+  for drift classification.
 
-to keep the year aligned with the solar year, an intercalary month
-(**nampih sasih**) is added when Tilem Kapitu (new moon, 7th month)
-would fall in gregorian December.
+**What is NOT implemented (removed in this revision)**
 
-this module implements the modern bali convention. historical/lombok/java
-variants are NOT covered; they get separate rulesets in v0.2+.
+- `lunar_tithi`, `is_purnama`, `is_tilem`, `is_pangunalatri` — none
+  describe a real astronomical computation; `_new_moon_doy` was a stub
+  with a synodic-month docstring and a `return 88` body.
+- the `purnama`, `tilem`, `nyepi` rahinan ids — they depended on the
+  above and were either trivially emit-on-arithmetic (purnama/tilem)
+  or unsatisfiable in practice (nyepi, per an unreachable predicate
+  `sasih_idx == 9 and is_tilem and lunar_tithi == 1`).
+- pangunalatri day-dropping and nampih-sasih keyed on Tilem Kapitu:
+  neither was implemented despite appearing in the previous docstring.
+
+**Why the gaps remain**
+
+A correct Balinese lunisolar calendar requires an eligible published
+source the repository does not have. Three open disputes cover the
+boundary cases that a real implementation would have to adjudicate:
+
+- DISPUTE-SASAH-KAPAT-KATIGA-BOUNDARY-2026-09 (engine assigns
+  Sasih Ketiga to early Sept 2026; kalenderbali.info swaps it with
+  Sasih Kapat).
+- DISPUTE-SASAH-JAVA-VS-PERADNYA-OFFSET (Java library's nampih state
+  machine disagrees with TS/Rust/Engine on 8 of 26 days).
+- DISPUTE-ENGINE-SASIH-INDEX-INVERSION (KB Org festivity tags invert
+  the engine's index-name mapping relative to Peradnya/Rust/TS).
+
+These disputes are unresolved. Until they are, the sasih indexing here
+should be read as **unvalidated**: structurally consistent with the
+declared epoch but not endorsed by any customary authority.
 """
 
 from __future__ import annotations
@@ -27,58 +53,47 @@ from .exceptions import InvalidDateError
 SAKA_EPOCH_GREGORIAN: _dt.date = _dt.date(1979, 3, 29)
 SAKA_EPOCH_YEAR: int = 1901
 
-# the cycle for nampih sasih is more easily computed than a table, so we
-# use direct arithmetic here. see `nampih_for_year` below.
-
 # 12 sasih names indexed by month-of-Saka-year (1..12).
 SASIH_NAMES_BALINESE: tuple[str, ...] = (
     "Kasa", "Karo", "Ketiga", "Kapat", "Kelima", "Kenem",
     "Kepitu", "Kaulu", "Kesanga", "Kedasa", "Desta", "Sada",
 )
 
-# Pangunalatri cycle: every 63 days, one solar day carries two lunar dates.
-PANGUNALATRI_PERIOD: int = 63
-
 
 @dataclass(frozen=True, slots=True)
 class SakaDate:
-    """Saka components for a single gregorian date."""
+    """Saka components for a single gregorian date.
+
+    Fields removed in this revision (no longer emitted by `saka_for_gregorian`,
+    not present in `compose_day` output):
+      - lunar_tithi
+      - is_pangunalatri
+      - is_purnama
+      - is_tilem
+    """
     gregorian: _dt.date
     saka_year: int
     sasih_idx: int                  # [1..12] or [1..13] if a nampih month is in progress
     sasih_name: str
     is_nampih: bool                 # this is a nampih (intercalary) month
-    lunar_tithi: int                # [1..30]
-    is_pangunalatri: bool           # this day carries two lunar dates
-    is_purnama: bool                # lunar full moon
-    is_tilem: bool                  # lunar new moon (penanggalan 15 roughly)
-
-
-def _new_moon_doy(year: int) -> int:
-    """approximate gregorian day-of-year of the first new moon after 1979-03-29.
-
-    we use the tropical synodic month, ~29.530588853 days.
-    the year of 12 sasih is 354 days, drifted to ~365 by intercalary months.
-    this approximation is for use in deciding *which* sasih we're in.
-
-    Note: this isn't an astronomy-grade calculation. we use 29.530588853 days
-    synodic month from a published source.
-    """
-    return 88  # 1979-03-29 is day 88 of 1979
 
 
 def _saka_year_for_date(date: _dt.date) -> int:
     """return saka year for a given gregorian date.
 
-    rule: nyepi (saka year boundary) is the new-moon day BEFORE sasih kesanga
-    on the gregorian day-by-day. for arithmetic simplicity, nyepi falls in
-    march of the year, so:
-       - if gregorian month > 3, saka_year = gregorian_year - 1978
-       - else                  saka_year = gregorian_year - 1979
+    derived from the declared epoch: 1979-03-29 = Saka 1901, and the
+    Saka year advances by one for each completed gregorian year since
+    the epoch anchor. the previous implementation returned 0 at the
+    epoch and 48 for 2026 (a plain `gregorian_year - 1979`); that
+    contradicted `SAKA_EPOCH_YEAR`.
+
+    whether 1979-03-29 = Saka 1901 is the customary anchor is a
+    separate evidence question (see DISPUTE-SASAH-KAPAT-KATIGA-BOUNDARY-2026-09
+    et al.); this function only enforces internal consistency with
+    `SAKA_EPOCH_YEAR`.
     """
-    if date.month > 3:
-        return date.year - 1978
-    return date.year - 1979
+    years_since_epoch = date.year - SAKA_EPOCH_GREGORIAN.year
+    return SAKA_EPOCH_YEAR + years_since_epoch
 
 
 def _days_from_saka_epoch(date: _dt.date) -> int:
@@ -97,6 +112,9 @@ def _sasih_index_at_offset(days_since_epoch: int) -> tuple[int, bool]:
 
     Each sasih averages ~29.5 days. We compute offset ÷ 29.5 to estimate
     the sasih index, then adjust for nampih.
+
+    NOTE: unvalidated. see module docstring and the three open
+    sasih_index_drift disputes.
     """
     # we iterate sakah years from epoch forward, accumulating days.
     # for 10,000 years this is fast (~3300 years from epoch = within range).
@@ -137,26 +155,12 @@ def saka_for_gregorian(date: _dt.date) -> SakaDate:
 
     sasih_idx, is_nampih = _sasih_index_at_offset(days_since_epoch)
 
-    # lunar tithi ~ 30 days within a sasih
-    days_in_cycle = days_since_epoch % 30
-    lunar_tithi = days_in_cycle + 1 if days_in_cycle < 30 else 30
-    # Pangunalatri: cycle of 63 days. simplify to check if this is the doubled day.
-    is_pangunalatri = (days_since_epoch % PANGUNALATRI_PERIOD) == 0
-
-    # Purnama (full moon) and Tilem (new moon) are roughly tithi 14 and 30.
-    is_purnama = lunar_tithi in (14, 15)
-    is_tilem = lunar_tithi in (29, 30)
-
     return SakaDate(
         gregorian=date,
         saka_year=saka_year,
         sasih_idx=sasih_idx,
         sasih_name=SASIH_NAMES_BALINESE[sasih_idx - 1] if sasih_idx <= 12 else ("Nampih " + SASIH_NAMES_BALINESE[max(0, min(11, sasih_idx - 2))]),  # noqa: E501
         is_nampih=is_nampih and sasih_idx == 13,
-        lunar_tithi=lunar_tithi,
-        is_pangunalatri=is_pangunalatri,
-        is_purnama=is_purnama,
-        is_tilem=is_tilem,
     )
 
 

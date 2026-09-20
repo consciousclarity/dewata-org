@@ -149,10 +149,10 @@ term(
     status="implementation_definition",
     sources=[
         ("phase-1/src/dewatacalendar/saka.py", "implementation"),
-        ("phase-1/src/dewatacalendar/rulesets.py", "ruleset", "nampih_threshold_months=(12,11)"),
+        ("phase-1/src/dewatacalendar/rulesets.py", "ruleset", "nampih_declared_rule_implemented=False"),
     ],
-    summary_id="Interkalasi Saka Bali: mencegah Tilem Kapitu jatuh di Desember Gregorian.",
-    summary_en="Bali Saka intercalation: prevents Tilem Kapitu from falling in Gregorian December.",
+    summary_id="Interkalasi Saka Bali. Aturan Tilem Kapitu yang dideklarasikan tidak diimplementasikan; engine memakai uji saka_year % 3 yang tidak bersumber.",
+    summary_en="Bali Saka intercalation. The declared Tilem Kapitu rule is not implemented; the engine uses an uncited saka_year % 3 test.",
 )
 
 term(
@@ -160,11 +160,11 @@ term(
     category="calendar",
     status="implementation_definition",
     sources=[
-        ("phase-1/src/dewatacalendar/rulesets.py", "ruleset", "pangunalatri_days=63"),
+        ("phase-1/src/dewatacalendar/rulesets.py", "ruleset", "pangunalatri_implemented=False"),
         ("phase-1/src/dewatacalendar/saka.py", "implementation"),
     ],
-    summary_id="Siklus 63 hari (is_pangunalatri) di engine, menandai fase-fase tertentu.",
-    summary_en="A 63-day cycle in the engine (is_pangunalatri), flagging specific phases.",
+    summary_id="Tidak diimplementasikan di engine: siklus 63 hari dan flag is_pangunalatri telah dihapus; istilahnya tetap nyata.",
+    summary_en="Not implemented in the engine: the 63-day cycle and the is_pangunalatri flag were removed; the term itself remains real.",
 )
 
 term(
