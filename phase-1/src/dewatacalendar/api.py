@@ -15,7 +15,7 @@ from .pawukon import pawukon_for_gregorian, PawukonDate
 from .saka import saka_for_gregorian, SakaDate
 from .wewaran import wewaran_for_position, Wewaran
 from .rahinan import rahinan_for, Rahinan
-from .rulesets import RULESET_VERSION, RULESET_METADATA
+from .rulesets import RULESET_VERSION
 
 
 @dataclass(frozen=True, slots=True)
