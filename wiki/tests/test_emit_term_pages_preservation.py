@@ -1,28 +1,37 @@
-"""Round-trip preservation test for the wiki term-page generator.
+"""Round-trip preservation tests for the wiki term-page generator (round 2).
 
-Per Codex review of PR #15 (F5): the prior generator declared
-purnama/tilem/nyepi as engine-emitted ids, and its named-day
-entries claimed the engine emits a one-to-two-day window for those
-terms. The corrections follow-up:
+What this test verifies (and what it does NOT):
 
-  - removes purnama/tilem/nyepi from `RHINAN_IDS`;
-  - adds a separate `RHINAN_UNEMITTED` list with explicit
-    "engine does not currently compute this" summaries;
-  - updates the named-day entries to "engine does NOT currently emit".
+  - VERIFIED: the manually-maintained pages for `purnama`, `tilem`,
+    and `nyepi` (six files: en/rahinan/, id/rahinan/) are not
+    overwritten when the writer runs. We compare the bytes of each
+    file before and after the writer runs against a temp copy of
+    wiki/docs. Any difference fails the test. This is the
+    "smallest reliable approach" (Codex finding 3) -- the writer
+    is forbidden from rewriting these pages.
 
-This test imports the generator as a library (without invoking its
-file writer, so the manually-edited unimplemented pages are not
-overwritten by test runs) and asserts the structural invariants. It
-also verifies that running the generator's writer is BYTE-STABLE
-against the manually-edited wiki pages -- the generator and the
-checked-in pages must agree.
+  - VERIFIED: the writer's main() reports the skip count in its
+    output, and the slug list is exposed as
+    `MANUALLY_MAINTAINED_SLUGS` for callers to inspect.
+
+  - VERIFIED: the writer still produces the engine-emitted pages
+    (e.g. galungan, saraswati) with structured metadata. These pages
+    are NOT manually maintained; the writer owns them.
+
+  - NOT VERIFIED here: byte stability of non-maintained pages.
+    Those pages may legitimately change when the writer is updated
+    to emit different metadata. A separate test would be needed if
+    we wanted to lock down their content too.
+
+  - NOT VERIFIED here: that the generator and the manually-edited
+    pages would produce identical output if the generator were
+    extended to author the unimplemented surfaces. That is a future
+    work item, not a current requirement.
 """
 
 from __future__ import annotations
 
 import importlib.util
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -47,19 +56,27 @@ def test_generator_loads(gen):
     assert len(gen.TERMS) > 0
 
 
+def test_manually_maintained_slugs_declared(gen):
+    """The generator must declare which pages are off-limits to overwrite.
+
+    Currently purnama, tilem, nyepi -- the unimplemented rahinan
+    surfaces that were manually edited in the merged wiki.
+    """
+    assert hasattr(gen, "MANUALLY_MAINTAINED_SLUGS")
+    expected = {"rahinan/purnama", "rahinan/tilem", "rahinan/nyepi"}
+    assert set(gen.MANUALLY_MAINTAINED_SLUGS) == expected, (
+        f"manually-maintained slug set must be {expected}; "
+        f"got {set(gen.MANUALLY_MAINTAINED_SLUGS)}"
+    )
+
+
 def test_rhinan_ids_excludes_purnama_tilem_nyepi(gen):
     """RHINAN_IDS (engine-emitted) must NOT include the unimplemented terms."""
     assert hasattr(gen, "RHINAN_IDS")
     emitted = {entry[0] for entry in gen.RHINAN_IDS}
-    assert "purnama" not in emitted, (
-        "purnama must not be in the engine-emitted id list -- it is unimplemented"
-    )
-    assert "tilem" not in emitted, (
-        "tilem must not be in the engine-emitted id list -- it is unimplemented"
-    )
-    assert "nyepi" not in emitted, (
-        "nyepi must not be in the engine-emitted id list -- it is unimplemented"
-    )
+    assert "purnama" not in emitted
+    assert "tilem" not in emitted
+    assert "nyepi" not in emitted
 
 
 def test_rhinan_unemitted_includes_purnama_tilem_nyepi(gen):
@@ -72,47 +89,45 @@ def test_rhinan_unemitted_includes_purnama_tilem_nyepi(gen):
 
 
 def test_rhinan_named_no_longer_claims_engine_emits(gen):
-    """The named-day entries for purnama/tilem must be removed
-    entirely -- their pages are now produced by RHINAN_UNEMITTED, which
-    flags them as unimplemented.
-    """
+    """The named-day entries for purnama/tilem must be removed."""
     assert hasattr(gen, "RHINAN_NAMED")
     named = {entry[0] for entry in gen.RHINAN_NAMED}
-    # purnama and tilem must NOT appear in RHINAN_NAMED at all --
-    # they are emitted by RHINAN_UNEMITTED instead. If they appear
-    # here, write_lang's last-write-wins behaviour will overwrite the
-    # unimplemented page with the named-day phrasing.
-    assert "purnama" not in named, (
-        "F5 violated: purnama is in RHINAN_NAMED; the generator's "
-        "last-write-wins ordering would overwrite the unimplemented "
-        "page emitted by RHINAN_UNEMITTED. Remove from RHINAN_NAMED."
-    )
-    assert "tilem" not in named, (
-        "F5 violated: tilem is in RHINAN_NAMED; the generator's "
-        "last-write-wins ordering would overwrite the unimplemented "
-        "page emitted by RHINAN_UNEMITTED. Remove from RHINAN_NAMED."
-    )
+    assert "purnama" not in named
+    assert "tilem" not in named
 
 
-def test_generator_writer_preserves_manually_edited_pages(gen):
-    """The generator's writer must produce output consistent with the
-    manually-edited unimplemented wiki pages.
+def test_writer_preserves_manually_maintained_pages_byte_for_byte(gen):
+    """Round-trip preservation (round 2): the writer must NOT
+    overwrite the manually-maintained pages. We compare bytes
+    before and after the writer runs against a temp copy of
+    wiki/docs. Any difference fails.
 
-    We invoke the writer with `gen.DOCS` monkey-patched to point at a
-    tempdir that contains a copy of the checked-in wiki pages. We do
-    not run the writer against the real wiki docs -- only against a
-    copy.
+    This is the byte-stability guarantee Codex asked for: the
+    manually-maintained pages retain their full content,
+    structured fields, and front-matter metadata.
     """
-    import tempfile
     import shutil
+    import tempfile
 
     wiki_docs = REPO_ROOT / "wiki" / "docs"
     with tempfile.TemporaryDirectory() as tmp:
         tmp_root = Path(tmp)
-        # Copy wiki/docs into tmp so the writer has somewhere to write.
         shutil.copytree(wiki_docs, tmp_root / "docs")
 
-        # Monkey-patch DOCS to point at the temp tree.
+        # Snapshot the manually-maintained pages' bytes BEFORE the
+        # writer runs. Use exact byte equality, not any substring
+        # check -- this is the round-2 requirement.
+        before_bytes: dict[Path, bytes] = {}
+        for lang in ("en", "id"):
+            for term in ("purnama", "tilem", "nyepi"):
+                p = tmp_root / "docs" / lang / "rahinan" / f"{term}.md"
+                assert p.exists(), (
+                    f"manually-maintained page {p} must exist before "
+                    f"writer runs"
+                )
+                before_bytes[p] = p.read_bytes()
+
+        # Run the writer against the temp copy.
         original_docs = gen.DOCS
         gen.DOCS = tmp_root / "docs"
         try:
@@ -120,27 +135,174 @@ def test_generator_writer_preserves_manually_edited_pages(gen):
         finally:
             gen.DOCS = original_docs
 
-        # Verify the unimplemented pages were written with the
-        # "engine does not currently compute / emit" status string.
-        # The generator writes "engine does NOT currently emit" (with
-        # the named-day entries we updated) and
-        # "engine does not currently compute" (via RHINAN_UNEMITTED
-        # summaries). Both phrasings are correct.
+        # Compare bytes.
+        for p, expected_bytes in before_bytes.items():
+            actual_bytes = p.read_bytes()
+            assert actual_bytes == expected_bytes, (
+                f"manually-maintained page {p.name} was overwritten by "
+                f"the writer. Expected {len(expected_bytes)} bytes; "
+                f"got {len(actual_bytes)} bytes. First 200 bytes of diff:\n"
+                f"  before: {expected_bytes[:200]!r}\n"
+                f"  after:  {actual_bytes[:200]!r}"
+            )
+
+
+def test_writer_still_produces_engine_emitted_pages(gen):
+    """Round-trip preservation (round 2): the writer still produces
+    pages for the engine-emitted rahinan ids (e.g. galungan,
+    saraswati) with structured metadata. These are NOT manually
+    maintained; the generator owns them.
+    """
+    import shutil
+    import tempfile
+
+    wiki_docs = REPO_ROOT / "wiki" / "docs"
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_root = Path(tmp)
+        shutil.copytree(wiki_docs, tmp_root / "docs")
+        original_docs = gen.DOCS
+        gen.DOCS = tmp_root / "docs"
+        try:
+            gen.main()
+        finally:
+            gen.DOCS = original_docs
+
+        # Engine-emitted pages exist in the temp tree.
         for lang in ("en", "id"):
-            for term in ("purnama", "tilem", "nyepi"):
-                path = tmp_root / "docs" / lang / "rahinan" / f"{term}.md"
-                assert path.exists(), (
-                    f"F5: generator did not write {lang}/rahinan/{term}.md"
+            for term in ("galungan", "saraswati"):
+                p = tmp_root / "docs" / lang / "rahinan" / f"{term}.md"
+                assert p.exists(), (
+                    f"writer should produce {p} (engine-emitted rahinan)"
                 )
-                text = path.read_text().lower()
-                # accept either the named-day phrasing or the
-                # unimplemented-surface phrasing
-                ok = (
-                    "does not currently compute" in text
-                    or "does not currently emit" in text
-                    or "unimplemented" in text
+                text = p.read_text()
+                # Has front matter (starts with ---).
+                assert text.startswith("---\n")
+                # Has the rahinan id in the body or front matter.
+                assert "rahinan" in text.lower()
+
+
+def test_writer_output_reports_skip_count(capsys, gen):
+    """The writer's stdout must include the skip count so operators
+    can verify pages were preserved at runtime, not just in tests.
+    """
+    import shutil
+    import tempfile
+
+    wiki_docs = REPO_ROOT / "wiki" / "docs"
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_root = Path(tmp)
+        shutil.copytree(wiki_docs, tmp_root / "docs")
+        original_docs = gen.DOCS
+        gen.DOCS = tmp_root / "docs"
+        try:
+            gen.main()
+        finally:
+            gen.DOCS = original_docs
+        captured = capsys.readouterr()
+        assert "manually-maintained" in captured.out, (
+            f"writer stdout must mention manually-maintained skip "
+            f"count; got {captured.out!r}"
+        )
+        assert "preserved" in captured.out, (
+            f"writer stdout must say preserved; got {captured.out!r}"
+        )
+
+
+def test_manually_maintained_pages_have_structured_evidence(gen):
+    """Round 2: the manually-maintained pages must carry the structured
+    fields that the generator does not produce. Codex finding 3:
+    "Mentioning dispute identifiers in prose is not sufficient." The
+    pages must have `dispute_ids`, `customary_review_status`, source
+    citations, and translation review status -- the structured
+    evidence required for dispute routing.
+    """
+    import yaml
+
+    wiki_docs = REPO_ROOT / "wiki" / "docs"
+    expected_dispute_ids = {
+        "DISPUTE-SASAH-KAPAT-KATIGA-BOUNDARY-2026-09",
+        "DISPUTE-SASAH-JAVA-VS-PERADNYA-OFFSET",
+        "DISPUTE-ENGINE-SASIH-INDEX-INVERSION",
+    }
+    for lang in ("en", "id"):
+        for term in ("purnama", "tilem", "nyepi"):
+            path = wiki_docs / lang / "rahinan" / f"{term}.md"
+            assert path.exists(), (
+                f"manually-maintained page missing: {path}"
+            )
+            text = path.read_text()
+            fm = text.split("---", 2)[1]
+            data = yaml.safe_load(fm)
+
+            # 1. Structured dispute_ids must be present and equal to
+            # the three open sasih_index_drift disputes.
+            assert "dispute_ids" in data, (
+                f"finding 3: {path} missing structured dispute_ids"
+            )
+            assert set(data["dispute_ids"]) == expected_dispute_ids, (
+                f"finding 3: {path} dispute_ids must equal "
+                f"{expected_dispute_ids}; got {set(data['dispute_ids'])}"
+            )
+
+            # 2. customary_review_status with status and note.
+            assert "customary_review_status" in data, (
+                f"finding 3: {path} missing customary_review_status"
+            )
+            crs = data["customary_review_status"]
+            assert crs.get("status") == "pending_customary_review", (
+                f"finding 3: {path} customary_review_status.status "
+                f"should be pending_customary_review; got {crs.get('status')!r}"
+            )
+            assert crs.get("note"), (
+                f"finding 3: {path} customary_review_status.note "
+                f"must be a non-empty string"
+            )
+
+            # 3. source_citations pointing at real engine source files.
+            citations = data.get("source_citations", [])
+            assert citations, (
+                f"finding 3: {path} missing source_citations"
+            )
+            for c in citations:
+                assert "path" in c, (
+                    f"finding 3: {path} source_citation missing path: {c!r}"
                 )
-                assert ok, (
-                    f"F5: generator wrote {path} without flagging the "
-                    f"unimplemented status. Excerpt: {text[:500]}"
+                # Verify the cited path actually exists in the repo.
+                cited = REPO_ROOT / c["path"]
+                assert cited.exists(), (
+                    f"finding 3: {path} cites {c['path']!r} which does "
+                    f"not exist on disk"
                 )
+
+            # 4. translation_review_status with ban/id/en.
+            trs = data.get("translation_review_status", {})
+            for required_lang in ("ban", "id", "en"):
+                assert required_lang in trs, (
+                    f"finding 3: {path} translation_review_status "
+                    f"missing {required_lang}"
+                )
+
+            # 5. short_definition explicitly marks unimplemented.
+            short_def = data.get("short_definition", "")
+            assert "unimplemented" in short_def.lower() or (
+                "belum diimplementasikan" in short_def.lower()
+            ), (
+                f"finding 3: {path} short_definition must mark "
+                f"unimplemented status"
+            )
+
+
+def test_manually_maintained_pages_match_en_and_id(gen):
+    """Round 2: the same three terms must be manually maintained in
+    BOTH en and id. The writer preserves both languages; the test
+    enforces parity.
+    """
+    en_dir = REPO_ROOT / "wiki" / "docs" / "en" / "rahinan"
+    id_dir = REPO_ROOT / "wiki" / "docs" / "id" / "rahinan"
+    for term in ("purnama", "tilem", "nyepi"):
+        assert (en_dir / f"{term}.md").exists(), (
+            f"manually-maintained en page missing: {term}.md"
+        )
+        assert (id_dir / f"{term}.md").exists(), (
+            f"manually-maintained id page missing: {term}.md"
+        )

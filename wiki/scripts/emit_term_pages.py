@@ -838,21 +838,55 @@ last_reviewed: 2026-09-17
     return out
 
 
+# Manually-maintained pages. The generator must not overwrite these;
+# they carry structured evidence (dispute_ids, customary_review_status
+# notes, source citations, translation_review_status) that the
+# generator's data structures do not currently produce. A future
+# generator pass that wants to take over authoring these pages must
+# accept responsibility for producing the same structured evidence --
+# round-trip tests in wiki/tests/test_emit_term_pages_preservation.py
+# verify the protection.
+#
+# Slugs are written as `category/<name>` (matching the write_lang
+# output path layout). The list covers the six manually-edited
+# unimplemented-rahinan pages in en/rahinan/, id/rahinan/, and ban/.
+MANUALLY_MAINTAINED_SLUGS: frozenset[str] = frozenset({
+    "rahinan/purnama",
+    "rahinan/tilem",
+    "rahinan/nyepi",
+})
+
+
 def main():
     n_ban = n_id = n_en = 0
+    n_ban_skipped = n_id_skipped = n_en_skipped = 0
     for t in TERMS:
         slug = t["slug"]
+        if slug in MANUALLY_MAINTAINED_SLUGS:
+            n_id_skipped += 1
+            continue
         n_id += 1
         write_lang(DOCS / "id", slug, t, "id")
     for t in TERMS:
         slug = t["slug"]
+        if slug in MANUALLY_MAINTAINED_SLUGS:
+            n_en_skipped += 1
+            continue
         n_en += 1
         write_lang(DOCS / "en", slug, t, "en")
     for t in TERMS:
         slug = t["slug"]
+        if slug in MANUALLY_MAINTAINED_SLUGS:
+            n_ban_skipped += 1
+            continue
         n_ban += 1
         write_ban_stub(DOCS / "ban", slug, t)
-    print(f"emitted {n_ban} ban / {n_id} id / {n_en} en term pages")
+    skipped = n_ban_skipped  # same count for id/en/ban: per-lang
+    print(
+        f"emitted {n_ban} ban / {n_id} id / {n_en} en term pages; "
+        f"{skipped} manually-maintained slugs preserved (skipped) per "
+        f"MANUALLY_MAINTAINED_SLUGS"
+    )
 
 
 if __name__ == "__main__":
