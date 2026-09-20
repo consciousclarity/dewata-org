@@ -213,7 +213,62 @@ The prior report said "4 SBCL tests" -- that count was incorrect. The file `phas
 - Pre-existing CLI conformance failure in `cmd_test` (corpora reference stripped fields `saka.saka_year`, `lunar_tithi`, etc.): unrelated to this branch; corpora are not updated by the strip. Out of scope for round 2.
 
 **Reporting and scope discipline.**
-- Committed changes: `1acb908`, `768aadd`, `eb0b715` (all on `strip-saka-corrections-r2-20260920`, none pushed, none merged).
+- Committed changes: `1acb908`, `768aadd`, `eb0b715`, `769e808` (all on `strip-saka-corrections-r2-20260920`, none pushed, none merged).
 - Executed verification: full phase-1 pytest (333 pass), wiki pytest (25 pass), SBCL test file (4 pass), live HTTP demo (three boundary dates), cross-validation structured output, wiki byte-equality, CLI `ruleset` smoke.
 - Unverified claims: branch protection on main (no GitHub admin token); production deploy (PROTOCOL §0 forbids); customary sign-off (out of scope).
 - Stopped after preparing the local artifact for Codex independent review. Passing tests are not release approval.
+
+---
+
+## 2026-09-20 (round 3) — strip-saka-corrections-r2-20260920 (precedence fix)
+
+**Context.** After round 2 was committed, Codex observed that the precedence correction had a residual defect: a required unavailable `saka_year` caused `status=incomplete_public` and `classification=unavailable_public_field` even when other required public fields (pawukon_position, pawukon_wuku_idx, sasih_idx) independently disagreed with the reference. The CLI then reported "0 disputed, 3 incomplete", hiding substantive disagreements on two of three corpus rows.
+
+**Base SHA.** `769e808e6473969b45305ba1db277a57dbfad58f` (round-2 head, the prior WORKLOG commit).
+**Commit.** `53fe078` — round-3 precedence fix: unavailability does not hide disagreement.
+**Branch ancestry from merged main.** 5 commits total: `802f9263` → `1018721` → `1acb908` → `768aadd` → `eb0b715` → `769e808` → `53fe078`. Each preserves the previous as ancestor.
+
+**Precedence correction.**
+- 1. If any AVAILABLE required public field disagrees with expected: status=disputed.
+- 2. Else if any required field is unavailable: status=incomplete_public.
+- 3. Else: status=match.
+
+**Implementation.**
+- `cross_validation.py`: new `fields_disagree_available: dict[str, bool]` on `CrossValidationOutcome`. Status branch order flipped (disputed → incomplete_public → match). Notes list disagreeing available field(s) AND saka_year unavailability.
+- `runbook.py::classify`: helper `_available_ok(k) -> bool | None` treats unavailable fields as `None` instead of `False`. Substantive heuristics check True/False/None; only available-field truth values drive classification. When classification is substantive AND saka_year is unavailable, the classification notes append `[addendum: saka_year was unavailable...]` so both facts are visible. Rows where all available fields agree AND a required field is unavailable still classify as `unavailable_public_field` (the substantive check is inconclusive, not wrong).
+- `cli.py` cross-validation summary: reports `match`, `disputed (X of those also had unavailable fields)`, `incomplete_public (X total rows with unavailable fields)`. The parentheticals make explicit that disputed and incomplete are not mutually exclusive.
+
+**Expected high-level outcomes on current v0.1 corpora.**
+- 1981-08-23: `incomplete_public` / `unavailable_public_field` (all available fields agree; only saka_year unavailable).
+- 1979-03-29: `disputed` / `rule_drift`, with saka_year unavailability noted (pawukon and sasih disagree on available fields).
+- 2024-09-07: `disputed` / `rule_drift`, with saka_year unavailability noted (same pattern as 1979-03-29).
+
+**Tests.**
+- Revised `test_f2_incomplete_outcome_status_field_is_incomplete_public` to use 1981-08-23 (where the available fields actually agree in the corpus) instead of 1979-03-29 (which has substantive disagreements).
+- New `test_round3_unavailable_does_not_hide_disagreement`: required saka_year unavailable + diagnostic matches + pawukon/sasih disagreeing. Asserts the diagnostic does NOT satisfy saka_year, saka_year remains unavailable, fields_disagree_available flags each disagreement, status=disputed, notes expose both facts, runbook.classify yields rule_drift with the addendum.
+- New `test_round3_cross_validate_all_does_not_silently_become_zero_disputed`: aggregate guard. Asserts n_disputed >= 2, n_incomplete >= 1, n_match == 0, n_with_unavailable == total rows, n_disputed_with_unavailable >= 2.
+
+**Verification.**
+- `cd phase-1 && python -m pytest -q -rs` → **335 passed**, 0 failed (was 333 after `769e808`; +2 new tests; 0 failed).
+- `cd . && python -m pytest wiki/tests -q -rs` → **25 passed**, 0 failed (unchanged).
+- `python -m pytest phase-1/tests/test_evidence_calendrica_runtime.py -v` → **4 passed** (2 SBCL, 2 source/license hash; unchanged from round-2 count).
+
+**Protected paths audit (untouched in round-3 commit).**
+- `phase-1/src/api/main.py` (live API entrypoint)
+- `phase-1/docs/runbook/disputes.json` (27 disputes, 13 active blockers)
+- `phase-1/docs/runbook/SIGNOFF.md` (empty by design)
+- `phase-1/conformance/STATUS.json` (schema v3.0)
+- `phase-1/conformance/published/*.json` (3 corpus files)
+- `phase-1/tests/test_evidence_calendrica_runtime.py` (SBCL tests)
+- `deploy/caddy/Caddyfile.dewata`, `deploy/systemd/*`, `deploy/www/**`
+- `registry/*.tsv`
+- `wiki/docs/**`
+- The accepted API capability fix (commit `1acb908`)
+- The accepted wiki preservation fix (commit `eb0b715`)
+- The candidate identifier (`candidate-2026-09-20-strip-corrections-r2`)
+
+**Reporting and scope discipline.**
+- Committed changes: `53fe078` only (single focused follow-up).
+- Executed verification: full phase-1 pytest (335 pass), wiki pytest (25 pass), SBCL tests (4 pass), live cross_validate_all() output, CLI summary reconstruction, three corpus rows classified as expected.
+- Unverified claims: branch protection on main; production deploy; customary sign-off.
+- Stopped for Codex independent review. Passing tests are not release approval.
