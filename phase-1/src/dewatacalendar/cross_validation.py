@@ -44,7 +44,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -85,6 +85,30 @@ class CrossValidationOutcome:
 
     the legacy `corpus_status` field is preserved for backwards
     compatibility. it is derived from the two axes.
+
+    Field-comparison semantics (round-2 clarification):
+      - `fields_ok` records the boolean comparison result. For
+        `saka_year`, this is True only when the **public** engine value
+        equals the expected value, OR when the reference does not
+        specify an expected value (None).
+      - `fields_unavailable` records whether a public engine field was
+        required by the reference but the engine returned None. The
+        diagnostic field's agreement with expected does NOT mark the
+        public field as available.
+      - `fields_diagnostic_match` records whether a separate diagnostic
+        value (e.g. `saka_year_diagnostic_january_rollover`) agreed
+        with the expected. This is informational and never feeds into
+        `fields_ok` or `status`.
+
+    status values:
+      - "match": all required public fields equal expected; no
+        public field was unavailable.
+      - "disputed": at least one public field disagrees with expected
+        (and was not unavailable).
+      - "incomplete_public": at least one required public field was
+        unavailable. Diagnostic agreement does not satisfy this. The
+        outcome cannot be a "match" until the public field is
+        available.
     """
     date: str
     source: str
@@ -92,9 +116,11 @@ class CrossValidationOutcome:
     expected: dict[str, Any]
     actual: dict[str, Any]
     fields_ok: dict[str, bool]
-    status: str                    # 'match' | 'drift' | 'disputed'
+    status: str                    # 'match' | 'disputed' | 'incomplete_public'
     rule_id: str
     notes: str
+    fields_unavailable: dict[str, bool] = field(default_factory=dict)
+    fields_diagnostic_match: dict[str, bool] = field(default_factory=dict)
     corpus_basename: str = ""
     corpus_verification_status: str = VerificationStatus.UNVERIFIED.value
     corpus_reference_eligibility: str = ReferenceEligibility.INELIGIBLE.value
@@ -119,12 +145,23 @@ def cross_validate_one(expected_gregorian: str, expected: dict, source: str, pag
         VERIFIED + ELIGIBLE -> may_satisfy_validation_gate=True
         anything else -> False
 
-    Per Codex review of PR #15 (F1, P1): when the public `saka_year`
-    field is `None` (the engine cannot endorse a year boundary without
-    customary sign-off), the diagnostic field
-    `saka_year_diagnostic_january_rollover` is compared instead. The
-    outcome's `notes` carries the explanation so downstream consumers
-    see the unavailable status, not a silent match.
+    Field-comparison semantics (round-2 clarification):
+      - When the public engine value is None but the reference specifies
+        an expected value, `fields_ok[field]` is False and
+        `fields_unavailable[field]` is True. The diagnostic value is
+        compared separately and recorded in
+        `fields_diagnostic_match[field]`; it never satisfies
+        `fields_ok`.
+      - When the reference does not specify an expected value
+        (`expected[field] is None`), `fields_ok[field]` is True and
+        neither the public nor diagnostic field is required.
+      - `status` is "match" only when every required public field is
+        available and agrees. "incomplete_public" if at least one
+        required public field was unavailable. "disputed" otherwise.
+
+    The diagnostic value is exposed for downstream dispute packet
+    authors and the harness; it is not a substitute for the public
+    field.
     """
     date = _dt.date.fromisoformat(expected_gregorian)
     day = compose_day(date)
@@ -151,32 +188,55 @@ def cross_validate_one(expected_gregorian: str, expected: dict, source: str, pag
         "sasih_idx": expected.get("sasih_idx"),
     }
     fields_ok: dict[str, bool] = {}
-    field_notes: dict[str, str] = {}
-    for field, exp_v in expected_norm.items():
-        act_v = actual.get(field)
+    fields_unavailable: dict[str, bool] = {}
+    fields_diagnostic_match: dict[str, bool] = {}
+    for field_name, exp_v in expected_norm.items():
+        act_v = actual.get(field_name)
+        # Reference does not specify this field: pass through.
         if exp_v is None:
-            fields_ok[field] = True
+            fields_ok[field_name] = True
             continue
-        if field == "saka_year" and act_v is None and diagnostic_saka_year is not None:
-            # public saka_year is unavailable (F1); compare against the
-            # diagnostic, but flag the field as "diagnostic-only" so the
-            # outcome's notes don't claim a public-surface match.
-            fields_ok[field] = diagnostic_saka_year == exp_v
-            field_notes[field] = (
-                "public saka_year unavailable (None); compared against "
-                "saka_year_diagnostic_january_rollover per F1"
-            )
+        # Special case for saka_year: track unavailability and the
+        # diagnostic agreement separately. The public field is required
+        # but unavailable; the diagnostic comparison is informational.
+        if field_name == "saka_year" and act_v is None:
+            fields_ok[field_name] = False
+            fields_unavailable[field_name] = True
+            if diagnostic_saka_year is not None:
+                fields_diagnostic_match[field_name] = (
+                    diagnostic_saka_year == exp_v
+                )
             continue
-        fields_ok[field] = act_v == exp_v
+        # Default case: public-field comparison only.
+        fields_ok[field_name] = act_v == exp_v
 
-    status = "match" if all(fields_ok.values()) else "disputed"
-    notes_parts = [
-        "all fields match published source" if status == "match"
-        else "engine disagrees with published source -- human review required"
-    ]
-    if field_notes:
-        notes_parts.append("; ".join(f"{k}: {v}" for k, v in field_notes.items()))
-    notes = "".join(notes_parts)
+    # Status semantics: a required public field is unavailable => incomplete.
+    # Any required public field disagrees with expected => disputed.
+    # Otherwise match.
+    if any(fields_unavailable.values()):
+        status = "incomplete_public"
+        notes_parts = [
+            "required public field(s) unavailable: "
+            + ", ".join(sorted(k for k, v in fields_unavailable.items() if v))
+        ]
+        if fields_diagnostic_match:
+            notes_parts.append(
+                "diagnostic agreement (informational, not a public match): "
+                + ", ".join(
+                    f"{k}={'yes' if v else 'no'}"
+                    for k, v in sorted(fields_diagnostic_match.items())
+                )
+            )
+        notes = "; ".join(notes_parts)
+    elif all(fields_ok.values()):
+        status = "match"
+        notes = "all required public fields match published source"
+    else:
+        status = "disputed"
+        notes = (
+            "engine public output disagrees with published source -- "
+            "human review required"
+        )
 
     record = corpus_record_for(corpus_basename) if corpus_basename else None
     if record is None:
@@ -199,6 +259,8 @@ def cross_validate_one(expected_gregorian: str, expected: dict, source: str, pag
         expected=expected_norm,
         actual=actual,
         fields_ok=fields_ok,
+        fields_unavailable=fields_unavailable,
+        fields_diagnostic_match=fields_diagnostic_match,
         status=status,
         rule_id=rule_id,
         notes=notes,

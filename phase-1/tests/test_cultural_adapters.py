@@ -115,12 +115,30 @@ def test_translator_function():
 
 
 def test_cross_validation_runs():
-    """cross-validation runs without crashing and produces outcomes."""
+    """cross-validation runs without crashing and produces outcomes.
+
+    Round-2 (finding 2): the status field can be 'match',
+    'disputed', or 'incomplete_public' (the last when a required
+    public field was unavailable). The test asserts that the corpus
+    produces at least one record with a substantive outcome --
+    i.e. something other than every-record-being-match. This is a
+    regression guard, not a contract on the exact status.
+    """
     results = cross_validate_all()
     assert isinstance(results, list)
     assert all(isinstance(r, CrossValidationOutcome) for r in results)
-    # we expect at least one disputed record to exist for v0.1
-    assert any(r.status == "disputed" for r in results)
+    valid_statuses = {"match", "disputed", "incomplete_public"}
+    assert all(r.status in valid_statuses for r in results), (
+        f"unexpected status in outcomes: "
+        f"{sorted({r.status for r in results})}"
+    )
+    # at least one substantive (non-match) outcome is the regression
+    # guard; we don't pin which.
+    substantive = [r for r in results if r.status != "match"]
+    assert substantive, (
+        f"expected at least one substantive (disputed/incomplete_public) "
+        f"outcome across the v0.1 corpora; got {len(results)} matches"
+    )
 
 
 def test_cross_validation_outcomes_have_provenance():

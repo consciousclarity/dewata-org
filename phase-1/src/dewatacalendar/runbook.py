@@ -32,7 +32,13 @@ class DisputeRecord:
     source: str
     page: int | None
     rule_id: str
-    classification: Literal["epoch_offset", "rule_drift", "calendar_variant", "transcription"]
+    classification: Literal[
+        "epoch_offset",
+        "rule_drift",
+        "calendar_variant",
+        "transcription",
+        "unavailable_public_field",
+    ]
     resolution: ResolutionStatus
     notes: str
     recorded_at: str
@@ -52,12 +58,43 @@ class DisputeRecord:
 
 
 def classify(outcome: CrossValidationOutcome) -> tuple[str, str]:
-    """heuristic classification of a dispute. returns (classification, notes)."""
+    """heuristic classification of a dispute. returns (classification, notes).
+
+    Classification rules (round-2):
+      - If the public `saka_year` is unavailable, classify as
+        `unavailable_public_field` -- do NOT auto-classify as
+        `epoch_offset` or `calendar_variant`. The unavailable status is
+        a property of the engine's public contract, not a substantive
+        disagreement between engine and reference.
+      - If the public engine output disagrees with the reference on a
+        substantive field, classify as `epoch_offset` / `calendar_variant`
+        / `rule_drift` / `transcription` per the heuristics below.
+    """
     fields = outcome.fields_ok
+    unavailable = outcome.fields_unavailable
+
     pos_ok = fields.get("pawukon_position", False)
     wuku_ok = fields.get("pawukon_wuku_idx", False)
     saka_ok = fields.get("saka_year", False)
     sasih_ok = fields.get("sasih_idx", False)
+
+    # If a required public field was unavailable, do not auto-classify
+    # the disagreement as epoch_offset or calendar_variant. The
+    # unavailability is a separate, well-defined state.
+    if unavailable.get("saka_year"):
+        diag = outcome.fields_diagnostic_match.get("saka_year")
+        diag_note = (
+            f" diagnostic saka_year matches expected: {diag}."
+            if diag is not None
+            else " diagnostic saka_year not produced."
+        )
+        return (
+            "unavailable_public_field",
+            "public saka_year is unavailable (engine contract per "
+            "PR #15 corrections round 2); this is not an epoch error or "
+            "regional variant."
+            + diag_note
+        )
 
     # pure sasih-only disagreement → regional variant
     if pos_ok and wuku_ok and saka_ok and not sasih_ok:

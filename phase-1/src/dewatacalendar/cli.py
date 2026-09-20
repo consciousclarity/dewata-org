@@ -82,6 +82,7 @@ def cmd_test(args: argparse.Namespace) -> int:
         results = cross_validate_all()
         n_authoritative = 0
         n_diagnostic = 0
+        n_incomplete = 0
         for r in results:
             gate_marker = (
                 "AUTHORITATIVE"
@@ -93,19 +94,30 @@ def cmd_test(args: argparse.Namespace) -> int:
                     f"{r.corpus_authority_basis}]"
                 )
             )
-            print(f"  {r.date}  [{r.status:8s}]  corpus={r.corpus_basename} {gate_marker}  {r.source[:50]}")
+            unavailable_marker = ""
+            if r.fields_unavailable:
+                unavailable_marker = (
+                    " unavailable_fields="
+                    + ",".join(
+                        sorted(k for k, v in r.fields_unavailable.items() if v)
+                    )
+                )
+            print(f"  {r.date}  [{r.status:18s}]  corpus={r.corpus_basename} {gate_marker}{unavailable_marker}  {r.source[:50]}")
             if r.corpus_may_satisfy_validation_gate:
                 n_authoritative += 1
             else:
                 n_diagnostic += 1
+            if r.fields_unavailable.get("saka_year"):
+                n_incomplete += 1
         n_match = sum(1 for r in results if r.status == "match")
         n_disputed = sum(1 for r in results if r.status == "disputed")
         print(
-            f"  -- {n_match} match, {n_disputed} disputed "
+            f"  -- {n_match} match, {n_disputed} disputed, "
+            f"{n_incomplete} incomplete_public "
             f"({n_authoritative} from authoritative corpora, {n_diagnostic} from "
             f"non-authoritative / unverified corpora; non-authoritative results "
             f"are diagnostic only and do not satisfy independent-reference "
-            f"validation gates per PROTOCOL v1.0 §2.4 + STATUS.json schema v2) --"
+            f"validation gates per PROTOCOL v1.0 section 2.4 + STATUS.json schema v2) --"
         )
         print(
             "  -- corpus evidence status (two-axis): "
