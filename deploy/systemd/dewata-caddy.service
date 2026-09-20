@@ -10,7 +10,12 @@ User=root
 WorkingDirectory=/opt/dewata.online/deploy/caddy
 ExecStartPre=/usr/bin/caddy validate --config /opt/dewata.online/deploy/caddy/Caddyfile.dewata
 ExecStart=/usr/bin/caddy run --config /opt/dewata.online/deploy/caddy/Caddyfile.dewata --adapter '' --watch=false
-ExecReload=/usr/bin/caddy reload --config /opt/dewata.online/deploy/caddy/Caddyfile.dewata --adapter ''
+# ExecReload deliberately removed. See deploy/runbook/caddy-reload-policy.md.
+# A reload path that addresses :2019 by default would silently reconfigure the
+# host Caddy (PID 775, /etc/caddy/Caddyfile) on every reload attempt. The
+# permission accident on /opt/dewata.online/deploy/logs/caddy-private.log is
+# the only thing that prevents this. Use 'systemctl restart dewata-caddy.service'
+# for any Caddyfile change.
 TimeoutStopSec=20
 KillMode=mixed
 Restart=on-failure

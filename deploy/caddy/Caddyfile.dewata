@@ -26,12 +26,18 @@
 #     DEWATA_WIKI_RELEASE_ROOT environment variable, defaulting to
 #     the latest named release.  on deploy, set
 #     DEWATA_WIKI_RELEASE_ROOT=/opt/dewata.online/deploy/www/wiki/<new>
-#     and run `systemctl reload dewata-caddy.service`.  this avoids the
-#     failure mode where a new wiki release is staged but the
-#     Caddyfile points at the previous one.
+#     and run `systemctl restart dewata-caddy.service` (NOT reload — see
+#     deploy/runbook/caddy-reload-policy.md).  this avoids the failure
+#     mode where a new wiki release is staged but the Caddyfile points at
+#     the previous one.  env-var values are expanded at config-load time
+#     (ExecStart), not at reload time, so restart is required to pick up
+#     a new env-var value.
 #   - DEWATA_LOG_FILE overrides the access log path.
 #   - to roll back a release, change the env var to the previous
-#     release directory and reload — no Caddyfile edit required.
+#     release directory and restart dewata-caddy.service — no Caddyfile
+#     edit required.  there is no reload path on this unit; reload is
+#     disabled because it would silently reconfigure the host Caddy on
+#     :2019 (see deploy/runbook/caddy-reload-policy.md).
 {
 	# cloudflare terminates TLS at its edge; this Caddy accepts
 	# plaintext on :8443 over cloudflared's private backbone.  We
@@ -59,7 +65,8 @@
 	# the directory is *append-only*: new versions land in
 	# /opt/dewata.online/deploy/www/dewata-org/v<MAJOR>.<MINOR>.<PATCH>/
 	# DEWATA_RELEASE_ROOT points at the active version; rollback is a
-	# single env-var change + `systemctl reload dewata-caddy.service`.
+	# single env-var change + `systemctl restart dewata-caddy.service`
+	# (NOT reload — see deploy/runbook/caddy-reload-policy.md).
 	@apex host dewata.org
 
 	handle @apex {
@@ -72,9 +79,11 @@
 	# versioned, immutable release built from dewata-org main.
 	# DEWATA_WIKI_RELEASE_ROOT points at the active release; on
 	# deploy, change the env var to the new release directory and
-	# reload.  do not hardcode the release path here — hardcoding is
-	# the failure mode that left wiki.dewata.org serving cf23840-r3
-	# for three days after 33f3142-r1 was staged.
+	# restart dewata-caddy.service (NOT reload — see
+	# deploy/runbook/caddy-reload-policy.md).  do not hardcode the
+	# release path here — hardcoding is the failure mode that left
+	# wiki.dewata.org serving cf23840-r3 for three days after
+	# 33f3142-r1 was staged.
 	@wiki host wiki.dewata.org
 	handle @wiki {
 		root * {$DEWATA_WIKI_RELEASE_ROOT:/opt/dewata.online/deploy/www/wiki/b9eb4d9-r1}
