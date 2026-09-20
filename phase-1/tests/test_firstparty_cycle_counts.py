@@ -25,13 +25,23 @@ DEW_CSV = EV_DIR / "cycle-comparison/dewata-cycle-210.csv"
 
 
 def _read_pipe(path: Path):
+    """read a pipe-delimited CSV with optional `#`-prefixed comment lines.
+
+    the column header is the first non-comment line; everything after that
+    is a data row. blank lines are skipped. see phase-1/evidence/MANIFEST.md
+    for the `# git_commit:` provenance header convention.
+    """
     rows = []
+    saw_header = False
     with open(path) as f:
-        for i, line in enumerate(f):
+        for line in f:
             line = line.rstrip("\n")
             if not line:
                 continue
-            if i == 0:  # header
+            if line.startswith("#"):
+                continue
+            if not saw_header:
+                saw_header = True
                 continue
             rows.append(line.split("|"))
     return rows

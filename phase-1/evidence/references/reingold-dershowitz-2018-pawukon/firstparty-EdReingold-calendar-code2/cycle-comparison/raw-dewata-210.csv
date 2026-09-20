@@ -1,3 +1,7 @@
+# git_commit: 89304bcda945da516850c3ae8bf4cc2cc413abf4
+# recorded_at: 2026-09-20T05:32:30Z
+# name_columns_superseded_by: 21e5080 (PR #8, wuku-table-fix-20260919)
+# schema: cycle_position|...|WUKU_NAME (column 13)
 IDX|GREGORIAN|DEW_POS|WUKU_IDX|WUKU_NAME|PAN|SAP|TRI|SAD|CAT|AST|SNG|DAS|DWI|DEW_LUANG_PROXY
 0|1981-08-23|1|1|Sinta|1|1|1|1|1|1|1|1|Menga|T
 1|1981-08-24|2|1|Sinta|2|2|2|2|2|2|1|2|Pepet|F

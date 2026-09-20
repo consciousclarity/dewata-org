@@ -39,6 +39,27 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def read_dewata_commit() -> str:
+    """return the dewata-org commit the engine was loaded from.
+
+    the dewata implementation is the working tree of this repo; git
+    rev-parse HEAD resolves the same commit from any cwd inside the
+    repo. before this existed, the commit was hardcoded in this
+    file at the commit when the harness was first written, which
+    meant every regenerating run recorded the original commit
+    instead of the one actually used. see deploy/runbook/caddy-reload-policy.md
+    for the parallel reasoning; the principle is the same: do not
+    lie about provenance.
+    """
+    completed = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return completed.stdout.strip()
+
+
 def dates() -> list[str]:
     count = (END - START).days + 1
     return [(START + dt.timedelta(days=offset)).isoformat() for offset in range(count)]
@@ -255,7 +276,7 @@ def main() -> None:
         "generated_at": "2026-09-16",
         "range": {"start": START.isoformat(), "end": END.isoformat(), "inclusive_days": expected_count},
         "implementations": {
-            "dewata": {"repository_commit": "25ad44dc8c7f492efb942a8810fdb6efabdfdd18"},
+            "dewata": {"repository_commit": read_dewata_commit()},
             "peradnya": {"commit": provenance["peradnya"]["commit"], "release": provenance["peradnya"]["release"]},
             "rust": {"commit": provenance["rust"]["commit"], "release": provenance["rust"]["release"]},
         },
