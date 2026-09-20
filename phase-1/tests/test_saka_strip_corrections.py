@@ -139,12 +139,33 @@ def test_f2_candidate_id_differs_from_ruleset():
 
 
 def test_f2_unimplemented_observances_field_present():
-    """F5 (rolled into F2 acceptance): unimplemented_observances must
-    always carry the three ids that depend on removed lunar fields.
+    """Finding 1: unimplemented_observances must ALWAYS be present,
+    not only when rahinan is empty. A date that emits buda_kliwon
+    still lacks purnama/tilem/nyepi.
     """
-    day = compose_day(_dt.date(2026, 9, 20))
+    # Empty rahinan
+    day = compose_day(_dt.date(2026, 1, 1))
     assert day.unimplemented_observances == UNIMPLEMENTED_RAHINAN_IDS
     assert set(day.unimplemented_observances) == {"purnama", "tilem", "nyepi"}
+
+    # Rahinan emitted: still the same unimplemented list.
+    day_with = compose_day(_dt.date(2024, 6, 1))
+    assert len(day_with.rahinan) > 0, (
+        "expected 2024-06-01 to emit at least one rahinan for this regression"
+    )
+    assert day_with.unimplemented_observances == UNIMPLEMENTED_RAHINAN_IDS, (
+        f"finding 1: unimplemented_observances must always equal "
+        f"UNIMPLEMENTED_RAHINAN_IDS regardless of other rahinan; "
+        f"got {day_with.unimplemented_observances!r}"
+    )
+
+    # Rahinan with buda_kliwon
+    day_bk = compose_day(_dt.date(2026, 3, 18))
+    emitted_ids = {r["id"] for r in day_bk.rahinan}
+    assert "buda_kliwon" in emitted_ids, (
+        f"expected buda_kliwon on 2026-03-18; got {emitted_ids!r}"
+    )
+    assert day_bk.unimplemented_observances == UNIMPLEMENTED_RAHINAN_IDS
 
 
 def test_f2_note_explains_empty_rahinan():

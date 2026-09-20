@@ -56,46 +56,56 @@ def compose_day(date: _dt.date) -> CalendarDay:
     if the date is pre-1979, saka fields carry `_oob_range: true` and
     rahinan is empty (cannot compute without a saka anchor).
 
-    Per Codex review of PR #15 (F5): when the engine never emits
-    rahinan ids that depend on removed lunar fields, the response
-    carries an explicit `note` distinguishing "engine does not compute
-    this observance" from "no event today". The
-    `unimplemented_observances` field lists which terms are affected.
+    The `unimplemented_observances` field is **always** present and
+    always lists the cultural terms the engine does not compute
+    (currently `purnama`, `tilem`, `nyepi`). Whether or not today's
+    rahinan list is empty is independent of which terms are
+    unimplemented: a date may have other observed rahinan (e.g.
+    `buda_kliwon`, `tumpek_landep`, `kuningan`) and still be missing
+    purnama/tilem/nyepi. Downstream consumers can rely on the
+    machine-readable list as the authoritative capability signal;
+    the human-readable `note` field varies to describe the date.
+
+    Per Codex review of PR #15 follow-up (round 2, finding 1).
     """
     paw = pawukon_for_gregorian(date)
     saka_dict: dict[str, Any]
     rahs: list[Rahinan] = []
-    unimplemented: tuple[str, ...] = ()
     note: str | None = None
     try:
         sak = saka_for_gregorian(date)
         saka_dict = {k: _date_to_str(v) for k, v in asdict(sak).items()}
         wew = wewaran_for_position(paw.position_in_cycle)
         rahs = rahinan_for(paw, sak, wew.position)
+        # In-range date. The unimplemented-observance list is the
+        # machine-readable capability contract; always present and
+        # always equal to UNIMPLEMENTED_RAHINAN_IDS regardless of
+        # whether other rahinan were emitted.
+        unimplemented = UNIMPLEMENTED_RAHINAN_IDS
+        if not rahs:
+            note = (
+                "empty rahinan list -- engine does not currently compute: "
+                + ", ".join(UNIMPLEMENTED_RAHINAN_IDS)
+                + ". See IMPLEMENTED_RAHINAN_IDS in rulesets.py."
+            )
+        else:
+            # rahinan has entries (e.g. buda_kliwon, saraswati); the
+            # unimplemented terms are still missing.
+            emitted_ids = sorted(r.id for r in rahs)
+            note = (
+                "rahinan emitted: " + ", ".join(emitted_ids)
+                + "; engine does not currently compute: "
+                + ", ".join(UNIMPLEMENTED_RAHINAN_IDS)
+                + ". See IMPLEMENTED_RAHINAN_IDS in rulesets.py."
+            )
     except (InvalidDateError, Exception):  # noqa: BLE001 - saka has range exceptions
         saka_dict = {"_oob_range": True, "gregorian": date.isoformat()}
         wew = wewaran_for_position(paw.position_in_cycle)
         unimplemented = UNIMPLEMENTED_RAHINAN_IDS
         note = (
             "saka out of range: rahinan omitted; pawukon and wewaran "
-            "still computed"
-        )
-
-    # Distinguish "engine does not compute this observance" from
-    # "no event today". If rahinan is empty AND any of the
-    # unimplemented ids would historically have been emitted on this
-    # date, attach the explicit note. This catches future regressions
-    # where someone re-adds purnama/tilem/nyepi without restoring the
-    # lunar fields they depend on.
-    if not rahs and not note:
-        # We can't say purnama/tilem/nyepi "would have fired today"
-        # without a real lunisolar implementation. So we report the
-        # unimplemented list and a generic note.
-        unimplemented = UNIMPLEMENTED_RAHINAN_IDS
-        note = (
-            "empty rahinan list -- engine does not currently compute: "
+            "still computed; engine does not currently compute: "
             + ", ".join(UNIMPLEMENTED_RAHINAN_IDS)
-            + ". See IMPLEMENTED_RAHINAN_IDS in rulesets.py."
         )
 
     return CalendarDay(

@@ -140,3 +140,60 @@ def test_http_response_carries_note_when_rahinan_empty(uvicorn_server):
             f"F5: HTTP response note must mention {term!r}; "
             f"got {body['note']!r}"
         )
+
+
+# --- Round-2 findings: unimplemented_observances must be present
+# --- regardless of whether other rahinan are emitted.
+
+
+@pytest.mark.parametrize(
+    "date,expected_rahinan_terms",
+    [
+        # 2026-01-01: empty rahinan (no observances)
+        ("2026-01-01", ()),
+        # 2026-03-18: includes buda_kliwon
+        ("2026-03-18", ("buda_kliwon",)),
+        # 2024-06-01: includes tumpek_landep and kuningan
+        ("2024-06-01", ("kuningan", "tumpek_landep")),
+    ],
+)
+def test_http_response_unimplemented_observances_always_present(
+    uvicorn_server, date, expected_rahinan_terms
+):
+    """Finding 1: unimplemented_observances must be present in EVERY
+    HTTP response, regardless of whether other rahinan were emitted.
+    The machine-readable capability list is independent of whether
+    today's rahinan list happens to be empty.
+    """
+    base = uvicorn_server
+    r = httpx.get(f"{base}/dsp/v0.1/calendar/date/{date}", timeout=5.0)
+    assert r.status_code == 200
+    body = r.json()
+
+    # The list is always present and equal to UNIMPLEMENTED_RAHINAN_IDS.
+    assert "unimplemented_observances" in body, (
+        f"finding 1: HTTP response missing unimplemented_observances for "
+        f"{date}; got keys {sorted(body.keys())}"
+    )
+    assert set(body["unimplemented_observances"]) == {
+        "purnama", "tilem", "nyepi"
+    }, (
+        f"finding 1: HTTP response unimplemented_observances must equal "
+        f"{{'purnama', 'tilem', 'nyepi'}} for {date}; "
+        f"got {body['unimplemented_observances']}"
+    )
+
+    # The actual rahinan emitted for the date matches expectation.
+    actual_terms = tuple(sorted(r["id"] for r in body["rahinan"]))
+    assert actual_terms == expected_rahinan_terms, (
+        f"unexpected rahinan for {date}: expected {expected_rahinan_terms}; "
+        f"got {actual_terms}"
+    )
+
+    # The note explains the unimplemented status either way.
+    assert body["note"] is not None
+    for term in ("purnama", "tilem", "nyepi"):
+        assert term in body["note"], (
+            f"finding 1: HTTP note for {date} must mention {term!r}; "
+            f"got {body['note']!r}"
+        )
