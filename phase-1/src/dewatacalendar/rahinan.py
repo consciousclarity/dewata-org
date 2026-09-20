@@ -13,7 +13,7 @@ the canonical rahinan list (Eiseman-style):
     • Tumpek Landep   (Saniscara + Kliwon)
     • Tumpek Uduh     (Redite + Paing)
     • Anggara Kasih   (Anggara + Kliwon)
-    • Budha Kliwon    (Buda + Kliwon)
+    • Budha Kliwon    (Buda + Keliwon)
 
   wuku-based:
     • Hari Raya Saraswati  (last day of Wuku Watugunung, Saptawara Saniscara)
@@ -27,13 +27,23 @@ the canonical rahinan list (Eiseman-style):
     • Hari Raya Penampahan Galungan  (Redite before Galungan)
 
   sasih-based:
-    • Hari Raya Nyepi  (1 Sasih Kesanga, New Year)
     • Hari Raya Sasih  (last day of each sasih)
-    • Purnama (+ every full moon)
-    • Tilem   (every new moon)
 
 we implement a simple matcher and return ALL rahinan that apply to a given
 pawukon/saka combination.
+
+**Note on absent rahinan**
+
+Purnama (full moon), Tilem (new moon), and Hari Raya Nyepi are NOT
+emitted by this engine. Their previous implementations relied on
+`lunar_tithi` / `is_purnama` / `is_tilem` fields on `SakaDate`, which
+were removed in the same revision because they described astronomical
+computations the engine did not actually perform. The Nyepi predicate
+in particular required `sasih_idx == 9 and is_tilem and lunar_tithi == 1`,
+which is unsatisfiable against the unvalidated sasih index and the
+removed lunar fields, and cannot be written correctly until a real
+lunisolar calendar is implemented. See `saka.py` for the open
+sasih_index_drift disputes.
 """
 
 from __future__ import annotations
@@ -49,7 +59,7 @@ class Rahinan:
     """a single named rahinan match."""
     id: str
     label: str
-    category: str   # 'saptawara' | 'wuku' | 'sasih' | 'saptawara-pancawara' | 'full-moon' | 'new-moon'
+    category: str   # 'saptawara' | 'wuku' | 'sasih' | 'saptawara-pancawara'
     confidence: str # 'mathematical' | 'social'
     applies: bool
 
@@ -93,12 +103,6 @@ def rahinan_for(pawukon: PawukonDate, saka: SakaDate, wewaran_position: int | No
     if ww.saptawara_name == "Redite" and ww.pancawara_name == "Paing":
         out.append(Rahinan("redite_paing", "Redite Paing", "saptawara-pancawara", "mathematical", True))
 
-    # Purnama / Tilem based on saka
-    if saka.is_purnama:
-        out.append(Rahinan("purnama", "Purnama", "full-moon", "mathematical", True))
-    if saka.is_tilem:
-        out.append(Rahinan("tilem", "Tilem", "new-moon", "mathematical", True))
-
     # Hari Raya Saraswati: last day of Wuku Watugunung (wuku_idx=30),
     # Saptawara Saniscara → matching both.
     # Predicate co-committed with WUKU_NAMES_BALINESE swap (governance decision 2026-09-19).
@@ -116,8 +120,14 @@ def rahinan_for(pawukon: PawukonDate, saka: SakaDate, wewaran_position: int | No
     if pawukon.wuku_idx == 12 and ww.saptawara_name == "Saniscara" and ww.pancawara_name == "Keliwon":
         out.append(Rahinan("kuningan", "Hari Raya Kuningan", "wuku", "social", True))
 
-    # Nyepi: 1st day of Sasih Kesanga + new moon
-    if saka.sasih_idx == 9 and saka.is_tilem and saka.lunar_tithi == 1:
-        out.append(Rahinan("nyepi", "Hari Raya Nyepi", "sasih", "social", True))
+    # Hari Raya Nyepi is NOT emitted. The previous predicate
+    # (`saka.sasih_idx == 9 and saka.is_tilem and saka.lunar_tithi == 1`)
+    # was unsatisfiable against the unvalidated sasih index and the
+    # removed lunar fields, and cannot be written correctly until the
+    # Saka module is implemented with a real lunisolar source. See
+    # saka.py module docstring and the three open sasih_index_drift
+    # disputes: DISPUTE-SASAH-KAPAT-KATIGA-BOUNDARY-2026-09,
+    # DISPUTE-SASAH-JAVA-VS-PERADNYA-OFFSET,
+    # DISPUTE-ENGINE-SASIH-INDEX-INVERSION.
 
     return out

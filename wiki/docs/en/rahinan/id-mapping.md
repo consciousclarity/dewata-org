@@ -15,7 +15,7 @@ language_variants:
 alternative_spellings:
   - id-mapping
   - engine id to human name mapping
-short_definition: Mapping from the 12 engine rahinan ids to human day names.
+short_definition: Mapping from the 9 engine rahinan ids to human day names.
 detailed_explanation: |
   The engine `phase-1/src/dewatacalendar/rahinan.py` emits the
   following ids; each id is normally associated with one human
@@ -33,8 +33,6 @@ related_terms:
   - buda-kliwon
   - saniscara-umanis
   - tumpek-landep
-  - purnama
-  - tilem
 source_citations:
   - path: phase-1/src/dewatacalendar/rahinan.py
     role: implementation
@@ -46,8 +44,8 @@ translation_review_status:
   id: needs_review
   en: needs_review
 ruleset_version_relevance: "pawukon-v0.4.1+saka-bali-v0.2.3+wewaran-v0.3.0+rahinan-v0.2.0"
-last_reviewed: 2026-09-19
-reviewer: "[[ai-trail]]/wiki-foundation-20260917"
+last_reviewed: 2026-09-20
+reviewer: "[[ai-trail]]/strip-saka-unimplemented-fields-20260920"
 status: implementation_definition
 ---
 
@@ -61,12 +59,17 @@ status: implementation_definition
 | `tumpek_landep` | Saniscara + Keliwon | Tumpek Landep |
 | `anggara_kliwon` | Anggara + Keliwon | Anggara Kasih (engine label) |
 | `redite_paing` | Redite + Paing | Tumpek Uduh |
-| `purnama` | `saka.is_purnama` | Purnama (full moon) |
-| `tilem` | `saka.is_tilem` | Tilem (new moon) |
 | `saraswati` | Wuku 30 + Saniscara | Hari Raya Saraswati |
 | `galungan` | Wuku 11 + Buda + Keliwon | Hari Raya Galungan |
 | `kuningan` | Wuku 12 + Saniscara + Keliwon | Hari Raya Kuningan |
-| `nyepi` | Sasih 9 + Tilem + Tithi 1 | Hari Raya Nyepi |
+
+The engine currently emits **9 rahinan ids** (above). The following
+three ids were removed in the 2026-09-20 strip of unimplemented
+fields and are documented as unimplemented surfaces in the wiki:
+
+- `purnama` (Purnama / full moon) — see [en/rahinan/purnama.md](/en/rahinan/purnama.md)
+- `tilem` (Tilem / new moon) — see [en/rahinan/tilem.md](/en/rahinan/tilem.md)
+- `nyepi` (Hari Raya Nyepi) — see [en/rahinan/nyepi.md](/en/rahinan/nyepi.md)
 
 The `common name` column here is the engine's own `label` value;
 Eiseman's rendering may differ. See
