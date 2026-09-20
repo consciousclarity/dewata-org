@@ -121,6 +121,7 @@ class CrossValidationOutcome:
     notes: str
     fields_unavailable: dict[str, bool] = field(default_factory=dict)
     fields_diagnostic_match: dict[str, bool] = field(default_factory=dict)
+    fields_disagree_available: dict[str, bool] = field(default_factory=dict)
     corpus_basename: str = ""
     corpus_verification_status: str = VerificationStatus.UNVERIFIED.value
     corpus_reference_eligibility: str = ReferenceEligibility.INELIGIBLE.value
@@ -210,10 +211,59 @@ def cross_validate_one(expected_gregorian: str, expected: dict, source: str, pag
         # Default case: public-field comparison only.
         fields_ok[field_name] = act_v == exp_v
 
-    # Status semantics: a required public field is unavailable => incomplete.
-    # Any required public field disagrees with expected => disputed.
-    # Otherwise match.
-    if any(fields_unavailable.values()):
+    # Status semantics (round-2 precedence, fixed for round-3 precedence
+    # correction):
+    #   1. If any AVAILABLE required public field disagrees with expected:
+    #      status = "disputed". The disagreement is the primary signal;
+    #      unavailability of another field does not hide it.
+    #   2. Else if any required field is unavailable: status =
+    #      "incomplete_public". No disagreement, but a required field
+    #      cannot be evaluated against the reference.
+    #   3. Else: status = "match". All required fields available and
+    #      agreed.
+    # The precedence correction prevents the unavailable-year path from
+    # masking substantive disagreements on pawukon / sasih / saka fields
+    # when the public saka_year is unavailable.
+
+    # Compute the subset of fields_ok that disagree on AVAILABLE fields.
+    # `fields_ok[k]` is False for unavailable k too; we want to ignore
+    # those when deciding whether a substantive disagreement exists.
+    fields_disagree_available: dict[str, bool] = {
+        k: False for k in fields_ok
+    }
+    for k, v in fields_ok.items():
+        if fields_unavailable.get(k):
+            continue
+        fields_disagree_available[k] = not v
+
+    disagreement_parts: list[str] = []
+    if any(fields_disagree_available.values()):
+        disagreement_parts = sorted(
+            k for k, v in fields_disagree_available.items() if v
+        )
+
+    if disagreement_parts:
+        status = "disputed"
+        notes_parts = [
+            "engine public output disagrees with published source on "
+            f"available field(s): {', '.join(disagreement_parts)} "
+            "-- human review required"
+        ]
+        if any(fields_unavailable.values()):
+            notes_parts.append(
+                "required public field(s) unavailable: "
+                + ", ".join(sorted(k for k, v in fields_unavailable.items() if v))
+            )
+        if fields_diagnostic_match:
+            notes_parts.append(
+                "diagnostic agreement (informational, not a public match): "
+                + ", ".join(
+                    f"{k}={'yes' if v else 'no'}"
+                    for k, v in sorted(fields_diagnostic_match.items())
+                )
+            )
+        notes = "; ".join(notes_parts)
+    elif any(fields_unavailable.values()):
         status = "incomplete_public"
         notes_parts = [
             "required public field(s) unavailable: "
@@ -232,6 +282,9 @@ def cross_validate_one(expected_gregorian: str, expected: dict, source: str, pag
         status = "match"
         notes = "all required public fields match published source"
     else:
+        # Defensive: should not be reachable, since disagreement_parts
+        # would have been non-empty if any fields_ok[k] was False and
+        # the field was available. Treat as disputed.
         status = "disputed"
         notes = (
             "engine public output disagrees with published source -- "
@@ -261,6 +314,7 @@ def cross_validate_one(expected_gregorian: str, expected: dict, source: str, pag
         fields_ok=fields_ok,
         fields_unavailable=fields_unavailable,
         fields_diagnostic_match=fields_diagnostic_match,
+        fields_disagree_available=fields_disagree_available,
         status=status,
         rule_id=rule_id,
         notes=notes,

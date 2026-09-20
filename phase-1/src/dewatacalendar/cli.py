@@ -82,7 +82,6 @@ def cmd_test(args: argparse.Namespace) -> int:
         results = cross_validate_all()
         n_authoritative = 0
         n_diagnostic = 0
-        n_incomplete = 0
         for r in results:
             gate_marker = (
                 "AUTHORITATIVE"
@@ -107,17 +106,32 @@ def cmd_test(args: argparse.Namespace) -> int:
                 n_authoritative += 1
             else:
                 n_diagnostic += 1
-            if r.fields_unavailable.get("saka_year"):
-                n_incomplete += 1
         n_match = sum(1 for r in results if r.status == "match")
         n_disputed = sum(1 for r in results if r.status == "disputed")
+        n_incomplete = sum(
+            1 for r in results if r.status == "incomplete_public"
+        )
+        n_with_unavailable = sum(
+            1 for r in results if any(r.fields_unavailable.values())
+        )
+        # `n_disputed_with_unavailable` and `n_incomplete_with_unavailable`
+        # demonstrate that disputed and incomplete_public are not
+        # mutually exclusive dimensions: a row can be both disputed
+        # AND have unavailable fields (round-3 precedence correction).
+        n_disputed_with_unavailable = sum(
+            1 for r in results
+            if r.status == "disputed" and any(r.fields_unavailable.values())
+        )
         print(
-            f"  -- {n_match} match, {n_disputed} disputed, "
-            f"{n_incomplete} incomplete_public "
-            f"({n_authoritative} from authoritative corpora, {n_diagnostic} from "
-            f"non-authoritative / unverified corpora; non-authoritative results "
-            f"are diagnostic only and do not satisfy independent-reference "
-            f"validation gates per PROTOCOL v1.0 section 2.4 + STATUS.json schema v2) --"
+            f"  -- {n_match} match, {n_disputed} disputed "
+            f"({n_disputed_with_unavailable} of those also had unavailable "
+            f"fields), {n_incomplete} incomplete_public "
+            f"({n_with_unavailable} total rows with unavailable fields) "
+            f"({n_authoritative} from authoritative corpora, {n_diagnostic} "
+            f"from non-authoritative / unverified corpora; non-authoritative "
+            f"results are diagnostic only and do not satisfy independent-"
+            f"reference validation gates per PROTOCOL v1.0 section 2.4 + "
+            f"STATUS.json schema v2) --"
         )
         print(
             "  -- corpus evidence status (two-axis): "
