@@ -39,3 +39,17 @@ logs/
 # build
 build/
 dist/
+
+# deploy artifacts — generated, append-only, on disk by deploy convention
+# not source.  keeping these untracked is a decision, not an accident:
+# `git status` will not flag them as untracked if this rule is present.
+# the wiki release directories (deploy/www/wiki/<sha>-r<n>/) and the
+# operator-log snapshots (deploy/atomic/<timestamp>-pre-.../) are both
+# regenerated on every deploy and have no historical value in git.
+deploy/atomic/
+deploy/www/
+
+# mkdocs default site-dir (relative to wiki/mkdocs.yml) — `mkdocs build`
+# without --site-dir writes here.  this is leftover from a build run
+# that did not specify --site-dir; never commit it.
+wiki/deploy/
