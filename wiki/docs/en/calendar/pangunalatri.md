@@ -29,7 +29,7 @@ related_terms: []
 source_citations:
 - path: phase-1/src/dewatacalendar/rulesets.py
   role: ruleset
-  quote: pangunalatri_days=63
+  quote: pangunalatri_implemented=False
 - path: phase-1/src/dewatacalendar/saka.py
   role: implementation
 evidence_status: implementation_definition

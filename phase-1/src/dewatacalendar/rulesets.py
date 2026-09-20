@@ -20,7 +20,15 @@ RULESET_METADATA: dict[str, dict[str, object]] = {
         "version": "saka-bali-v0.2.3",
         "epoch_gregorian": "1979-03-29",
         "epoch_saka_year": 1901,
-        "pangunalatri_days": 63,
+        # pangunalatri is NOT implemented. the 63-day cycle and its
+        # `is_pangunalatri` flag were removed from saka.py as unvalidated
+        # arithmetic: the flag was a plain modulo over days-since-epoch and
+        # no eligible source establishes the period. the declared figure is
+        # kept here as a record of what v0.2.3 claims -- deliberately not
+        # under an active-parameter name -- so `dewatacalendar ruleset`
+        # reports the claim and reports that the engine does not honor it.
+        "pangunalatri_implemented": False,
+        "pangunalatri_days_declared": 63,
         "nampih_threshold_months": (12, 11),
         "nampih_rule": "prevent Tilem Kapitu from falling in gregorian December",
         "reference": "Igarashi bali saka calculation; Cunningham 1994",

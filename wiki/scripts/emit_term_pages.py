@@ -160,11 +160,11 @@ term(
     category="calendar",
     status="implementation_definition",
     sources=[
-        ("phase-1/src/dewatacalendar/rulesets.py", "ruleset", "pangunalatri_days=63"),
+        ("phase-1/src/dewatacalendar/rulesets.py", "ruleset", "pangunalatri_implemented=False"),
         ("phase-1/src/dewatacalendar/saka.py", "implementation"),
     ],
-    summary_id="Siklus 63 hari (is_pangunalatri) di engine, menandai fase-fase tertentu.",
-    summary_en="A 63-day cycle in the engine (is_pangunalatri), flagging specific phases.",
+    summary_id="Tidak diimplementasikan di engine: siklus 63 hari dan flag is_pangunalatri telah dihapus; istilahnya tetap nyata.",
+    summary_en="Not implemented in the engine: the 63-day cycle and the is_pangunalatri flag were removed; the term itself remains real.",
 )
 
 term(
