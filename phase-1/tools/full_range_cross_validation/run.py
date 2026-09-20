@@ -25,6 +25,22 @@ from dewatacalendar.wewaran import wewaran_for_position
 START = dt.date(1900, 1, 1)
 END = dt.date(2099, 12, 31)
 FIELDS = ("pawukon_position", "wuku", "pancawara", "saptawara", "triwara", "sadwara")
+# name-level comparison: raw string equality between the implementations'
+# recorded name fields at the same date. NO convention-shifting, no
+# +12 offset, no canonical-form normalization. the integer comparison
+# above uses the documented epoch offset to establish that the cycle
+# positions agree; the name comparison below asks the next question —
+# "given they agree on the cycle position, do they name it the same
+# thing?" — and answers it without applying any of the convention
+# shifts that the integer comparison requires. the result is that the
+# epoch-convention difference (DISPUTE-ENGINE-PAWUKON-EPOCH-OFFSET-84-
+# DAYS) and the mapping-A-vs-mapping-B pancawara difference become
+# visible as raw disagreements in the counts, which is where they
+# belong; comparing names after the +12 shift would compare the two
+# 30-name tables, not the date-to-name assignment, and report
+# apparent agreement that the table comparison does not actually
+# support.
+NAME_FIELDS = ("wuku_name", "pancawara_name", "saptawara_name")
 PANCA = {"paing": 0, "pon": 1, "wage": 2, "kliwon": 3, "keliwon": 3, "umanis": 4}
 SAPTA = {name: idx for idx, name in enumerate(("redite", "soma", "anggara", "buda", "wraspati", "sukra", "saniscara"))}
 TRI = {name: idx for idx, name in enumerate(("pasah", "beteng", "kajeng"))}
@@ -212,6 +228,20 @@ def main() -> None:
         pair: {axis: {field: Counter() for field in FIELDS} for axis in ("raw", "phase_normalized")}
         for pair in ("dewata_vs_peradnya", "dewata_vs_rust", "peradnya_vs_rust")
     }
+    # raw name-level comparison. same three pairs as the integer
+    # comparison, but compared directly on the recorded string fields
+    # (no offset, no canonicalization). the disagreement count here
+    # includes — by design — every disagreement that comes from the
+    # documented epoch convention difference and the documented
+    # pancawara mapping-A-vs-mapping-B difference. those differences
+    # are not bugs in the implementations; they are real, unresolved
+    # convention choices. see DISPUTE-ENGINE-PAWUKON-EPOCH-OFFSET-84-DAYS
+    # and the I18N-PANCAWARA-SPELLING-KLIWON-KELIWON dispute in
+    # phase-1/docs/runbook/disputes.json.
+    name_counts = {
+        pair: {field: Counter() for field in NAME_FIELDS}
+        for pair in ("dewata_vs_peradnya", "dewata_vs_rust", "peradnya_vs_rust")
+    }
     pawukon_offsets: set[int] = set()
     wuku_offsets: set[int] = set()
     pancawara_offsets: set[int] = set()
@@ -245,9 +275,26 @@ def main() -> None:
                 counts[pair]["phase_normalized"][field]["matches" if normalized_match else "disagreements"] += 1
                 raw_matches[field] = raw_match
                 normalized_matches[field] = normalized_match
+            # raw name-level comparison: same pair, but compared on the
+            # recorded name strings from each implementation's own
+            # record. left_record and right_record are the corresponding
+            # raw records (dew, per, rus) selected by pair below; the
+            # raw integer comparison above used common()'s integer
+            # reduction, which the name comparison deliberately does not.
+            left_record, right_record = {
+                "dewata_vs_peradnya": (dew, per),
+                "dewata_vs_rust": (dew, rus),
+                "peradnya_vs_rust": (per, rus),
+            }[pair]
+            raw_name_matches = {}
+            for field in NAME_FIELDS:
+                raw_name_match = left_record[field] == right_record[field]
+                name_counts[pair][field]["matches" if raw_name_match else "disagreements"] += 1
+                raw_name_matches[field] = raw_name_match
             row["comparisons"][pair] = {
                 "raw_match": raw_matches,
                 "phase_normalized_match": normalized_matches,
+                "raw_name_match": raw_name_matches,
             }
         normalized_records.append(row)
 
@@ -271,6 +318,16 @@ def main() -> None:
         }
         for pair, axes in counts.items()
     }
+    serial_name_counts = {
+        pair: {
+            field: {
+                "matches": counter["matches"],
+                "disagreements": counter["disagreements"],
+            }
+            for field, counter in field_counts.items()
+        }
+        for pair, field_counts in name_counts.items()
+    }
     summary = {
         "schema_version": "1.0",
         "generated_at": "2026-09-16",
@@ -286,7 +343,25 @@ def main() -> None:
             "pancawara_dewata_minus_reference_days_mod_5": 1,
         },
         "counts": serial_counts,
-        "interpretation_limit": "Implementation agreement establishes reproducibility only; it does not establish cultural or customary authority and does not resolve any dispute.",
+        "name_counts": serial_name_counts,
+        "interpretation_limit": (
+            "Counts under `counts` are integer-index comparisons, phase-normalized "
+            "by the documented constant epoch offset. They establish that the three "
+            "implementations agree on cycle position (wuku / pancawara / saptawara / "
+            "etc.) modulo that offset, and they establish nothing about naming. "
+            "Counts under `name_counts` are raw string equality of the implementations' "
+            "recorded name fields at the same date, with no convention shifting and "
+            "no canonicalization. Zero raw-name agreement on wuku and pancawara is "
+            "expected and is not a defect: it reflects DISPUTE-ENGINE-PAWUKON-EPOCH-"
+            "OFFSET-84-DAYS (epoch convention difference between Dewata's 1981-08-23 "
+            "anchor and Peradnya/Rust/TS's 1971-01-24 anchor) and the documented "
+            "Pancawara mapping-A (Dewata: Paing/Pon/Wage/Keliwon/Umanis) vs "
+            "mapping-B (Peradnya/Rust: Umanis/Paing/Pon/Wage/Kliwon) split. Saptawara "
+            "name agreement is the only direct string-equality result that compares "
+            "implementations with no convention difference. Implementation agreement "
+            "establishes reproducibility only; it does not establish cultural or "
+            "customary authority and does not resolve any dispute."
+        ),
     }
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
