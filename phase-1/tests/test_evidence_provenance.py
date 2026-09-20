@@ -232,11 +232,58 @@ def test_recorded_commit_is_ancestor_of_head_and_rederivation_still_matches(
         ["git", "merge-base", "--is-ancestor", recorded_commit, head_sha],
         capture_output=True,
     )
+    if completed.returncode == 128:
+        # exit 128 means git could not find one of the two commits in
+        # the local object database. this is NOT a provenance failure:
+        # the recorded commit may be perfectly valid, the repository
+        # simply has not fetched it. the most common cause is a shallow
+        # clone (github actions/checkout defaults to fetch-depth: 1).
+        # other causes: a fork that has not synced from upstream; a
+        # local clone whose refspec excludes the recorded branch.
+        #
+        # in any of these cases the right next step is to fetch the
+        # missing history, not to investigate the recorded commit.
+        # the message below is written for the most common cause
+        # (shallow clone in CI) and the one fix this repo already
+        # carries (.github/workflows/tests.yml sets fetch-depth: 0 on
+        # both jobs).
+        assert False, (
+            f"{artifact_label}: recorded engine commit {recorded_commit[:12]} "
+            f"is not present in the local clone ({head_sha[:12]} is HEAD, "
+            f"recorded_commit = {recorded_commit}). exit 128 from "
+            f"'git merge-base --is-ancestor' means git could not find "
+            f"the recorded commit in the local object database — not "
+            f"that the recorded commit is not an ancestor of HEAD.\n\n"
+            f"most likely cause: shallow clone (github actions/checkout "
+            f"defaults to fetch-depth: 1, which drops every commit except "
+            f"HEAD; the recorded engine commit is older than HEAD and is "
+            f"therefore missing from the clone).\n\n"
+            f"fix: ensure the checkout step sets fetch-depth: 0 "
+            f"(see .github/workflows/tests.yml for the existing setting "
+            f"in this repo). if running locally: 'git fetch --unshallow' "
+            f"or clone with --no-shallow."
+        )
+    if completed.returncode == 1:
+        # exit 1 means git found both commits and they are not in an
+        # ancestor relationship. this is a real provenance failure:
+        # the recorded engine commit is reachable from a different
+        # branch, has been force-pushed, or its SHA has been edited.
+        # a reader checking out HEAD cannot reach the recorded commit.
+        assert False, (
+            f"{artifact_label}: recorded engine commit {recorded_commit[:12]} "
+            f"exists in the repository but is not an ancestor of HEAD "
+            f"{head_sha[:12]}. the recorded commit was either edited "
+            f"(its SHA is no longer reachable from the branch that "
+            f"produced this artifact) or has been dropped from this "
+            f"branch's history (force-push, rebase). the provenance "
+            f"recorded in the artifact is no longer reachable; a reader "
+            f"checking out HEAD cannot reproduce what is recorded."
+        )
     assert completed.returncode == 0, (
-        f"{artifact_label}: recorded engine commit {recorded_commit[:12]} "
-        f"is not an ancestor of HEAD {head_sha[:12]}. the recorded commit "
-        f"was either edited or has been dropped from history; either "
-        f"way, the provenance is no longer reachable."
+        f"{artifact_label}: 'git merge-base --is-ancestor {recorded_commit[:12]} "
+        f"{head_sha[:12]}' returned unexpected exit code "
+        f"{completed.returncode}. stdout: {completed.stdout!r}; "
+        f"stderr: {completed.stderr!r}"
     )
 
     rows = _read_pipe_rows(artifact_path)
