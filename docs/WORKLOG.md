@@ -131,3 +131,89 @@ The user's prompt said: "Use the previous Codex assessment as a starting hypothe
   - `rulesets.py` says `pangunalatri_days=63` is a ruleset metadata field; the field is never used by the engine.
 
 The strip PR addresses three of those inconsistencies (saka_year, lunar fields, purnama/tilem/nyepi rahinan). The remaining inconsistencies are flagged in `CURRENT_STATE.md` for the next session.
+
+---
+
+## 2026-09-20 (round 2) — strip-saka-corrections-r2-20260920 (continuation commits)
+
+**Context.** After merging PR #15, Codex returned request-changes on F1-F5. The follow-up branch `strip-saka-corrections-r2-20260920` addressed F1-F5 across three commits (`1acb908`, `768aadd`, `eb0b715`) on top of `1018721`. This entry records the second round of corrections (the three remaining Codex findings): F1 (already shipped), F2 partial (already shipped), and the round-2 increments 2/4/5/6.
+
+**Base SHA.** `802f9263d18946694e8f9285d66181e4caf4f55a` (merged main).
+**Continuation commits.**
+- `1acb908` — finding 1: always expose `unimplemented_observances` in `compose_day`.
+- `768aadd` — finding 2: separate public validation from diagnostic comparisons.
+- `eb0b715` — finding 3: protect manually-maintained pages from generator overwrite.
+**Head.** `eb0b715d...` (round 2 continuation of `strip-saka-corrections-r2-20260920`).
+**Branch ancestry from merged main.** 4 commits total: `802f9263` → `1018721` (r2 base) → `1acb908` → `768aadd` → `eb0b715`. Each preserves the previous as ancestor. No history rewrite, no strip replay, no branch deletion.
+
+**Finding 1 (always expose unsupported observances).**
+- `compose_day` now always populates `unimplemented_observances = UNIMPLEMENTED_RAHINAN_IDS`. Previously the list was empty whenever a different rahinan was emitted.
+- HTTP regression tests added for 2026-01-01 (empty rahinan), 2026-03-18 (buda_kliwon), 2024-06-01 (tumpek_landep + kuningan). All three responses now carry the same `unimplemented_observances` list.
+- Files: `phase-1/src/dewatacalendar/api.py`, `phase-1/tests/test_http_integration_corrections.py`, `phase-1/tests/test_saka_strip_corrections.py`.
+
+**Finding 2 (separate public validation from diagnostic comparisons).**
+- `CrossValidationOutcome` gains `fields_unavailable` and `fields_diagnostic_match`. Status is now `match | disputed | incomplete_public` -- never `match` when a required public field is unavailable.
+- `runbook.classify` returns `unavailable_public_field` instead of `epoch_offset`/`calendar_variant` when the public `saka_year` is None. Diagnostic agreement is recorded in the classification note for human readers, but never auto-classifies.
+- CLI cross-validation report (in `cmd_test`, after conformance) surfaces `incomplete_public` status with `unavailable_fields=saka_year` marker.
+- Files: `phase-1/src/dewatacalendar/cross_validation.py`, `phase-1/src/dewatacalendar/runbook.py`, `phase-1/src/dewatacalendar/cli.py`, `phase-1/tests/test_cross_validation_unavailable.py` (NEW, 6 tests), `phase-1/tests/test_cultural_adapters.py` (status semantics updated).
+
+**Finding 3 (preserve structured wiki evidence).**
+- `emit_term_pages.py` exposes `MANUALLY_MAINTAINED_SLUGS` and skips those in the main() pass. The six manually-edited pages (en/rahinan/{purnama,tilem,nyepi}.md, id/rahinan/{purnama,tilem,nyepi}.md) retain their full content: structured `dispute_ids`, `customary_review_status` (status + note), source citations to real engine files, `translation_review_status`, and the `short_definition` "unimplemented" marker.
+- Byte-equality test added: writer runs against a temp copy of wiki/docs, and the manually-maintained pages are byte-for-byte identical to the live tree afterwards.
+- Preservation test asserts structured fields: `dispute_ids == {DISPUTE-SASAH-KAPAT-KATIGA-BOUNDARY-2026-09, DISPUTE-SASAH-JAVA-VS-PERADNYA-OFFSET, DISPUTE-ENGINE-SASIH-INDEX-INVERSION}`, `customary_review_status.status == "pending_customary_review"`, source citations point at files that exist on disk, both en and id versions exist.
+- Test documentation rewritten to define exactly what is verified (byte equality, structured fields) and what is NOT verified (byte stability of non-maintained pages, future generator identity).
+- Files: `wiki/scripts/emit_term_pages.py`, `wiki/tests/test_emit_term_pages_preservation.py` (rewritten, now 10 tests).
+
+**Corrected SBCL claim.**
+The prior report said "4 SBCL tests" -- that count was incorrect. The file `phase-1/tests/test_evidence_calendrica_runtime.py` contains **4 tests** but only **2 require SBCL** (`test_calendrica_runtime_matches_sample_data`, `test_calendrica_bali_epoch_constant`, both `@pytest.mark.skipif(SBCL_PATH is None)`). The other two (`test_calendrica_source_sha256_matches_record`, `test_calendrica_license_recorded_sha`) are SHA-256 checks on `calendar.l` and the LICENSE file and run without SBCL.
+
+**Verification (round 2 continuation).**
+- `cd phase-1 && python -m pytest -q -rs` → **333 passed**, 0 failed. (Was 324 after `1acb908`; +6 new in `test_cross_validation_unavailable.py`, +3 net for `test_cultural_adapters.py` status update.)
+- `cd wiki && python -m pytest wiki/tests -q -rs` → **25 passed**, 0 failed. (Was 20 after `1acb908`; +5 new in `test_emit_term_pages_preservation.py`.)
+- `python -m pytest tests/test_evidence_calendrica_runtime.py -v --no-header --tb=no` → **4 passed** (2 SBCL, 2 source/license hash).
+- HTTP demonstration (live uvicorn on `127.0.0.1:<free>`, see `phase-1/tests/test_http_integration_corrections.py`):
+  - 2026-09-20: `rahinan=[]`, `unimplemented_observances=[purnama, tilem, nyepi]`, `note="empty rahinan list -- engine does not currently compute..."`
+  - 2026-03-18: `rahinan=[buda_kliwon]`, `unimplemented_observances=[purnama, tilem, nyepi]` (always present)
+  - 2024-06-01: `rahinan=[tumpek_landep, kuningan]`, `unimplemented_observances=[purnama, tilem, nyepi]` (always present)
+- Cross-validation structured output (1981-08-23 from Cunningham 1994 corpus row, diagnostic=1903, public=None):
+  - `status: "incomplete_public"`
+  - `actual.saka_year: null`, `fields_ok.saka_year: false`, `fields_unavailable.saka_year: true`
+  - `fields_diagnostic_match.saka_year: true` (recorded separately)
+  - `runbook.classify` → `("unavailable_public_field", "public saka_year is unavailable ...; this is not an epoch error or regional variant. diagnostic saka_year matches expected: True.")`
+- Wiki byte-equality (live vs after writer):
+  - `en/purnama.md`, `en/tilem.md`, `en/nyepi.md`, `id/purnama.md`, `id/tilem.md`, `id/nyepi.md` -- **all byte-equal**.
+
+**Diff summary vs `802f9263` (full r2 branch, including `1018721`).**
+- 17 files changed, 1618 insertions(+), 64 deletions(-)
+- New files: `phase-1/tests/test_cross_validation_unavailable.py`, `phase-1/tests/test_http_integration_corrections.py`, `phase-1/tests/test_saka_strip_corrections.py`, `wiki/tests/test_emit_term_pages_preservation.py`.
+- Per-finding breakdown:
+  - F1 (commit `1acb908`, 199 insertions in `test_http_integration_corrections.py` etc., api.py change): finding 1 always-expose-implemented-observances contract.
+  - F2 (commit `768aadd`, 435 insertions / 39 deletions): separation of public validation from diagnostic comparisons.
+  - F3 (commit `eb0b715`, 274 insertions / 78 deletions): manually-maintained page protection + byte-equality test.
+  - Plus the r2 base (`1018721`): F1-F5 from Codex review of PR #15.
+
+**Protected paths audit (untouched in the entire r2 branch).**
+- `phase-1/src/api/main.py` (live API entrypoint)
+- `phase-1/docs/runbook/disputes.json` (27 disputes, 13 active blockers)
+- `phase-1/docs/runbook/SIGNOFF.md` (empty by design)
+- `phase-1/conformance/STATUS.json` (schema v3.0; `can_promote_ruleset_using` and `can_be_described_as_ground_truth` return FALSE unconditionally)
+- `phase-1/conformance/published/*.json` (3 corpus files -- Cunningham 1994 × 2, Igarashi 1999 × 1)
+- `phase-1/tests/test_evidence_calendrica_runtime.py` (corrected SBCL claim -- 2 SBCL, 2 source/license hash, not "4 SBCL")
+- `deploy/caddy/Caddyfile.dewata`, `deploy/systemd/*`, `deploy/www/**` (production deploy configuration)
+- `registry/*.tsv` (gianyar pilot data)
+- `wiki/docs/**` (live wiki content files)
+
+**Remaining limitations and owner decisions.**
+- Codex increment 2 (candidate-identity policy): the existing `CANDIDATE_ID` is sufficient to distinguish observable output, but the project has not adopted an explicit `accepted_ruleset` rule for release promotion. Owner decision pending.
+- Codex increment 4 (Sasih decision packets): three sasih_index_drift disputes are still pending; this branch does not attempt to resolve them. Customary sign-off required.
+- Codex increment 5 (astronomy prototype): out of scope; default posture is decline until customary sign-off.
+- Codex increment 6 (reviewer-facing view): out of scope; deferred.
+- 13 vs 15 active blockers discrepancy in `disputes.json` (Codex flagged but not addressed): the count is `len([d for d in disputes if d.get('blocking') is True]) == 13`. Three disputes are missing the `blocking` field. Owner decision: do those missing-`blocking` disputes block promotion? Default reading is yes until declared otherwise.
+- `DISPUTE_REVIEW_PROTOCOL.md` cron + 30/90-day variant advice: still contradicts PROTOCOL.md §2.6. Owner decision needed before either document is updated.
+- Pre-existing CLI conformance failure in `cmd_test` (corpora reference stripped fields `saka.saka_year`, `lunar_tithi`, etc.): unrelated to this branch; corpora are not updated by the strip. Out of scope for round 2.
+
+**Reporting and scope discipline.**
+- Committed changes: `1acb908`, `768aadd`, `eb0b715` (all on `strip-saka-corrections-r2-20260920`, none pushed, none merged).
+- Executed verification: full phase-1 pytest (333 pass), wiki pytest (25 pass), SBCL test file (4 pass), live HTTP demo (three boundary dates), cross-validation structured output, wiki byte-equality, CLI `ruleset` smoke.
+- Unverified claims: branch protection on main (no GitHub admin token); production deploy (PROTOCOL §0 forbids); customary sign-off (out of scope).
+- Stopped after preparing the local artifact for Codex independent review. Passing tests are not release approval.
