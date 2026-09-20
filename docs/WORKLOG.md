@@ -2,7 +2,67 @@
 
 > rolling log. newest entry first.
 
-## 2026-09-20 — strip-saka-unimplemented-fields-20260920
+## 2026-09-20 (later) — strip-saka-corrections-r2-20260920
+
+**Context.** PR #15 was merged. Independent review of the merged state returned **request changes** for the prior branch (`strip-saka-unimplemented-fields-20260920`, head `253dd8a`) — five findings (F1-F5). This follow-up branch (`strip-saka-corrections-r2-20260920`) is corrections-only against main `802f9263`. **All merged work is preserved**, including Claude's `48dc5bc`, `25cbfde`, `25f9160`, `253dd8a` metadata changes and the project memory documents from `cb1dc90`.
+
+**Base SHA.** `802f9263d18946694e8f9285d66181e4caf4f55a` (main HEAD = merge of PR #15).
+
+**Reviewer.** Codex. PR target was #15 (base `65784ce`, head `253dd8a`). Decision: request changes; do not merge or deploy as written.
+
+**Findings addressed (corrections-only, on top of merged state):**
+
+- **F1 (P1).** Year-boundary change separated from field removal. Public `saka_year` is now `None` in `SakaDate` / `CalendarDay`. Raw January-rollover value lives in a separate `saka_year_diagnostic_january_rollover` field for the harness and dispute packet. Failing regressions for `2026-01-01`, `2026-03-18`, `2026-03-19` added.
+- **F2 (P1).** New `CANDIDATE_ID = "candidate-2026-09-20-strip-corrections-r2"`. `compose_day` and the CLI both surface `candidate_id` alongside `ruleset`. `RULESET_VERSION` is unchanged.
+- **F3 (P2).** Capability metadata corrected. `purnama_counted=False`, `tilem_counted=False`, `nyepi_counted=False`. `named_days = len(IMPLEMENTED_RAHINAN_IDS) = 9` (the runtime-of-record count, asserted by a 210-day scan). `pangunalatri_days=63` survives as `pangunalatri_days_declared` with `pangunalatri_implemented=False` (Claude's `48dc5bc`, preserved verbatim).
+- **F4 (P2).** Nampih rule relabelled `nampih_rule_observed`; index 13 named `Nampih Sada`; explicit uncited note. The `nampih_rule_declared` field (Claude's `25cbfde`) is preserved verbatim with its explanation that the declared rule has never been implemented.
+- **F5 (P2).** Wiki generator split `RHINAN_IDS` (9 emitted) from `RHINAN_UNEMITTED` (3 unimplemented, with `dispute_ids`). The purnama/tilem entries were removed from `RHINAN_NAMED` (they would otherwise overwrite the unimplemented status via last-write-wins). New round-trip test `wiki/tests/test_emit_term_pages_preservation.py` runs the writer against a temp copy of the wiki docs and asserts the unimplemented status is preserved.
+
+**Cross-validation handles the unavailable year correctly.** `cross_validate_one` falls back to the diagnostic field when the public `saka_year` is `None`, and records the diagnostic-only comparison in `field_notes` so downstream consumers see the unavailable status, not a silent match.
+
+**Public contract change.** `CalendarDay` now carries `candidate_id`, `unimplemented_observances`, and `note` fields. Live HTTP responses tested by `phase-1/tests/test_http_integration_corrections.py` (boots a real uvicorn instance, hits `/dsp/v0.1/calendar/date/2026-09-20` with httpx, asserts `candidate_id`, `unimplemented_observances`, `saka_year=null`, `saka_year_diagnostic_january_rollover=1948`, and the explanatory `note` all reach the wire).
+
+**Files changed.**
+- `phase-1/src/dewatacalendar/saka.py` (SakaDate adds `saka_year: int | None` and `saka_year_diagnostic_january_rollover: int`; `saka_for_gregorian` populates the diagnostic)
+- `phase-1/src/dewatacalendar/rulesets.py` (add `CANDIDATE_ID`, `IMPLEMENTED_RAHINAN_IDS`, `UNIMPLEMENTED_RAHINAN_IDS`; rename `nampih_rule_actual` → `nampih_rule_observed`; correct rahinan `*_counted` flags; add `public_saka_year_returned=False` and `saka_year_diagnostic_field` references)
+- `phase-1/src/dewatacalendar/api.py` (`CalendarDay` adds `candidate_id`, `unimplemented_observances`, `note`; `compose_day` populates them)
+- `phase-1/src/dewatacalendar/cross_validation.py` (fall back to diagnostic field when public `saka_year` is `None`; record diagnostic-only comparison in `field_notes`)
+- `phase-1/src/dewatacalendar/cli.py` (`cmd_ruleset` prints `candidate_id` alongside `version`)
+- `phase-1/tests/test_saka_strip.py` (preserve merged regression; the two merged tests now assert on the diagnostic field instead of `saka_year` so they continue to pin the underlying epoch anchor)
+- `phase-1/tests/test_saka_strip_corrections.py` (NEW: 10 tests pinning F1-F4 acceptance)
+- `phase-1/tests/test_http_integration_corrections.py` (NEW: 4 live HTTP tests pinning F2 + F5 acceptance at the wire)
+- `wiki/scripts/emit_term_pages.py` (split `RHINAN_IDS` from `RHINAN_UNEMITTED`; remove purnama/tilem from `RHINAN_NAMED`)
+- `wiki/tests/test_emit_term_pages_preservation.py` (NEW: 5 tests pinning F5 acceptance, including a writer round-trip)
+- `docs/CURRENT_STATE.md`, `docs/BACKLOG.md`, `docs/DECISIONS.md` (append D9-D13 supersession notes; preserve all merged content)
+
+**Files NOT modified.** Nothing under `phase-1/src/api/`, `phase-1/docs/runbook/disputes.json`, `phase-1/conformance/STATUS.json`, `deploy/`, `registry/`, `wiki/docs/{en,id}/**` content files. The three Sasih disputes cited in the saka.py module docstring are still cited, still pending, still not resolved.
+
+**Verification.**
+- `cd phase-1 && python -m pytest -q -rs` → **324 passed**, 0 failed. Baseline on `802f9263` was 310 passed. +14 new tests: 10 in `test_saka_strip_corrections.py` + 4 in `test_http_integration_corrections.py`.
+- SBCL tests: `python -m pytest tests/test_evidence_calendrica_runtime.py -v -rs` → **4 passed**. They run locally because `sbcl 2.2.9` is installed at `/usr/bin/sbcl`. **CI skips them** because the GitHub Actions runner does not have `sbcl` installed; the test guards `pytest.skip("sbcl not installed; CALENDRICA runtime test skipped")` activates there.
+- `cd wiki && python -m pytest wiki/tests -q -rs` → **20 passed**, 0 failed. Baseline was 15. +5 new tests in `test_emit_term_pages_preservation.py`.
+- CLI smoke: `python3 -m dewatacalendar ruleset` shows `version`, `candidate_id`, and `metadata`. `python3 -m dewatacalendar date 2026-09-20` shows `saka_year: null`, `saka_year_diagnostic_january_rollover: 1948`, `candidate_id: candidate-2026-09-20-strip-corrections-r2`, `unimplemented_observances: [purnama, tilem, nyepi]`, `note: "empty rahinan list -- engine does not currently compute: ..."`.
+- HTTP smoke: `httpx.get('http://127.0.0.1:8137/dsp/v0.1/calendar/date/2026-09-20')` returns the same fields in JSON. Verified by `phase-1/tests/test_http_integration_corrections.py`.
+
+**Remaining blockers (not addressed in this branch).**
+- PR not yet opened — Alejandro opens it per standing instruction.
+- Production deploy — out of scope per PROTOCOL.md §0.
+- Three sasih_index_drift disputes remain pending; this branch does not touch them.
+- Branch protection on main — owner-admin only.
+- Decision packet for the three sasih disputes (Codex increment 4 from the prior review) — separate doc; not a code change.
+- Astronomy prototype (Codex increment 5) — separate scope.
+- Reviewer-facing prototype (Codex increment 6) — separate scope.
+
+**Exact resumption steps for the next agent / session.**
+1. `cd /opt/dewata.online && git checkout strip-saka-corrections-r2-20260920`
+2. Re-run `python -m pytest -q -rs phase-1/tests/` (expect 324 pass) and `python -m pytest -q -rs wiki/tests/` (expect 20 pass).
+3. Read `docs/CURRENT_STATE.md` → `docs/BACKLOG.md` → `docs/DECISIONS.md` (the supersession section D9-D13 is at the bottom of each).
+4. To verify the boundary: `python3 -m dewatacalendar date 2026-01-01` and `2026-03-19` should show `saka_year: null` and the same `saka_year_diagnostic_january_rollover`.
+5. PR URL to open: `https://github.com/consciousclarity/dewata-org/pull/new/strip-saka-corrections-r2-20260920`.
+
+---
+
+## 2026-09-20 — strip-saka-unimplemented-fields-20260920 (merged as PR #15)
 
 **commit:** `2a302db` on branch `strip-saka-unimplemented-fields-20260920` (off main `65784ce`).
 

@@ -118,14 +118,30 @@ def cross_validate_one(expected_gregorian: str, expected: dict, source: str, pag
     the gate predicate is computed from the two axes:
         VERIFIED + ELIGIBLE -> may_satisfy_validation_gate=True
         anything else -> False
+
+    Per Codex review of PR #15 (F1, P1): when the public `saka_year`
+    field is `None` (the engine cannot endorse a year boundary without
+    customary sign-off), the diagnostic field
+    `saka_year_diagnostic_january_rollover` is compared instead. The
+    outcome's `notes` carries the explanation so downstream consumers
+    see the unavailable status, not a silent match.
     """
     date = _dt.date.fromisoformat(expected_gregorian)
     day = compose_day(date)
 
+    public_saka_year = (
+        day.saka.get("saka_year") if not day.saka.get("_oob_range") else None
+    )
+    diagnostic_saka_year = (
+        day.saka.get("saka_year_diagnostic_january_rollover")
+        if not day.saka.get("_oob_range")
+        else None
+    )
+
     actual: dict[str, Any] = {
         "pawukon_position": day.pawukon["position_in_cycle"],
         "pawukon_wuku_idx": day.pawukon["wuku_idx"],
-        "saka_year": day.saka.get("saka_year") if not day.saka.get("_oob_range") else None,
+        "saka_year": public_saka_year,
         "sasih_idx": day.saka.get("sasih_idx") if not day.saka.get("_oob_range") else None,
     }
     expected_norm = {
@@ -135,19 +151,32 @@ def cross_validate_one(expected_gregorian: str, expected: dict, source: str, pag
         "sasih_idx": expected.get("sasih_idx"),
     }
     fields_ok: dict[str, bool] = {}
+    field_notes: dict[str, str] = {}
     for field, exp_v in expected_norm.items():
         act_v = actual.get(field)
         if exp_v is None:
             fields_ok[field] = True
             continue
+        if field == "saka_year" and act_v is None and diagnostic_saka_year is not None:
+            # public saka_year is unavailable (F1); compare against the
+            # diagnostic, but flag the field as "diagnostic-only" so the
+            # outcome's notes don't claim a public-surface match.
+            fields_ok[field] = diagnostic_saka_year == exp_v
+            field_notes[field] = (
+                "public saka_year unavailable (None); compared against "
+                "saka_year_diagnostic_january_rollover per F1"
+            )
+            continue
         fields_ok[field] = act_v == exp_v
 
     status = "match" if all(fields_ok.values()) else "disputed"
-    notes = (
-        "all fields match published source"
-        if status == "match"
-        else "engine disagrees with published source — human review required"
-    )
+    notes_parts = [
+        "all fields match published source" if status == "match"
+        else "engine disagrees with published source -- human review required"
+    ]
+    if field_notes:
+        notes_parts.append("; ".join(f"{k}: {v}" for k, v in field_notes.items()))
+    notes = "".join(notes_parts)
 
     record = corpus_record_for(corpus_basename) if corpus_basename else None
     if record is None:

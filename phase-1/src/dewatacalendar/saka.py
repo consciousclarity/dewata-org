@@ -70,16 +70,26 @@ class SakaDate:
       - is_pangunalatri
       - is_purnama
       - is_tilem
+
+    Per Codex review of PR #15 (F1, P1), the public surface separates:
+      - `saka_year`: a None-vs-int value intended for end users. Currently
+        `None` because the year-rollover arithmetic in
+        `_saka_year_for_date` is a January-1 advance that has not been
+        customary-validated as a Nyepi or Balinese-new-year boundary.
+      - `saka_year_diagnostic_january_rollover`: the raw int that the
+        current internal formula returns. Used by the harness and the
+        dispute packet, NOT intended as a public answer.
     """
     gregorian: _dt.date
-    saka_year: int
+    saka_year: int | None
     sasih_idx: int                  # [1..12] or [1..13] if a nampih month is in progress
     sasih_name: str
     is_nampih: bool                 # this is a nampih (intercalary) month
+    saka_year_diagnostic_january_rollover: int  # raw formula output; see module docstring
 
 
 def _saka_year_for_date(date: _dt.date) -> int:
-    """return saka year for a given gregorian date.
+    """internal helper: return saka year for a given gregorian date.
 
     derived from the declared epoch: 1979-03-29 = Saka 1901, and the
     Saka year advances by one for each completed gregorian year since
@@ -90,7 +100,9 @@ def _saka_year_for_date(date: _dt.date) -> int:
     whether 1979-03-29 = Saka 1901 is the customary anchor is a
     separate evidence question (see DISPUTE-SASAH-KAPAT-KATIGA-BOUNDARY-2026-09
     et al.); this function only enforces internal consistency with
-    `SAKA_EPOCH_YEAR`.
+    `SAKA_EPOCH_YEAR`. **the function advances on January 1, which is
+    not a validated customary boundary** -- that is why the result is
+    exposed only as a diagnostic, not as the public `saka_year` field.
     """
     years_since_epoch = date.year - SAKA_EPOCH_GREGORIAN.year
     return SAKA_EPOCH_YEAR + years_since_epoch
@@ -146,21 +158,29 @@ def _sasih_index_at_offset(days_since_epoch: int) -> tuple[int, bool]:
 
 
 def saka_for_gregorian(date: _dt.date) -> SakaDate:
-    """convert gregorian date → SakaDate. deterministic for an input date."""
+    """convert gregorian date → SakaDate. deterministic for an input date.
+
+    Per Codex review of PR #15 (F1, P1): the public `saka_year` is `None`
+    because the year-rollover arithmetic advances on January 1, not on a
+    customary-attested boundary. The raw formula output is preserved as
+    `saka_year_diagnostic_january_rollover` for the harness and the
+    dispute packet.
+    """
     if date.year < 1979 or date.year > 9999:  # noqa: PLR2004 - pre-epoch not supported
         raise InvalidDateError(f"saka date out of range: {date.isoformat()}")
 
-    saka_year = _saka_year_for_date(date)
+    saka_year_diagnostic = _saka_year_for_date(date)
     days_since_epoch = _days_from_saka_epoch(date)
 
     sasih_idx, is_nampih = _sasih_index_at_offset(days_since_epoch)
 
     return SakaDate(
         gregorian=date,
-        saka_year=saka_year,
+        saka_year=None,                                  # see F1 / module docstring
         sasih_idx=sasih_idx,
         sasih_name=SASIH_NAMES_BALINESE[sasih_idx - 1] if sasih_idx <= 12 else ("Nampih " + SASIH_NAMES_BALINESE[max(0, min(11, sasih_idx - 2))]),  # noqa: E501
         is_nampih=is_nampih and sasih_idx == 13,
+        saka_year_diagnostic_january_rollover=saka_year_diagnostic,
     )
 
 

@@ -17,7 +17,7 @@ from dataclasses import asdict
 
 from .api import compose_day
 from .conformance import run_corpus, load_corpus
-from .rulesets import RULESET_VERSION, RULESET_METADATA
+from .rulesets import CANDIDATE_ID, RULESET_VERSION, RULESET_METADATA
 
 
 def cmd_date(args: argparse.Namespace) -> int:
@@ -119,6 +119,11 @@ def cmd_test(args: argparse.Namespace) -> int:
 
 def cmd_ruleset(args: argparse.Namespace) -> int:
     print(f"version: {RULESET_VERSION}")
+    print(f"candidate_id: {CANDIDATE_ID}")
+    print(
+        "  -- candidate_id changes when observable output diverges; "
+        "do not publish altered output under an indistinguishable old identity --"
+    )
     print("metadata:")
     print(json.dumps(RULESET_METADATA, indent=2, ensure_ascii=False))
     return 0
