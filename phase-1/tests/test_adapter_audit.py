@@ -22,6 +22,19 @@ def _str_keys(d):
     return {str(k): v for k, v in d.items()}
 
 
+def _read_pipe_dict(path: Path) -> list[dict]:
+    """read a pipe-delimited CSV with optional `#`-prefixed comment lines.
+
+    equivalent to csv.DictReader(f, delimiter="|") but tolerant of `#`
+    comment lines at the top of the file. the column header is the first
+    non-comment line. see phase-1/evidence/MANIFEST.md for the
+    `# git_commit:` provenance header convention.
+    """
+    with open(path) as f:
+        lines = [line for line in f if not line.startswith("#")]
+    return list(csv.DictReader(lines, delimiter="|"))
+
+
 def test_calendrica_pancawara_is_mapping_b():
     data = json.loads(ADAPTER_JSON.read_text())
     panc = _str_keys(data["calendrica"]["mappings"]["Pancawara"]["name_by_index"])
@@ -48,9 +61,7 @@ def test_basabubali_pancawara_matches_mapping_b():
 
 
 def test_corrected_7_date_cal_match_at_least_5():
-    with open(CORRECTED_7) as f:
-        reader = csv.DictReader(f, delimiter="|")
-        rows = list(reader)
+    rows = _read_pipe_dict(CORRECTED_7)
     assert len(rows) == 7
     cal_ok = sum(1 for r in rows if r["cal_all_match"] == "OK")
     cal_mix = sum(1 for r in rows if r["cal_all_match"] == "MIX")
@@ -59,9 +70,7 @@ def test_corrected_7_date_cal_match_at_least_5():
 
 
 def test_corrected_7_date_dew_pancawara_always_wrong():
-    with open(CORRECTED_7) as f:
-        reader = csv.DictReader(f, delimiter="|")
-        rows = list(reader)
+    rows = _read_pipe_dict(CORRECTED_7)
     no_count = sum(1 for r in rows if r["dew_panc_match"] == "NO")
     assert no_count == 7
 

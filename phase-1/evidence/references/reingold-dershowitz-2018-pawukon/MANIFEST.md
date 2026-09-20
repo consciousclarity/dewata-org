@@ -16,7 +16,7 @@
 | `firstparty-EdReingold-calendar-code2/README.md` | `c92d48ed825f98b233ae5c156427561a8732dbf1bb02329895309939ef9cc3e3` | 16 bytes | first-party README |
 | `firstparty-EdReingold-calendar-code2/calixir-vs-firstparty-diff.md` | (regenerated on edit) | ~6KB | comparative diff analysis (whole-file, license header only) |
 | `firstparty-EdReingold-calendar-code2/cycle-comparison/firstparty-cycle-210.csv` | `aebb168097865b0ae4405338d58b12a9baec8a4c3c37fd204c9e98249956542a` | ~6KB | first-party CALENDRICA output for full 210-day cycle starting at 1981-08-23 |
-| `firstparty-EdReingold-calendar-code2/cycle-comparison/dewata-cycle-210.csv` | `99b7b12e18412d83f52193fd1989d6bd0b7365fd0a82060973dbd3f59a8d92de` | ~6KB | Dewata output for full 210-day cycle starting at 1981-08-23 |
+| `firstparty-EdReingold-calendar-code2/cycle-comparison/dewata-cycle-210.csv` | `e51851e971745002ea739993d85be18654a0ce69a4527a5525697708e4365223` | 6749 bytes | Dewata output for full 210-day cycle starting at 1981-08-23 (engine commit `73db67d269db4b4de527d7d09f7f69fdcb408ae4`; **invariant across PR #8 wuku fix**) |
 | `firstparty-EdReingold-calendar-code2/cycle-comparison/modern-dates-comparison.md` | (regenerated on edit) | ~1KB | 11 representative modern dates comparison |
 | `cambridge-chapter-page-ultimate-edition.html` | `74eca7048b9b97b55ea56ea50f168815ec8b11b12454b4c84336571ea271ec3c` | 744403 bytes | publisher abstract page (bibliographic record, no chapter body) |
 | `crossref-chapter-metadata.json` | `7e58d80075a46964385bcd103989aa4abd40d8387a0035f8d6137e9af681e9a0` | 1113 bytes | CrossRef REST API metadata for chapter DOI |
@@ -32,6 +32,85 @@ recorded in `calendrica-source/METADATA.json`:
 `5206959bd22c1542cd438ab89876cc98c9a542d56e0da829d259d6f6ef2a24cb`.
 
 access date for all artifacts: **2026-09-15**.
+
+## engine-output provenance
+
+Four artifacts under `phase-1/evidence/` contain dewata engine output.
+This section is the single recording surface for their provenance,
+after PR #8 (wuku-table-fix-20260919, merge commit `33f3142` ←
+parent `21e5080`) replaced 21 of 30 wuku names and the
+`rahinan.py:104` predicate from `wuku_idx == 21` to `wuku_idx == 30`.
+
+Three CSVs are tracked in this manifest (under
+`EVDIR = phase-1/evidence/references/reingold-dershowitz-2018-pawukon`).
+The fourth, `phase-1/evidence/cross-validation/1900-2099/raw-outputs.jsonl.gz`,
+is under `phase-1/evidence/cross-validation/1900-2099/` and is
+tracked in its local `SHA256SUMS` file at that path; the SHA-256
+in that file matches the value in the supersession note below
+(also visible in the SHA256SUMS file directly).
+
+| artifact | sha256 | engine commit | status |
+|---|---|---|---|
+| `firstparty-EdReingold-calendar-code2/cycle-comparison/raw-dewata-210.csv` | `65d3947f0b9325a983f7010e60971f9c1cb14dde49bd0e218eb3eb2ac116332a` | `89304bcda945da516850c3ae8bf4cc2cc413abf4` | **WUKU_NAME column (col 5) superseded by PR #8**; indices and other columns unaffected |
+| `firstparty-EdReingold-calendar-code2/cycle-comparison/dewata-cycle-210.csv` | `e51851e971745002ea739993d85be18654a0ce69a4527a5525697708e4365223` | `73db67d269db4b4de527d7d09f7f69fdcb408ae4` | **invariant across PR #8** — no name columns; columns derived from cycle position |
+| `firstparty-EdReingold-calendar-code2/cycle-comparison/corrected-seven-date-comparison.csv` | `fe7a1f974f5413f7e2dbe54c0a71c371ded15b9198fc16524962151335ab0db5` | `1558975efddc13033da4581600617af41af60853` | `dew_wku_name` re-derived by execution (post-fix table) at HEAD by `phase-1/tools/full_range_cross_validation/redrive.py`; **file's last-modified git commit is `b55b643` (pre-fix)** — discrepancy recorded |
+
+**Fourth artifact (path `phase-1/evidence/cross-validation/1900-2099/raw-outputs.jsonl.gz`,
+sha256 `14c35a784e13f36e0b56e9220928a7cfe90a6f478370c385e3d650afb73e67dc`,
+engine commit `eda3e00ea527a57780b0b36e91b3bacd4179d02e`)**:
+**name columns in `dewata.wuku_name` (26,768 / 73,049 rows ≈ 37%)
+superseded by PR #8**; `peradnya.wuku_name` is the third-party
+adapter's own values; `rust.wuku_name` is byte-stable; **not
+regenerated** — regeneration is parked until the cross-validation
+harness gains name comparison. Provenance recorded in
+SHA256SUMS at `phase-1/evidence/cross-validation/1900-2099/`;
+supersession note mirrored here.
+
+Each CSV artifact carries a `# git_commit:` provenance header on
+lines 1-4 of the file, in `key: value` format matching the wiki
+`RELEASE_MANIFEST.txt`. The `raw-outputs.jsonl.gz` artifact does
+**not** carry an in-file header because its first record must be
+`{date: "1900-01-01", ...}` for `test_raw_and_normalized_artifacts_have_exact_date_bounds`;
+its provenance is recorded in `cross-validation/1900-2099/SHA256SUMS`
+and the supersession note is mirrored here.
+
+### supersession scope
+
+The PR #8 wuku fix changed the `WUKU_NAMES_BALINESE` table wholesale
+(21 of 30 positions) and the `rahinan.py:104` predicate. The change
+affects:
+
+- `raw-dewata-210.csv` column 5 (`WUKU_NAME`): 77 of 210 rows (37%)
+  hold pre-fix-only names. Indices in column 4 (`WUKU_IDX`) are
+  unaffected. Tests use indices only — pass with stale values.
+- `raw-outputs.jsonl.gz` `dewata.wuku_name`: 26,768 of 73,049 rows
+  (37%) hold pre-fix-only names. `dewata.wuku_index_*` fields are
+  unaffected. `peradnya.wuku_name` and `rust.wuku_name` are
+  external adapter outputs and are not supersession targets.
+- `dewata-cycle-210.csv`: **invariant** — every column is derived
+  from cycle position (`POS`, `DEWATA_POS`, `LUANG`, `DWI`, `TRI`,
+  `CAT`, `PAN`, `SAD`, `SAP`, `AST`, `SNG`, `DAS`). No name columns.
+  Pre-fix and post-fix engines produce byte-identical output.
+- `corrected-seven-date-comparison.csv`: `dew_wku_name` (column 13)
+  re-derived at HEAD by `phase-1/tools/full_range_cross_validation/redrive.py`
+  against the post-fix engine. `dew_panc_name` (column 11) and
+  `dew_wku_num` (column 12) unaffected. `cal_*` columns are external
+  references; `ref_*` columns are also external.
+
+### regeneration policy
+
+Regenerated artifacts must record the engine commit that produced
+them, in the artifact itself (for CSVs) or in this section (for
+gzipped JSONL). The provenance test in
+`phase-1/tests/test_evidence_provenance.py` (added by this PR)
+asserts: (a) the recorded engine commit is an ancestor of HEAD, and
+(b) re-deriving the column at HEAD still matches what is recorded.
+Not == HEAD; recorded is reachable from HEAD.
+
+`raw-outputs.jsonl.gz` regeneration is intentionally parked until
+the cross-validation harness gains name comparison; that is the
+correct time to regenerate, because the regeneration would otherwise
+need to be redone when the harness gains that capability.
 
 ## status
 

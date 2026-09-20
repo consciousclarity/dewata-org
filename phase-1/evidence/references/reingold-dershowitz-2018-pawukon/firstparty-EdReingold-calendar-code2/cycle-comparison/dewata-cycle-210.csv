@@ -1,3 +1,6 @@
+# git_commit: 73db67d269db4b4de527d7d09f7f69fdcb408ae4
+# recorded_at: 2026-09-20T05:32:30Z
+# invariant_across: 21e5080 (PR #8, wuku-table-fix-20260919) — no name columns
 POS|DEWATA_POS|LUANG|DWI|TRI|CAT|PAN|SAD|SAP|AST|SNG|DAS
 0|1|T|Menga|1|1|1|1|1|1|1|1
 1|2|F|Pepet|2|2|2|2|2|2|1|2

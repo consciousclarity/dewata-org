@@ -1,3 +1,7 @@
+# git_commit: 1558975efddc13033da4581600617af41af60853
+# recorded_at: 2026-09-20T05:32:30Z
+# file_last_modified_commit: b55b643 (pre-fix wuku table)
+# dew_wku_name_derived_by: phase-1/tools/full_range_cross_validation/redrive.py
 date|cal_sapt_num|cal_sapt_name|cal_panc_num|cal_panc_name|cal_wku_num|cal_wku_name|dew_sapt_num|dew_sapt_name|dew_panc_num|dew_panc_name|dew_wku_num|dew_wku_name|ref_sapt|ref_panc|ref_wku|source|cal_sapt_match|cal_panc_match|cal_wku_match|cal_all_match|dew_sapt_match|dew_panc_match|dew_wku_match|dew_all_match
 2026-09-01|3|Anggara|1|Umanis|22|Uye|3|Anggara|1|Paing|10|Sungsang|Anggara|Umanis|Uye|kb.org page title|OK|OK|OK|OK|OK|NO|NO|MIX
 2026-09-05|7|Saniscara|5|Kliwon|22|Uye|7|Saniscara|5|Umanis|10|Sungsang|Saniscara|Keliwon|Uye|liputan6.com + kb.org|OK|NO|OK|MIX|OK|NO|NO|MIX
