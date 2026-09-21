@@ -52,29 +52,42 @@ def test_saka_year_at_epoch_equals_saka_epoch_year():
 
     prior bug: `_saka_year_for_date` returned 0 at 1979-03-29 and 48
     for 2026, contradicting SAKA_EPOCH_YEAR = 1901.
+
+    Per the corrections follow-up (F1), the public `saka_year` field
+    is `None` for end users because the January-rollover arithmetic
+    is not customary-validated. The diagnostic
+    `saka_year_diagnostic_january_rollover` carries the raw formula
+    output. We assert on the diagnostic here because this test pins
+    the internal anchor, not the public surface.
     """
     sd = saka_for_gregorian(SAKA_EPOCH_GREGORIAN)
-    assert sd.saka_year == SAKA_EPOCH_YEAR, (
+    diagnostic = sd.saka_year_diagnostic_january_rollover
+    assert diagnostic == SAKA_EPOCH_YEAR, (
         f"epoch {SAKA_EPOCH_GREGORIAN.isoformat()} must yield "
-        f"saka_year == SAKA_EPOCH_YEAR ({SAKA_EPOCH_YEAR}); "
-        f"got {sd.saka_year}"
+        f"diagnostic saka_year == SAKA_EPOCH_YEAR ({SAKA_EPOCH_YEAR}); "
+        f"got {diagnostic}"
     )
 
 
 def test_saka_year_advances_one_per_gregorian_year():
-    """spot check: 2026 must NOT be saka year 48 (the prior bug).
+    """spot check: the diagnostic must NOT be 48 (the prior bug).
 
     with SAKA_EPOCH_YEAR=1901 anchored at 1979, 2026-1979+1901 = 1948.
+
+    Per the corrections follow-up (F1), the public `saka_year` field
+    is `None`. The diagnostic carries the raw formula output, which
+    is what this test pins.
     """
     sd = saka_for_gregorian(_dt.date(2026, 1, 1))
-    assert sd.saka_year != 48, (
+    diagnostic = sd.saka_year_diagnostic_january_rollover
+    assert diagnostic != 48, (
         f"engine regressed to the old `gregorian_year - 1979` bug; "
-        f"2026 -> {sd.saka_year}, expected 1948 (1947 for the epoch-year offset)"
+        f"2026 -> {diagnostic}, expected 1948 (1947 for the epoch-year offset)"
     )
     # 2026 is 47 years after the 1979 epoch anchor; epoch year 1901 + 47 = 1948.
-    assert sd.saka_year == 1948, (
-        f"2026-01-01 should be saka_year 1948 (epoch 1979 + 47 years); "
-        f"got {sd.saka_year}"
+    assert diagnostic == 1948, (
+        f"2026-01-01 diagnostic saka_year should be 1948 "
+        f"(epoch 1979 + 47 years); got {diagnostic}"
     )
 
 

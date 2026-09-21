@@ -287,10 +287,20 @@ for slug, sid, sen in WEWARAN_DETAILS:
     )
 
 
-# --- Rahinan terms (12 emitted ids + named days) ---
+# --- Rahinan terms (9 emitted ids + 3 unimplemented) ---
+# Per Codex review of PR #15 (F5): the generator previously declared
+# purnama/tilem/nyepi as engine-emitted ids and wrote them to the
+# wiki pages. The corrections follow-up separates the EMITTED list
+# (the runtime-of-record ids, derived from IMPLEMENTED_RAHINAN_IDS in
+# phase-1/src/dewatacalendar/rulesets.py) from the UNEMITTED list
+# (cultural terms the engine does not currently compute; the wiki
+# pages for these terms are kept and marked as unimplemented surfaces
+# in the manually-edited files, and the generator writes them with a
+# different status so a future rebuild does not silently restore the
+# old "engine emits" claims).
 
 RHINAN_IDS = [
-    # (engine_id, summary_id, summary_en)  — engine_id is the Python
+    # (engine_id, summary_id, summary_en)  -- engine_id is the Python
     # identifier in phase-1/src/dewatacalendar/rahinan.py
     ("buda_wage", "Buda + Wage", "Buda (Wednesday) + Wage (Pancawara index 2)"),
     ("buda_kliwon", "Buda + Keliwon", "Buda + Keliwon"),
@@ -298,18 +308,12 @@ RHINAN_IDS = [
     ("tumpek_landep", "Saniscara + Keliwon", "Saniscara + Keliwon (Tumpek Landep)"),
     ("anggara_kliwon", "Anggara + Keliwon", "Anggara + Keliwon (Anggara Kasih label)"),
     ("redite_paing", "Redite + Paing", "Redite (Sunday) + Paing"),
-    ("purnama", "pada bulan purnama (Saka is_purnama)",
-     "matches `saka.is_purnama` (full moon by lunar-tithi)"),
-    ("tilem", "pada bulan mati (Saka is_tilem)",
-     "matches `saka.is_tilem` (new moon by lunar-tithi)"),
     ("saraswati", "Wuku 21 (Watugunung) + Saniscara",
      "Wuku 21 (Watugunung) + Saniscara"),
     ("galungan", "Wuku 11 (Dungulan) + Buda + Keliwon",
      "Wuku 11 (Dungulan) + Buda + Keliwon"),
     ("kuningan", "Wuku 12 (Kuningan) + Saniscara + Keliwon",
      "Wuku 12 (Kuningan) + Saniscara + Keliwon"),
-    ("nyepi", "Sasih 9 (Kesanga) + Tilem + Tithi 1",
-     "Sasih 9 (Kesanga) + Tilem + lunar-tithi 1"),
 ]
 for engine_id, sid, sen in RHINAN_IDS:
     slug = engine_id.replace('_', '-')
@@ -320,22 +324,60 @@ for engine_id, sid, sen in RHINAN_IDS:
         sources=[
             ("phase-1/src/dewatacalendar/rahinan.py", "implementation", f"id '{engine_id}'"),
             ("phase-1/src/dewatacalendar/i18n.py", "implementation", "RAHINAN_I18N"),
+            ("phase-1/src/dewatacalendar/rulesets.py", "ruleset", "IMPLEMENTED_RAHINAN_IDS"),
         ],
         summary_id=f"rahinan id engine '{engine_id}' terpicu ketika {sid}.",
         summary_en=f"engine rahinan id '{engine_id}' triggers when {sen}.",
     )
 
+# Unimplemented rahinan terms: separate page class so the generator
+# writes them with status="implementation_definition" but a summary
+# that flags the unimplemented status. These are real Balinese
+# cultural terms; the engine just does not compute them.
+RHINAN_UNEMITTED = [
+    ("purnama", "bulan purnama (engine does not currently compute this)",
+     "full moon (engine does not currently compute this)"),
+    ("tilem", "bulan mati (engine does not currently compute this)",
+     "new moon (engine does not currently compute this)"),
+    ("nyepi", "Hari Raya Nyepi (engine does not currently compute this)",
+     "Hari Raya Nyepi (engine does not currently compute this)"),
+]
+for engine_id, sid, sen in RHINAN_UNEMITTED:
+    term(
+        slug=f"rahinan/{engine_id}",
+        category="rahinan",
+        status="implementation_definition",
+        sources=[
+            ("phase-1/src/dewatacalendar/saka.py", "implementation", "removed lunar fields"),
+            ("phase-1/src/dewatacalendar/rahinan.py", "implementation", f"id '{engine_id}' removed"),
+            ("phase-1/src/dewatacalendar/rulesets.py", "ruleset", "UNIMPLEMENTED_RAHINAN_IDS"),
+        ],
+        summary_id=(
+            f"Permukaan yang belum diimplementasikan. {sid}. "
+            "Lihat DISPUTE-SASAH-KAPAT-KATIGA-BOUNDARY-2026-09, "
+            "DISPUTE-SASAH-JAVA-VS-PERADNYA-OFFSET, dan "
+            "DISPUTE-ENGINE-SASIH-INDEX-INVERSION."
+        ),
+        summary_en=(
+            f"Unimplemented surface. {sen}. See "
+            "DISPUTE-SASAH-KAPAT-KATIGA-BOUNDARY-2026-09, "
+            "DISPUTE-SASAH-JAVA-VS-PERADNYA-OFFSET, and "
+            "DISPUTE-ENGINE-SASIH-INDEX-INVERSION."
+        ),
+    )
+
 # Human-named rahinan days (visible concept, not engine id)
+# Note: purnama and tilem are NOT listed here. They are real cultural
+# terms but the engine does not currently compute them; their
+# unimplemented-surface pages are emitted by the `RHINAN_UNEMITTED`
+# loop above. Listing them here would silently overwrite the
+# unimplemented status with the named-day "observed over 1-2 hari
+# lunar" phrasing (which still says "engine emits"), so they are
+# removed from this list per Codex F5.
 RHINAN_NAMED = [
     ("rahinan", "hari peringatan / observasi; umumnya terkait siklus Pawukon dan bulan Saka",
      "day of observance; typically tied to a Pawukon cycle and Saka lunar month",
      "phase-1/src/dewatacalendar/rahinan.py", "implementation"),
-    ("purnama", "bulan purnama (observed over 1-2 hari lunar)",
-     "full moon (engine emits 1-2 day window)",
-     "phase-1/src/dewatacalendar/saka.py", "implementation"),
-    ("tilem", "bulan mati (observed over 1-2 hari lunar)",
-     "new moon (engine emits 1-2 day window)",
-     "phase-1/src/dewatacalendar/saka.py", "implementation"),
     ("tumpek", "pola siklus saptawara + pancawara (Saniscara Umanis / Saniscara Keliwon / Redite Paing)",
      "saptawara+pancawara pattern (Saniscara Umanis / Saniscara Keliwon / Redite Paing)",
      "phase-1/src/dewatacalendar/rahinan.py", "implementation"),
@@ -796,21 +838,55 @@ last_reviewed: 2026-09-17
     return out
 
 
+# Manually-maintained pages. The generator must not overwrite these;
+# they carry structured evidence (dispute_ids, customary_review_status
+# notes, source citations, translation_review_status) that the
+# generator's data structures do not currently produce. A future
+# generator pass that wants to take over authoring these pages must
+# accept responsibility for producing the same structured evidence --
+# round-trip tests in wiki/tests/test_emit_term_pages_preservation.py
+# verify the protection.
+#
+# Slugs are written as `category/<name>` (matching the write_lang
+# output path layout). The list covers the six manually-edited
+# unimplemented-rahinan pages in en/rahinan/, id/rahinan/, and ban/.
+MANUALLY_MAINTAINED_SLUGS: frozenset[str] = frozenset({
+    "rahinan/purnama",
+    "rahinan/tilem",
+    "rahinan/nyepi",
+})
+
+
 def main():
     n_ban = n_id = n_en = 0
+    n_ban_skipped = n_id_skipped = n_en_skipped = 0
     for t in TERMS:
         slug = t["slug"]
+        if slug in MANUALLY_MAINTAINED_SLUGS:
+            n_id_skipped += 1
+            continue
         n_id += 1
         write_lang(DOCS / "id", slug, t, "id")
     for t in TERMS:
         slug = t["slug"]
+        if slug in MANUALLY_MAINTAINED_SLUGS:
+            n_en_skipped += 1
+            continue
         n_en += 1
         write_lang(DOCS / "en", slug, t, "en")
     for t in TERMS:
         slug = t["slug"]
+        if slug in MANUALLY_MAINTAINED_SLUGS:
+            n_ban_skipped += 1
+            continue
         n_ban += 1
         write_ban_stub(DOCS / "ban", slug, t)
-    print(f"emitted {n_ban} ban / {n_id} id / {n_en} en term pages")
+    skipped = n_ban_skipped  # same count for id/en/ban: per-lang
+    print(
+        f"emitted {n_ban} ban / {n_id} id / {n_en} en term pages; "
+        f"{skipped} manually-maintained slugs preserved (skipped) per "
+        f"MANUALLY_MAINTAINED_SLUGS"
+    )
 
 
 if __name__ == "__main__":

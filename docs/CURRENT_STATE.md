@@ -111,6 +111,41 @@ The **strip-saka-unimplemented-fields-20260920** PR (commit `2a302db`) is the mo
 - **Release engineering is sane.** Versioned static releases for apex + wiki, env-var indirection, restart-not-reload for caddy, no merge-on-ruleset-bump-without-signoff.
 - **Five-adat primitives + computed/registered/predicted/operational fact distinction + visibility tiers** are all designed coherently in ARCHITECTURE.md §3. The schema enforces the four-level provenance and tier promotion is forbidden.
 
+## Corrections follow-up to PR #15 (2026-09-20)
+
+The merged PR #15 returned from independent review with five findings
+(F1-F5). The corrections live on branch
+`strip-saka-corrections-r2-20260920` against main `802f9263`. They
+preserve all merged work, including Claude's metadata changes
+(`48dc5bc`, `25cbfde`, `25f9160`) and the project memory documents
+(`cb1dc90`). The corrections:
+
+- F1: public `saka_year` is `None`; raw value lives in
+  `saka_year_diagnostic_january_rollover` for the harness and dispute
+  packet.
+- F2: `CANDIDATE_ID = "candidate-2026-09-20-strip-corrections-r2"`
+  separates the development artifact from the frozen
+  `RULESET_VERSION`. Every `compose_day` and CLI artefact carries both.
+- F3: capability metadata reflects the runtime-of-record
+  (`IMPLEMENTED_RAHINAN_IDS` = 9, `purnama_counted=False`,
+  `tilem_counted=False`, `nyepi_counted=False`).
+- F4: `nampih_rule_actual` renamed to `nampih_rule_observed`; index 13
+  named `Nampih Sada`; explicit uncited note.
+- F5: wiki generator's `RHINAN_IDS` excludes purnama/tilem/nyepi; a
+  separate `RHINAN_UNEMITTED` list writes the unimplemented surfaces
+  with the three dispute IDs; `RHINAN_NAMED` no longer claims the
+  engine emits those.
+
+Verification (corrections branch, off `802f9263`):
+- `phase-1` tests: 324 passed, 0 failed (was 310 before this branch).
+  Includes 4 SBCL tests that run locally because `sbcl` is installed;
+  CI skips them because `sbcl` is not installed in the GitHub runner.
+- `wiki` tests: 20 passed, 0 failed (was 15 before this branch).
+- HTTP integration tests: 4 live uvicorn endpoints asserted
+  `candidate_id`, `unimplemented_observances`, `saka_year=null`,
+  `saka_year_diagnostic_january_rollover=1948`, and the explanatory
+  `note` field all reach the wire.
+
 ## Uncertainties and unknowns
 
 - **Branch protection status on `main`** — could not verify (no `gh` CLI, no working GitHub token in the runtime env; the earlier Bash attempts to `/api.github.com/.../protection` returned 401). The PROTOCOL says Hermes may not push to main or merge, so this is academic from the agent's POV — but a reviewer checking from the GitHub UI should confirm main is protected.

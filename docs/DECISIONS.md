@@ -67,3 +67,38 @@
 - O3. **First customary sign-off** — `SIGNOFF.md` is empty. Until at least one sign-off is recorded, no ruleset bump is permitted.
 - O4. **Whether `wiki.dewata.org` build is reproducible across CI + local** — `wiki/tests/test_build_reproducibility.py` exists but was not re-run by Hermes in this session.
 - O5. **Snapshot publication pipeline (datasets.dewata.org)** — designed in ARCHITECTURE.md §8 but not implemented. Deferred until phase-3+.
+
+## Supersessions and corrections from PR #15 review
+
+These decisions were made after Codex returned request-changes on
+PR #15. They are corrections-only (D9-D13); they do not overwrite
+D1-D8, which still hold for the merged state on main.
+
+### D9. **Partial supersession of D5** — separate candidate identity from frozen ruleset
+- **date:** 2026-09-20 (post-PR-#15-review)
+- **decided by:** Hermes, in response to Codex F2.
+- **reason:** D5 reasoned that the strip is a bug-fix, not a ruleset revision, so leaving the ruleset identifier unchanged was acceptable. Codex correctly flagged that observable output did change (`saka_year` semantics, four removed fields, three removed rahinan ids) and that the user-facing identifier now fails to distinguish pre-strip from post-strip output. The corrections follow-up adds `CANDIDATE_ID = "candidate-2026-09-20-strip-corrections-r2"`. `RULESET_VERSION` is unchanged; the candidate identity is a required component of every emitted `CalendarDay` and CLI artefact.
+- **what this does NOT do:** it does not bump `RULESET_VERSION`. That still requires customary sign-off. It does not claim the strip output is a release.
+
+### D10. **Partial supersession of D6** — public `saka_year` is unavailable; the raw January-rollover value is a diagnostic only
+- **date:** 2026-09-20 (post-PR-#15-review)
+- **decided by:** Hermes, in response to Codex F1.
+- **reason:** D6's reasoning about the epoch anchor still holds, but the user-facing consequence changes. Even after anchoring the constant, the formula advances on January 1, which is not a customary-attested boundary. The corrections follow-up exposes `saka_year = None` in the public `SakaDate` and `CalendarDay`, and keeps the raw January-rollover value as a separate `saka_year_diagnostic_january_rollover` field that the harness and dispute packet can read. The diagnostic is not validated, not customary-attested, and not part of any release candidate.
+- **does not:** pick a different Gregorian boundary (April 1, Nyepi-aligned, etc.) — that is a `calendar_semantics` decision blocked on customary sign-off. The constants remain.
+
+### D11. Capability metadata is authoritative only for runtime-of-record
+- **date:** 2026-09-20 (post-PR-#15-review)
+- **decided by:** Hermes, in response to Codex F3.
+- **reason:** The corrections follow-up makes `IMPLEMENTED_RAHINAN_IDS` the runtime-of-record list (9 ids). `purnama_counted=False`, `tilem_counted=False`, `nyepi_counted=False`. `named_days = len(IMPLEMENTED_RAHINAN_IDS) = 9`. `pangunalatri_days=63` survives as `pangunalatri_days_declared` with `pangunalatri_implemented=False` (this is Claude's merged `48dc5bc` change, preserved verbatim — we add `nyepi_counted` and the `implemented_rahinan_ids` / `unimplemented_rahinan_ids` lists alongside).
+- **does not:** delete the historical `named_days=24` record; that was a historical claim and is not part of the candidate.
+
+### D12. Nampih rule is described as observed behaviour, not as the cultural convention
+- **date:** 2026-09-20 (post-PR-#15-review)
+- **decided by:** Hermes, in response to Codex F4.
+- **reason:** Claude's merged `25cbfde` commit introduced `nampih_rule_actual` with the description "saka_year % 3 == 0 -> nampih Desta (13 sasih, 395-day year); uncited". Codex flagged that this falsely endorsed the loop's mod-3 rule as the cultural convention. The corrections follow-up renames the field to `nampih_rule_observed`, names index 13 `Nampih Sada` (matching actual output, not Desta as the prior comment claimed), and adds `nampih_observed_sasih_index=13`, `nampih_observed_sasih_name="Nampih Sada"`. The `nampih_rule_declared` field (Claude's) is preserved verbatim with its explanation that the declared rule has never been implemented.
+- **does not:** endorse either Desta or Sada convention as culturally correct. The engine's behaviour here is not validated.
+
+### D13. Wiki generator is a tool, not a source of truth; unimplemented surfaces need both a manual page and a generator guard
+- **date:** 2026-09-20 (post-PR-#15-review)
+- **decided by:** Hermes, in response to Codex F5.
+- **reason:** The merged wiki pages (manual edits from PR #15) are marked as unimplemented, but the wiki generator (`emit_term_pages.py`) still declared purnama/tilem/nyepi as engine-emitted ids via `RHINAN_IDS` and `RHINAN_NAMED`. A future `python wiki/scripts/emit_term_pages.py` would silently restore the old "engine emits" claims. The corrections follow-up splits `RHINAN_IDS` (9 emitted) from `RHINAN_UNEMITTED` (3 unimplemented, with `dispute_ids` referencing the three open sasih_index_drift disputes), and removes the purnama/tilem entries from `RHINAN_NAMED` (since `RHINAN_UNEMITTED` already produces their pages, and the writer's last-write-wins ordering would otherwise overwrite the unimplemented status). A new round-trip test (`wiki/tests/test_emit_term_pages_preservation.py`) runs the writer against a temp copy of the wiki docs and asserts the unimplemented status is preserved.

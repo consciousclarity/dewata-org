@@ -17,7 +17,7 @@ from dataclasses import asdict
 
 from .api import compose_day
 from .conformance import run_corpus, load_corpus
-from .rulesets import RULESET_VERSION, RULESET_METADATA
+from .rulesets import CANDIDATE_ID, RULESET_VERSION, RULESET_METADATA
 
 
 def cmd_date(args: argparse.Namespace) -> int:
@@ -93,19 +93,45 @@ def cmd_test(args: argparse.Namespace) -> int:
                     f"{r.corpus_authority_basis}]"
                 )
             )
-            print(f"  {r.date}  [{r.status:8s}]  corpus={r.corpus_basename} {gate_marker}  {r.source[:50]}")
+            unavailable_marker = ""
+            if r.fields_unavailable:
+                unavailable_marker = (
+                    " unavailable_fields="
+                    + ",".join(
+                        sorted(k for k, v in r.fields_unavailable.items() if v)
+                    )
+                )
+            print(f"  {r.date}  [{r.status:18s}]  corpus={r.corpus_basename} {gate_marker}{unavailable_marker}  {r.source[:50]}")
             if r.corpus_may_satisfy_validation_gate:
                 n_authoritative += 1
             else:
                 n_diagnostic += 1
         n_match = sum(1 for r in results if r.status == "match")
         n_disputed = sum(1 for r in results if r.status == "disputed")
+        n_incomplete = sum(
+            1 for r in results if r.status == "incomplete_public"
+        )
+        n_with_unavailable = sum(
+            1 for r in results if any(r.fields_unavailable.values())
+        )
+        # `n_disputed_with_unavailable` and `n_incomplete_with_unavailable`
+        # demonstrate that disputed and incomplete_public are not
+        # mutually exclusive dimensions: a row can be both disputed
+        # AND have unavailable fields (round-3 precedence correction).
+        n_disputed_with_unavailable = sum(
+            1 for r in results
+            if r.status == "disputed" and any(r.fields_unavailable.values())
+        )
         print(
             f"  -- {n_match} match, {n_disputed} disputed "
-            f"({n_authoritative} from authoritative corpora, {n_diagnostic} from "
-            f"non-authoritative / unverified corpora; non-authoritative results "
-            f"are diagnostic only and do not satisfy independent-reference "
-            f"validation gates per PROTOCOL v1.0 §2.4 + STATUS.json schema v2) --"
+            f"({n_disputed_with_unavailable} of those also had unavailable "
+            f"fields), {n_incomplete} incomplete_public "
+            f"({n_with_unavailable} total rows with unavailable fields) "
+            f"({n_authoritative} from authoritative corpora, {n_diagnostic} "
+            f"from non-authoritative / unverified corpora; non-authoritative "
+            f"results are diagnostic only and do not satisfy independent-"
+            f"reference validation gates per PROTOCOL v1.0 section 2.4 + "
+            f"STATUS.json schema v2) --"
         )
         print(
             "  -- corpus evidence status (two-axis): "
@@ -119,6 +145,11 @@ def cmd_test(args: argparse.Namespace) -> int:
 
 def cmd_ruleset(args: argparse.Namespace) -> int:
     print(f"version: {RULESET_VERSION}")
+    print(f"candidate_id: {CANDIDATE_ID}")
+    print(
+        "  -- candidate_id changes when observable output diverges; "
+        "do not publish altered output under an indistinguishable old identity --"
+    )
     print("metadata:")
     print(json.dumps(RULESET_METADATA, indent=2, ensure_ascii=False))
     return 0

@@ -1,19 +1,33 @@
 # Prioritized Backlog — dewata.org
 
-> **snapshot date:** 2026-09-20
+> **snapshot date:** 2026-09-20 (post-PR-#15-review corrections)
 > ordering: impact × risk-reduction. items already addressed or in PR pipeline are noted.
 
 ## P0 — shipped defect, no in-flight PR
 
-### B1. Strip Saka module of unimplemented fields  ✅ DONE (PR `2a302db` ready for review)
+### B1. Strip Saka module of unimplemented fields  ✅ MERGED (PR #15, head `802f9263`)
 - Removes `lunar_tithi`, `is_purnama`, `is_tilem`, `is_pangunalatri` from `SakaDate`
 - Removes `purnama`, `tilem`, `nyepi` rahinan ids (depended on removed fields; nyepi predicate was unreachable)
 - Removes `_new_moon_doy` stub and `PANGUNALATRI_PERIOD`
 - Fixes `_saka_year_for_date` to derive from `SAKA_EPOCH_YEAR`
 - Wiki: marks pangunalatri / purnama / tilem / nyepi pages as unimplemented surfaces with the three open dispute IDs; removes the three ids from id-mapping tables
 - Tests: 7 new tests in `phase-1/tests/test_saka_strip.py` pin: epoch→1901, 2026→1948, four removed fields absent from `compose_day`, three removed rahinan ids never emitted across 1979-2099
-- **Status:** pushed to `origin/strip-saka-unimplemented-fields-20260920`, awaiting user's PR review (per Hermes prompt: user opens the PR, Hermes does not)
-- **Result:** pytest 310 pass, wiki tests 15 pass
+- **Status:** MERGED on main as PR #15. Independent review (Codex) returned request-changes with findings F1-F5.
+- **Result:** pytest 310 pass, wiki tests 15 pass on main.
+
+### B1a. PR #15 corrections (Codex review F1-F5) — branch `strip-saka-corrections-r2-20260920`  ✅ DONE
+- **Reviewer:** Codex (independent review of PR #15, head `253dd8a`, base `65784ce`).
+- **Decision:** request changes; do not merge or deploy PR #15 as written.
+- **Findings addressed (corrections-only follow-up against main `802f9263`):**
+  - F1 (P1): public `saka_year` is `None`; raw January-rollover value preserved as `saka_year_diagnostic_january_rollover`. Failing regressions for 2026-01-01, 2026-03-18/19 added.
+  - F2 (P1): `CANDIDATE_ID = "candidate-2026-09-20-strip-corrections-r2"` exposed in `compose_day` and CLI. `RULESET_VERSION` is unchanged.
+  - F3 (P2): capability metadata corrected. `purnama_counted=False`, `tilem_counted=False`, `nyepi_counted=False`. `named_days = len(IMPLEMENTED_RAHINAN_IDS) = 9`.
+  - F4 (P2): `nampih_rule_actual` renamed to `nampih_rule_observed`; index-13 named `Nampih Sada`; explicit "uncited" note. Loop accumulator is documented as separate from returned `saka_year`.
+  - F5 (P2): wiki generator splits `RHINAN_IDS` (9 emitted) from `RHINAN_UNEMITTED` (3 unimplemented, with the three dispute IDs). `RHINAN_NAMED` no longer claims the engine emits purnama/tilem. New round-trip test in `wiki/tests/test_emit_term_pages_preservation.py` runs the writer against a temp copy of the wiki docs and asserts the unimplemented status is preserved.
+- **Cross-validation handles the unavailable year correctly:** `cross_validate_one` falls back to the diagnostic field when the public `saka_year` is `None`, and records the diagnostic-only comparison in `field_notes` so downstream consumers see the unavailable status, not a silent match.
+- **Public contract change:** `CalendarDay` now carries `candidate_id`, `unimplemented_observances`, and `note` fields. Live HTTP responses tested by `phase-1/tests/test_http_integration_corrections.py`.
+- **Status:** branch `strip-saka-corrections-r2-20260920` carries the corrections. PR not yet opened — Alejandro opens it.
+- **Verification:** phase-1 324 pass (was 310; +14 new tests, 4 of which are SBCL-runtime tests; 0 failed), wiki 20 pass (was 15; +5 new tests, 0 failed).
 
 ## P1 — calendar engine correctness, but blocked on customary sign-off
 
