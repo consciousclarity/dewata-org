@@ -52,7 +52,7 @@ holds institutional identifiers."
 | 10 | Bind a signing identity to an authority chain (SMS / gov-ID / hardware token) | all authoring roles | SPEC §7.2 |
 | 11 | File or resolve a calendrical dispute | any reviewer | LIVE (`disputes.json`, 27 records) |
 | 12 | Record a **customary sign-off** on a ruleset | bendesa / pemangku of standing | LIVE surface, **0 entries** (`SIGNOFF.md`) |
-| 13 | Contribute or review a wiki term, per language | translator / customary reviewer | LIVE (327 pages) |
+| 13 | Contribute or review a wiki term, per language | translator / customary reviewer | LIVE (302 term/stub pages) |
 | 14 | Emit audit lineage rows (`source` + `provenance` + `transition`) | automatic on every write | SPEC §3.1 |
 
 ## A2. By channel — how the data physically arrives
@@ -184,9 +184,18 @@ Visitors may read the `public` tier. They are not the audience — §0.
 # PART E — Honest status
 
 **Live:** three calendar endpoints plus health and root (`phase-1/src/dewatacalendar/dsp.py`
-on `f675b28`); the wiki (327 pages, three languages); two pilot registry files
-(Gianyar: 22 banjar, 10 pura); and the repo's governance artifacts (27 disputes,
-conformance corpora, empty sign-off log). A static landing page.
+on `f675b28`); the wiki (302 term and stub pages across three languages, per
+`wiki/build-artifacts/coverage.json`; 327 markdown files in total once section
+indexes and site pages are included); two pilot registry files holding **5 banjar
+and 3 pura records** (`registry/banjar.gianyar.tsv:18-22`,
+`registry/pura.gianyar.tsv:8-10` — the file's own header calls it "a placeholder
+seed" and says rows are not authoritative until they reach `verification_state >=
+desk_only`); and the repo's governance artifacts (27 disputes, conformance corpora,
+empty sign-off log). A static landing page.
+
+Note on the registry figures: "22 banjar + 10 pura" appears in `docs/CURRENT_STATE.md`
+and in earlier summaries. Those are whole-file line counts, and both TSVs open with a
+long prose header. The record counts are 5 and 3.
 
 **Not built:** every write endpoint, every ceremony and institution read endpoint,
 both prediction endpoints, all feeds and snapshots, the entire mesh, the whole
@@ -202,9 +211,23 @@ auditing the project's own evidence. Everything institutional is ahead of it.
 
 1. Ceremony prediction (#28, #29) depends on Saka/sasih semantics that three open
    disputes currently leave unresolved, and resolving them needs customary sign-off.
-2. `SIGNOFF.md` has zero entries and no candidate authority is named anywhere in the
-   repo, while `can_promote_ruleset_using()` returns False unconditionally
-   (`corpus_status.py:464`). Under the project's own rules there is presently no path
-   to a released ruleset.
+2. `SIGNOFF.md` records zero sign-offs (`phase-1/docs/runbook/SIGNOFF.md:23`) and
+   `can_promote_ruleset_using()` returns False unconditionally
+   (`corpus_status.py:464`), so under the project's own rules there is presently no
+   path to a released ruleset.
+
+   This is **not** for want of an identified candidate. A reviewer is already
+   named and argued for:
+   `phase-1/docs/audit/AUTHORITY_VALIDATION_PACKET_wuku_epoch_2026-09-16.md:3`
+   proposes Prof. I Wayan Nuarsa, PhD (Universitas Udayana), on the stated basis
+   that he is the named compiler of Kalender Bali Digital and an identifiable
+   university academic. That packet's own status line reads "prepared only; not
+   sent; no endorsement claimed."
+
+   So the gap is narrower and more actionable than "nobody has been identified":
+   a candidate is named and a packet is drafted, for the **wuku epoch** question.
+   What is missing is (a) sending it, and (b) an equivalent packet for the three
+   `sasih_index_drift` disputes that gate ceremony prediction. Nothing here
+   asserts that Prof. Nuarsa has agreed, been contacted, or endorsed anything.
 
 Neither is an engineering problem.
